@@ -1,0 +1,326 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum UserRole {
+  INVESTOR
+  ADMIN
+  FINANCE
+  COMPLIANCE
+  SUPPORT
+}
+
+enum OpportunityStatus {
+  DRAFT
+  ACTIVE
+  FUNDED
+  CLOSED
+  CANCELLED
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum DistributionType {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+  AT_MATURITY
+}
+
+enum InvestmentStatus {
+  PENDING
+  ACTIVE
+  MATURED
+  CANCELLED
+  DEFAULTED
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  DISTRIBUTION
+  FEE
+  REFUND
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum DocumentType {
+  OFFER_DOCUMENT
+  INVESTMENT_AGREEMENT
+  RECEIPT
+  STATEMENT
+  TAX_DOCUMENT
+  NOTICE
+  KYC
+  OTHER
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ALERT
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id                   String                  @id @default(cuid())
+  email                String                  @unique
+  emailVerified        DateTime?
+  name                 String
+  phone                String?
+  passwordHash         String
+  role                 UserRole                @default(INVESTOR)
+  twoFactorEnabled     Boolean                 @default(false)
+  twoFactorSecret      String?
+  identityVerified     Boolean                 @default(false)
+  identityVerifiedAt   DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  investments          Investment[]
+  transactions         Transaction[]
+  withdrawalRequests   WithdrawalRequest[]
+  documents            DocumentAcknowledgment[]
+  loginActivities      LoginActivity[]
+  notifications        Notification[]
+
+  @@map("users")
+}
+
+model LoginActivity {
+  id         String   @id @default(cuid())
+  userId     String
+  ipAddress  String
+  userAgent  String
+  success    Boolean
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("login_activities")
+}
+
+model InvestmentOpportunity {
+  id               String            @id @default(cuid())
+  title            String
+  slug             String            @unique
+  description      String
+  shortDescription String
+  minAmount        Decimal           @db.Decimal(18, 2)
+  maxAmount        Decimal?          @db.Decimal(18, 2)
+  targetAmount     Decimal           @db.Decimal(18, 2)
+  fundedAmount     Decimal           @default(0) @db.Decimal(18, 2)
+  termMonths       Int
+  /// Projected annual return rate — not a guarantee
+  annualReturnRate Decimal           @db.Decimal(8, 4)
+  distributionType DistributionType
+  status           OpportunityStatus @default(DRAFT)
+  openDate         DateTime?
+  closeDate        DateTime?
+  maturityDate     DateTime?
+  riskLevel        RiskLevel
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  documents        Document[]
+  investments      Investment[]
+
+  @@map("investment_opportunities")
+}
+
+model Investment {
+  id                  String            @id @default(cuid())
+  userId              String
+  opportunityId       String
+  referenceNumber     String            @unique
+  amount              Decimal           @db.Decimal(18, 2)
+  status              InvestmentStatus  @default(PENDING)
+  confirmedAt         DateTime?
+  maturityDate        DateTime?
+  agreementDocumentId String?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Restrict)
+  opportunity         InvestmentOpportunity @relation(fields: [opportunityId], references: [id], onDelete: Restrict)
+
+  transactions        Transaction[]
+  distributions       Distribution[]
+  withdrawalRequests  WithdrawalRequest[]
+
+  @@map("investments")
+}
+
+model Transaction {
+  id                    String            @id @default(cuid())
+  userId                String
+  investmentId          String?
+  type                  TransactionType
+  amount                Decimal           @db.Decimal(18, 2)
+  fee                   Decimal           @default(0) @db.Decimal(18, 2)
+  netAmount             Decimal           @db.Decimal(18, 2)
+  status                TransactionStatus @default(PENDING)
+  reference             String            @unique
+  stripePaymentIntentId String?           @unique
+  stripeChargeId        String?
+  description           String
+  metadata              Json?
+  processedAt           DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  investment            Investment?       @relation(fields: [investmentId], references: [id], onDelete: SetNull)
+
+  distributions         Distribution[]
+
+  @@map("transactions")
+}
+
+model WithdrawalRequest {
+  id            String           @id @default(cuid())
+  userId        String
+  investmentId  String
+  amount        Decimal          @db.Decimal(18, 2)
+  fee           Decimal          @default(0) @db.Decimal(18, 2)
+  netAmount     Decimal          @db.Decimal(18, 2)
+  status        WithdrawalStatus @default(PENDING)
+  bankName      String?
+  accountName   String?
+  accountNumber String?
+  routingNumber String?
+  adminNote     String?
+  approvedById  String?
+  approvedAt    DateTime?
+  processedAt   DateTime?
+  rejectedAt    DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user          User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+  investment    Investment       @relation(fields: [investmentId], references: [id], onDelete: Restrict)
+
+  @@map("withdrawal_requests")
+}
+
+model Distribution {
+  id            String            @id @default(cuid())
+  investmentId  String
+  amount        Decimal           @db.Decimal(18, 2)
+  type          DistributionType
+  status        TransactionStatus @default(PENDING)
+  scheduledDate DateTime
+  processedDate DateTime?
+  transactionId String?
+  createdAt     DateTime          @default(now())
+
+  investment    Investment        @relation(fields: [investmentId], references: [id], onDelete: Cascade)
+  transaction   Transaction?      @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@map("distributions")
+}
+
+model Document {
+  id            String                  @id @default(cuid())
+  name          String
+  description   String?
+  type          DocumentType
+  version       String                  @default("1.0")
+  fileUrl       String
+  fileSize      Int?
+  mimeType      String                  @default("application/pdf")
+  opportunityId String?
+  isPublic      Boolean                 @default(false)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  opportunity   InvestmentOpportunity?  @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  acknowledgments DocumentAcknowledgment[]
+
+  @@map("documents")
+}
+
+model DocumentAcknowledgment {
+  id          String   @id @default(cuid())
+  userId      String
+  documentId  String
+  ipAddress   String?
+  userAgent   String?
+  signedAt    DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, documentId])
+  @@map("document_acknowledgments")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entity     String
+  entityId   String?
+  before     Json?
+  after      Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@map("audit_logs")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@map("notifications")
+}
