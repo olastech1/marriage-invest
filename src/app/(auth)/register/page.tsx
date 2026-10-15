@@ -5,7 +5,7 @@
  *
  * Features:
  * - Full name, email, phone, password, confirm-password fields
- * - Phone number formatting (Nigerian format, expandable)
+ * - Phone number formatting (International standard)
  * - Zod inline schema validation
  * - Terms + Privacy Policy agreement checkbox
  * - POST /api/auth/register
@@ -69,17 +69,22 @@ type RegisterFields = {
 type FieldErrors = Partial<Record<keyof RegisterFields, string>>
 
 // ---------------------------------------------------------------------------
-// Phone formatter – formats as 0801 234 5678 while keeping raw digits
+// Phone formatter – formats international and standard phone numbers
 // ---------------------------------------------------------------------------
 function formatPhone(raw: string): string {
-  // Strip non-digit except leading +
-  const digits = raw.replace(/(?!^\+)\D/g, '')
-  if (digits.startsWith('+234')) {
-    const local = digits.slice(4)
-    return `+234 ${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6, 10)}`.trim()
+  if (!raw) return ''
+  const cleaned = raw.replace(/[^\d+]/g, '')
+  if (cleaned.startsWith('+')) {
+    const countryPlus = cleaned.slice(0, 3)
+    const rest = cleaned.slice(3)
+    if (rest.length <= 3) return `${countryPlus} ${rest}`.trim()
+    if (rest.length <= 6) return `${countryPlus} ${rest.slice(0, 3)} ${rest.slice(3)}`.trim()
+    return `${countryPlus} ${rest.slice(0, 3)} ${rest.slice(3, 6)} ${rest.slice(6, 11)}`.trim()
   }
-  // Local 11-digit format
-  return `${digits.slice(0, 4)} ${digits.slice(4, 7)} ${digits.slice(7, 11)}`.trim()
+  const digits = cleaned.replace(/\D/g, '')
+  if (digits.length <= 3) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 3)}) ${digits.slice(3)}`
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 10)}`
 }
 
 // Password strength helper
@@ -256,7 +261,7 @@ export default function RegisterPage() {
             autoComplete="name"
             value={fields.name}
             onChange={handleChange}
-            placeholder="Adaeze Okonkwo"
+            placeholder="Eleanor Sterling"
             disabled={isSubmitting}
             className={cls('name')}
           />
@@ -298,7 +303,7 @@ export default function RegisterPage() {
             autoComplete="tel"
             value={formatPhone(fields.phone)}
             onChange={handlePhoneChange}
-            placeholder="0801 234 5678"
+            placeholder="+1 (555) 234-5678"
             disabled={isSubmitting}
             className={cls('phone')}
           />
@@ -306,7 +311,7 @@ export default function RegisterPage() {
             <p className="mt-1.5 text-xs text-red-600">{fieldErrors.phone}</p>
           ) : (
             <p className="mt-1 text-xs text-slate-400">
-              Nigerian format: 080xxxxxxxx or +234xxxxxxxxxx
+              International format (e.g. +1 555 234 5678 or +41 44 234 5678)
             </p>
           )}
         </div>
