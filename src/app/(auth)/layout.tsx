@@ -129,7 +129,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           <p className="text-xs text-slate-400">
             Need help?{' '}
             <a
-              href="mailto:support@unioninvest.ng"
+              href="mailto:support@donateplea.com"
               className="text-[#0F1C3F] hover:underline font-medium"
             >
               Contact support
