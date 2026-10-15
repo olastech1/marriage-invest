@@ -63,10 +63,10 @@ export default function AdminSettingsPage() {
     host: 'mail.donateplea.com',
     port: '587',
     encryption: 'STARTTLS',
-    user: 'noreply@donateplea.com',
-    pass: 'UnionInvest_Smtp2026!',
-    fromEmail: 'noreply@donateplea.com',
-    fromName: 'Union Invest Fiduciary',
+    user: 'invest@donateplea.com',
+    pass: 'UnionM@il_98Fid!2026',
+    fromEmail: 'invest@donateplea.com',
+    fromName: 'Union Invest Notifications',
     testRecipient: 'admin@unioninvest.com',
   })
 
@@ -129,8 +129,19 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const handleApplyVpsPreset = (type: 'donateplea' | 'donatefate') => {
-    if (type === 'donateplea') {
+  const handleApplyVpsPreset = (type: 'invest' | 'noreply' | 'admin') => {
+    if (type === 'invest') {
+      setEmailSettings({
+        ...emailSettings,
+        host: 'mail.donateplea.com',
+        port: '587',
+        encryption: 'STARTTLS',
+        user: 'invest@donateplea.com',
+        pass: 'UnionM@il_98Fid!2026',
+        fromEmail: 'invest@donateplea.com',
+        fromName: 'Union Invest Notifications',
+      })
+    } else if (type === 'noreply') {
       setEmailSettings({
         ...emailSettings,
         host: 'mail.donateplea.com',
@@ -147,15 +158,15 @@ export default function AdminSettingsPage() {
         host: 'mail.donateplea.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'noreply@donatefate.com',
+        user: 'admin@donateplea.com',
         pass: 'UnionInvest_Smtp2026!',
-        fromEmail: 'noreply@donatefate.com',
-        fromName: 'Union Invest Fiduciary',
+        fromEmail: 'admin@donateplea.com',
+        fromName: 'Union Invest Administration',
       })
     }
     setEmailStatus({
       type: 'success',
-      message: `VPS Mailcow preset (${type}) loaded. Click "Verify SMTP Connection" to test.`,
+      message: `VPS Mailcow preset (${type}@donateplea.com) loaded. Click "Verify SMTP Connection" to test.`,
     })
   }
 
@@ -502,17 +513,24 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handleApplyVpsPreset('donateplea')}
-                  className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors"
+                  onClick={() => handleApplyVpsPreset('invest')}
+                  className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm"
                 >
-                  Load donateplea.com Preset
+                  invest@donateplea.com (Official Dispatch)
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleApplyVpsPreset('donatefate')}
+                  onClick={() => handleApplyVpsPreset('noreply')}
                   className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  Load donatefate.com Preset
+                  noreply@donateplea.com
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApplyVpsPreset('admin')}
+                  className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
+                >
+                  admin@donateplea.com
                 </button>
               </div>
             </div>

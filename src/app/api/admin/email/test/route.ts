@@ -13,11 +13,11 @@ export async function POST(req: NextRequest) {
     const {
       host = process.env.SMTP_HOST || 'mail.donateplea.com',
       port = Number(process.env.SMTP_PORT || 587),
-      user = process.env.SMTP_USER || 'noreply@donateplea.com',
-      pass = process.env.SMTP_PASS || 'UnionInvest_Smtp2026!',
+      user = process.env.SMTP_USER || 'invest@donateplea.com',
+      pass = process.env.SMTP_PASS || 'UnionM@il_98Fid!2026',
       secure = false,
-      fromEmail = 'noreply@donateplea.com',
-      fromName = 'Union Invest Fiduciary',
+      fromEmail = 'invest@donateplea.com',
+      fromName = 'Union Invest Notifications',
       toEmail,
       sendTest = false,
     } = body
