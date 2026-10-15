@@ -51,12 +51,10 @@ export default function TermsPage() {
             </p>
           </section>
 
-          <section>
-            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Governing Law & Dispute Resolution</h2>
+            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Governing Law & International Arbitration</h2>
             <p>
-              These Terms shall be governed by and construed in accordance with the laws of the State of New York and applicable federal laws of the United States, without regard to conflict of law principles. Any dispute arising under these terms shall be settled through binding commercial arbitration in New York, NY.
+              These Terms and all Matrimonial Investment Covenants shall be governed by and construed in accordance with Swiss civil and commercial fiduciary law and applicable international private placement regulations. Any dispute, controversy, or claim arising out of or in connection with these terms shall be settled by binding commercial arbitration administered in Zurich, Switzerland.
             </p>
-          </section>
         </div>
       </div>
     </div>

@@ -16,9 +16,9 @@ export default function InvestorSettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications'>('profile')
 
   const [profile, setProfile] = useState({
-    name: 'Jane & John Doe',
-    phone: '+1 (555) 019-2831',
-    email: 'investor@example.com',
+    name: 'Amélie & Sebastian Laurent',
+    phone: '+41 44 214 8820',
+    email: 'amelie.laurent@unioninvest.com',
   })
 
   const [passwords, setPasswords] = useState({

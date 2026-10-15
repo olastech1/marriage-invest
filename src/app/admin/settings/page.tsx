@@ -30,9 +30,9 @@ export default function AdminSettingsPage() {
     tagline: 'Building Wealth Together — A Marriage Investment Platform',
     supportEmail: 'support@unioninvest.com',
     complianceEmail: 'compliance@unioninvest.com',
-    supportPhone: '+1 (800) 555-0199',
+    supportPhone: '+41 44 214 8800',
     currency: 'USD ($)',
-    timezone: 'America/New_York (UTC-5)',
+    timezone: 'Europe/Zurich (CET / UTC+1)',
   })
 
   const [financeSettings, setFinanceSettings] = useState({

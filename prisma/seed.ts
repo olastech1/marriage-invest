@@ -52,9 +52,22 @@ async function main() {
   const investorPassword = await bcrypt.hash('Investor@123!', 12)
   const investor = await prisma.user.create({
     data: {
+      email: 'amelie.laurent@unioninvest.com',
+      name: 'Amélie Laurent',
+      phone: '+41 44 214 8820',
+      passwordHash: investorPassword,
+      emailVerified: new Date(),
+      role: UserRole.INVESTOR,
+      identityVerified: true,
+      identityVerifiedAt: new Date(),
+    },
+  })
+  // Secondary login alias for compatibility
+  await prisma.user.create({
+    data: {
       email: 'investor@example.com',
-      name: 'Jane Doe',
-      phone: '+1-555-0100',
+      name: 'Amélie Laurent',
+      phone: '+41 44 214 8820',
       passwordHash: investorPassword,
       emailVerified: new Date(),
       role: UserRole.INVESTOR,
@@ -299,7 +312,8 @@ async function main() {
   console.log('Default credentials:')
   console.log('  Admin:    admin@unioninvest.com / Admin@123!')
   console.log('  Finance:  finance@unioninvest.com / Finance@123!')
-  console.log('  Investor: investor@example.com / Investor@123!')
+  console.log('  Investor: amelie.laurent@unioninvest.com / Investor@123!')
+  console.log('            (also investor@example.com / Investor@123!)')
 }
 
 main()

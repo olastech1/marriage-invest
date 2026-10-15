@@ -324,7 +324,7 @@ export default async function HomePage() {
               </div>
 
               <span className="text-[10px] font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-1">
-                Registry of Matrimonial Capital
+                International Matrimonial Capital Registry · Zurich & London
               </span>
 
               <h3 className="text-xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-2">
@@ -340,12 +340,12 @@ export default async function HomePage() {
                 <div className="flex items-center justify-center gap-4 text-center">
                   <div className="flex-1">
                     <span className="text-[9px] uppercase font-bold text-gray-400 block">First Spouse</span>
-                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Sarah Jenkins</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Amélie Laurent</span>
                   </div>
                   <span className="text-[#C9A84C] font-serif text-lg font-bold">&</span>
                   <div className="flex-1">
                     <span className="text-[9px] uppercase font-bold text-gray-400 block">Second Spouse</span>
-                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">David Jenkins</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Sebastian Laurent</span>
                   </div>
                 </div>
               </div>
@@ -353,7 +353,7 @@ export default async function HomePage() {
               {/* Dual Signature Stems */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto items-end pt-2 text-[10px]">
                 <div className="border-t border-gray-400 pt-1">
-                  <p className="font-serif italic text-sm text-[#0F1C3F]">Sarah Jenkins</p>
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">Amélie Laurent</p>
                   <span className="text-gray-500 font-bold uppercase">Partner 1</span>
                 </div>
 
@@ -361,11 +361,11 @@ export default async function HomePage() {
                   <div className="w-14 h-14 rounded-full border-2 border-[#C9A84C] bg-gradient-to-tr from-[#C9A84C] to-[#edd998] flex items-center justify-center text-[#0F1C3F] shadow-sm">
                     <Award className="w-6 h-6" />
                   </div>
-                  <span className="text-[8px] font-mono text-gray-500 mt-1">SEAL #98420</span>
+                  <span className="text-[8px] font-mono text-gray-500 mt-1">SEAL #CH-98420</span>
                 </div>
 
                 <div className="border-t border-gray-400 pt-1">
-                  <p className="font-serif italic text-sm text-[#0F1C3F]">David Jenkins</p>
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">Sebastian Laurent</p>
                   <span className="text-gray-500 font-bold uppercase">Partner 2</span>
                 </div>
               </div>

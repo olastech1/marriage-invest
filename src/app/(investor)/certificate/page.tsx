@@ -26,12 +26,12 @@ import {
 
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
-  const userName = session?.user?.name || 'Jane Doe'
-  const userEmail = session?.user?.email || 'investor@example.com'
+  const userName = session?.user?.name || 'Amélie Laurent'
+  const userEmail = session?.user?.email || 'amelie.laurent@unioninvest.com'
 
   // Invitation state
-  const [partnerName, setPartnerName] = useState('David Doe')
-  const [partnerEmail, setPartnerEmail] = useState('david.doe@example.com')
+  const [partnerName, setPartnerName] = useState('Sebastian Laurent')
+  const [partnerEmail, setPartnerEmail] = useState('sebastian.laurent@unioninvest.com')
   const [weddingDate, setWeddingDate] = useState('2024-06-15')
   const [inviteSent, setInviteSent] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -50,7 +50,7 @@ export default function MarriageCertificatePage() {
   const [cardExpiry, setCardExpiry] = useState('12/28')
   const [cardCvc, setCardCvc] = useState('123')
 
-  const certificateNumber = 'UI-MIC-2026-98420'
+  const certificateNumber = 'CH-MIC-2026-98420'
 
   const handleSendInvite = (e: React.FormEvent) => {
     e.preventDefault()
@@ -380,7 +380,7 @@ export default function MarriageCertificatePage() {
 
           {/* Headers */}
           <span className="text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.3em] text-[#0F1C3F]/70 block mb-2">
-            United States Matrimonial Capital Registry
+            International Matrimonial Capital Registry · Zurich & London
           </span>
 
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-4">

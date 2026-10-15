@@ -231,7 +231,7 @@ export default function WithdrawalsPage() {
                   required
                   value={accountName}
                   onChange={(e) => setAccountName(e.target.value)}
-                  placeholder="e.g. Jane & John Doe"
+                  placeholder="e.g. Amélie & Sebastian Laurent"
                   className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
                 />
               </div>

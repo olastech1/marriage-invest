@@ -10,22 +10,22 @@ export const metadata: Metadata = {
 
 const leadership = [
   {
-    name: 'Alexander Vance',
+    name: 'Alexander von Bern',
     role: 'Chief Executive Officer & Co-Founder',
-    bio: 'Former VP of Alternative Asset Management at Vanguard, with 18+ years in structured retail credit and marital financial planning advisory.',
-    credentials: 'CFA, MBA (Wharton)',
+    bio: 'Former Managing Director of Private Wealth at UBS Zurich, with 20+ years specializing in international family wealth syndication and matrimonial covenants.',
+    credentials: 'CFA, MBA (St. Gallen / INSEAD)',
   },
   {
-    name: 'Eleanor Sterling, JD',
-    role: 'Chief Compliance & Legal Officer',
-    bio: 'Specialist in private placements, investor protections, and SEC Regulation D offerings. 14 years advising fin-tech investment syndicates.',
-    credentials: 'JD (Columbia Law), Series 7, 24, 63',
+    name: 'Baroness Elena Lindqvist, LL.M',
+    role: 'Chief Compliance & Legal Counsel',
+    bio: 'Specialist in Swiss & European cross-border private placements, investor protections, and dual-party matrimonial trusts. 16 years advising family offices.',
+    credentials: 'LL.M (Cambridge / Zurich Law), Admitted Zurich Bar',
   },
   {
-    name: 'Marcus Chen',
+    name: 'Jean-Philippe Moreau, CFA',
     role: 'Chief Financial & Risk Officer',
-    bio: 'Over 16 years leading portfolio underwriting, risk models, and cash-flow reconciliation across North American private debt vehicles.',
-    credentials: 'CPA, FRM',
+    bio: 'Over 18 years directing private credit portfolios, sovereign underwriting models, and multi-currency cash reconciliations at Lombard Odier and Credit Suisse.',
+    credentials: 'CFA, FRM, M.Sc (Paris-Dauphine)',
   },
 ]
 

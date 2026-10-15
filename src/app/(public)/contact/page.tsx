@@ -102,7 +102,7 @@ export default function ContactPage() {
                       required
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Jane & John Doe"
+                      placeholder="Amélie & Sebastian Laurent"
                       className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs focus:ring-2 focus:ring-[#C9A84C] focus:border-transparent outline-none text-gray-900"
                     />
                   </div>
@@ -203,22 +203,22 @@ export default function ContactPage() {
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
                   <span>
-                    <strong>Union Invest Corporation</strong><br />
-                    100 Wall Street, Suite 1400<br />
-                    New York, NY 10005, United States
+                    <strong>Union Invest Fiduciary AG</strong><br />
+                    Bahnhofstrasse 45, 8001 Zurich, Switzerland<br />
+                    <span className="text-gray-400">UK Fiduciary Desk: 30 St Mary Axe, City of London, EC3A 8EP</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>invest@unioninvest.com</span>
+                  <span>desk.zurich@unioninvest.com</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>+1 (800) 412-9840 (Toll-Free USD Desk)</span>
+                  <span>+41 44 214 8800 (Zurich) · +44 20 7946 0912 (London)</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Clock className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>Mon–Fri: 9:00 AM – 5:00 PM EST</span>
+                  <span>Mon–Fri: 08:30 – 17:30 CET / GMT</span>
                 </div>
               </div>
             </div>
