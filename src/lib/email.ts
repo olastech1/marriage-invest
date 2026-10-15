@@ -64,17 +64,23 @@ function getTransporter(): Transporter {
     })
   } else {
     // Generic SMTP transport
+    const smtpUser = process.env.SMTP_USER ?? 'invest@donateplea.com'
+    const smtpPass = process.env.SMTP_PASS ?? 'UnionM@il_98Fid!2026'
+
     _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST ?? 'localhost',
+      host: process.env.SMTP_HOST ?? 'mail.donateplea.com',
       port: Number(process.env.SMTP_PORT ?? 587),
       secure: Number(process.env.SMTP_PORT ?? 587) === 465,
       auth:
-        process.env.SMTP_USER && process.env.SMTP_PASS
+        smtpUser && smtpPass
           ? {
-              user: process.env.SMTP_USER,
-              pass: process.env.SMTP_PASS,
+              user: smtpUser,
+              pass: smtpPass,
             }
           : undefined,
+      tls: {
+        rejectUnauthorized: false,
+      },
     })
   }
 
@@ -85,9 +91,9 @@ function getTransporter(): Transporter {
 // Shared template helpers
 // ---------------------------------------------------------------------------
 
-const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Marriage Invest'} <${process.env.EMAIL_FROM ?? 'noreply@marriageinvest.com'}>`
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
-const BRAND_COLOR = '#7C3AED'
+const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Invest Fiduciary'} <${process.env.EMAIL_FROM ?? 'invest@donateplea.com'}>`
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://marriage-invest.vercel.app'
+const BRAND_COLOR = '#0F1C3F'
 
 function baseTemplate(body: string, preheader = ''): string {
   return /* html */ `

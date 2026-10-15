@@ -44,19 +44,36 @@ export async function POST(req: NextRequest) {
 
     // 2. If test email requested and recipient provided, send a test email
     if (sendTest && toEmail) {
+      const formattedDate = new Date().toUTCString()
+      const textAlternative = `Union Invest Fiduciary
+Fiduciary SMTP Verification
+
+This notification confirms that the Union Invest mail server on ${host}:${port} is authenticated and operational.
+
+Details:
+- SMTP Host: ${host}
+- Port: ${port}
+- Authenticated Identity: ${user}
+- Timestamp: ${formattedDate}
+
+Union Invest Fiduciary AG · Zurich & London
+If you did not request this verification, please contact admin@donateplea.com.`
+
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to: toEmail,
-        subject: 'Union Invest — SMTP Delivery Test (Successful)',
+        replyTo: fromEmail,
+        subject: 'Union Invest — Account Communication Verification',
+        text: textAlternative,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
             <div style="text-align: center; margin-bottom: 24px;">
               <span style="font-size: 24px; font-weight: bold; color: #0F1C3F;">Union <span style="color: #C9A84C;">Invest</span></span>
-              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; margin-top: 4px;">Fiduciary SMTP Dispatch</p>
+              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; margin-top: 4px;">Fiduciary SMTP Verification</p>
             </div>
             <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-              <p style="color: #065f46; font-weight: 600; margin: 0; font-size: 14px;">✅ SMTP Connection & Delivery Verified</p>
-              <p style="color: #047857; margin: 4px 0 0; font-size: 12px;">This test confirms that your VPS SMTP server on <strong>${host}:${port}</strong> is successfully authenticated and delivering messages.</p>
+              <p style="color: #065f46; font-weight: 600; margin: 0; font-size: 14px;">Communication Verification Successful</p>
+              <p style="color: #047857; margin: 4px 0 0; font-size: 12px;">This message verifies the authenticated delivery pipeline from <strong>${host}:${port}</strong>.</p>
             </div>
             <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 24px;">
               <tr>
@@ -73,14 +90,18 @@ export async function POST(req: NextRequest) {
               </tr>
               <tr>
                 <td style="padding: 8px 0; color: #6b7280;">Timestamp</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right;">${new Date().toISOString()}</td>
+                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right;">${formattedDate}</td>
               </tr>
             </table>
             <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af;">
-              © ${new Date().getFullYear()} Union Invest Fiduciary AG · Zurich & London
+              © ${new Date().getFullYear()} Union Invest Fiduciary AG · Bahnhofstrasse 45, 8001 Zurich, Switzerland
             </div>
           </div>
         `,
+        headers: {
+          'List-Unsubscribe': `<mailto:admin@donateplea.com?subject=unsubscribe>`,
+          'X-Entity-Ref-ID': `UI-${Date.now()}`,
+        },
       })
 
       return NextResponse.json({
