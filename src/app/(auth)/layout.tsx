@@ -72,9 +72,9 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             {/* Stats row */}
             <div className="mt-12 grid grid-cols-3 gap-6">
               {[
-                { value: '₦2.4B+', label: 'Assets managed' },
-                { value: '12,000+', label: 'Couples investing' },
-                { value: '18.3%', label: 'Avg. annual return' },
+                { value: '$240M+', label: 'Assets under custody' },
+                { value: '14,500+', label: 'Global partner portfolios' },
+                { value: '18.4%', label: 'Avg. annualized return' },
               ].map((stat) => (
                 <div key={stat.label}>
                   <p className="text-2xl font-bold text-[#C9A84C]">{stat.value}</p>
@@ -86,7 +86,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Footer line */}
           <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} Union Invest Ltd. All rights reserved.
+            © {new Date().getFullYear()} Union Invest Fiduciary AG · Zurich & London
           </p>
         </div>
       </div>
