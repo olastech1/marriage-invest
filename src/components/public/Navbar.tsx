@@ -5,8 +5,9 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
 const navLinks = [
-  { label: 'Investment Opportunities', href: '/investments' },
+  { label: 'Marriage Certificate', href: '/#certificate' },
   { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'Investment Opportunities', href: '/investments' },
   { label: 'Offer Documents', href: '/documents' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },

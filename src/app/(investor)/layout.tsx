@@ -16,19 +16,21 @@ import {
   Menu,
   X,
   ChevronRight,
+  Award,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Nav items
 // ---------------------------------------------------------------------------
 const navItems = [
-  { href: '/dashboard',     label: 'Dashboard',     icon: LayoutDashboard },
-  { href: '/portfolio',     label: 'Portfolio',     icon: Briefcase },
-  { href: '/transactions',  label: 'Transactions',  icon: ArrowLeftRight },
-  { href: '/deposits',      label: 'Deposits',      icon: ArrowDownToLine },
-  { href: '/withdrawals',   label: 'Withdrawals',   icon: ArrowUpFromLine },
-  { href: '/my-documents',  label: 'Documents',     icon: FileText },
-  { href: '/settings',      label: 'Settings',      icon: Settings },
+  { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
+  { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
+  { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },
+  { href: '/transactions',  label: 'Transactions',          icon: ArrowLeftRight },
+  { href: '/deposits',      label: 'Deposits',              icon: ArrowDownToLine },
+  { href: '/withdrawals',   label: 'Withdrawals',           icon: ArrowUpFromLine },
+  { href: '/my-documents',  label: 'Documents',             icon: FileText },
+  { href: '/settings',      label: 'Settings',              icon: Settings },
 ] as const
 
 // ---------------------------------------------------------------------------

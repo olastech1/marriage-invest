@@ -12,12 +12,19 @@ import {
   TrendingUp,
   Users,
   Award,
+  Heart,
+  Mail,
+  FileCheck,
+  CreditCard,
+  Download,
+  Sparkles,
+  Check,
 } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Union Invest — Marriage Investment Platform',
   description:
-    'Secure your financial future together with USD-denominated investments tailored for couples and marriage.',
+    'The premier Marriage Investment Platform. One partner registers, invites their spouse, signs the digital Marriage Certificate, and unlocks shared high-yield USD investments.',
 }
 
 export const dynamic = 'force-dynamic'
@@ -75,7 +82,7 @@ export default async function HomePage() {
       orderBy: { createdAt: 'desc' },
     })
   } catch {
-    // Database offline or build-time prerendering
+    // Database offline or build-time prerendering fallback
   }
 
   if (!opportunities || opportunities.length === 0) {
@@ -87,39 +94,58 @@ export default async function HomePage() {
       {/* ── HERO SECTION ── */}
       <section className="pt-28 pb-16 lg:pt-36 lg:pb-24 bg-white relative overflow-hidden">
         {/* Subtle decorative radial background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-gradient-to-b from-[#0F1C3F]/[0.02] to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-[450px] bg-gradient-to-b from-[#0F1C3F]/[0.03] to-transparent pointer-events-none" />
 
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          {/* Eyebrow Pill */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C9A84C]/15 border border-[#C9A84C]/30 text-[#0F1C3F] text-xs font-bold uppercase tracking-wider mb-6">
+            <Heart className="w-3.5 h-3.5 text-[#C9A84C] fill-[#C9A84C]" />
+            The World&apos;s First Marriage Investment Platform
+          </div>
+
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-[#0F1C3F] tracking-tight leading-[1.15] mb-6">
-            Invest in Your Shared Future
+            Invest in Your Marriage. <br className="hidden sm:inline" />
+            <span className="text-[#C9A84C]">Build Generational Wealth As One.</span>
           </h1>
 
-          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
-            Secure your financial future together with USD-denominated investments tailored for couples and marriage.
+          <p className="text-base sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
+            One partner registers and invites their spouse. Together, both partners digitally sign your official <strong>Marriage Investment Certificate</strong>. Settle your registration fee to unlock and download your certified legal bond, then deploy shared capital into high-yield USD funds.
           </p>
 
           {/* Dual CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
             <Link
               href="/register"
-              className="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460] active:scale-95 transition-all shadow-md shadow-[#C9A84C]/25"
+              className="w-full sm:w-auto px-8 py-4 text-base font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460] active:scale-95 transition-all shadow-lg shadow-[#C9A84C]/25"
             >
-              Start Investing
+              Start Marriage Account
             </Link>
             <Link
-              href="/investments"
-              className="w-full sm:w-auto px-8 py-3.5 text-base font-semibold text-[#0F1C3F] bg-white border border-[#0F1C3F] rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
+              href="#certificate"
+              className="w-full sm:w-auto px-8 py-4 text-base font-semibold text-[#0F1C3F] bg-white border-2 border-[#0F1C3F] rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
             >
-              Explore Opportunities
+              View Certificate Preview
             </Link>
           </div>
 
-          {/* Regulatory Disclosure Banner */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-50 border border-gray-200 text-xs text-gray-700 max-w-xl text-left">
-            <Lock className="w-4 h-4 text-gray-500 flex-shrink-0" />
-            <span>
-              <strong>Regulatory Disclosure:</strong> Capital at risk. All investments carry risk including potential loss. Offer documents disclose full terms.
-            </span>
+          {/* Workflow Badges */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto text-left text-xs text-gray-700 pt-4">
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+              <span className="font-medium">1. Register Account</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+              <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+              <span className="font-medium">2. Invite Spouse</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+              <Award className="w-4 h-4 text-[#0F1C3F] flex-shrink-0" />
+              <span className="font-medium">3. Sign Certificate</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
+              <Lock className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+              <span className="font-medium">4. Pay & Download</span>
+            </div>
           </div>
         </div>
       </section>
@@ -127,26 +153,35 @@ export default async function HomePage() {
       {/* ── METRICS BAR ── */}
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
             <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
               <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
                 $2.4M+
               </span>
               <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Total Capital Funded
+                Couples Capital Funded
               </span>
             </div>
 
             <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
               <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                500+
+                680+
               </span>
               <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Couple Investors
+                Certificates Issued
               </span>
             </div>
 
-            <div className="col-span-2 md:col-span-1 flex flex-col items-center justify-center pt-4 md:pt-0">
+            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
+              <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
+                50/50
+              </span>
+              <span className="text-xs sm:text-sm font-medium text-gray-500">
+                Joint Beneficial Rights
+              </span>
+            </div>
+
+            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
               <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
                 94%
               </span>
@@ -158,15 +193,237 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ── THE 5-STEP PARTNER JOURNEY ── */}
+      <section id="how-it-works" className="bg-gray-50 py-20 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-2xl mx-auto mb-16">
+            <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
+              The Couple Workflow
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] mb-4">
+              How Marriage Investment Works
+            </h2>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Designed from the ground up for marital unity. Our seamless five-step process guarantees dual legal consent, mutual asset protection, and financial prosperity.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {[
+              {
+                step: '01',
+                title: 'First Partner Registers',
+                description:
+                  'One spouse opens the marriage account with email, name, and basic contact verification in under two minutes.',
+                icon: Users,
+              },
+              {
+                step: '02',
+                title: 'Invite Your Spouse',
+                description:
+                  'Send a direct, encrypted digital invite to your partner to connect their identity to the joint investment bond.',
+                icon: Mail,
+              },
+              {
+                step: '03',
+                title: 'Sign Joint Certificate',
+                description:
+                  'Both spouses review the legal matrimonial investment agreement and record their verified digital signatures.',
+                icon: FileCheck,
+              },
+              {
+                step: '04',
+                title: 'Pay Issuance Fee ($49)',
+                description:
+                  'Complete the one-time $49 legal filing and registry fee to officially validate, stamp, and download your high-res certificate.',
+                icon: Lock,
+              },
+              {
+                step: '05',
+                title: 'Deploy & Earn Together',
+                description:
+                  'Deposit joint capital into institutional USD yield funds with contractual monthly or quarterly distributions.',
+                icon: TrendingUp,
+              },
+            ].map((s, i) => {
+              const Icon = s.icon
+              return (
+                <div
+                  key={i}
+                  className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative group hover:border-[#C9A84C] hover:shadow-md transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-2xl font-serif font-bold text-gray-300 group-hover:text-[#C9A84C] transition-colors">
+                        {s.step}
+                      </span>
+                      <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 flex items-center justify-center text-[#0F1C3F] group-hover:bg-[#C9A84C]/15 group-hover:text-[#C9A84C] transition-colors">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <h3 className="text-sm font-bold text-[#0F1C3F] mb-2 leading-snug">
+                      {s.title}
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed">
+                      {s.description}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── THE OFFICIAL MARRIAGE INVESTMENT CERTIFICATE SHOWCASE ── */}
+      <section id="certificate" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+          <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
+            Matrimonial Fiduciary Seal
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] mb-4">
+            The Official Marriage Investment Certificate
+          </h2>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Your physical and digital proof of joint commitment. Both partners sign digitally, and payment of the $49 issuance fee seals your legal status, unlocks full PDF downloads, and activates joint portfolio funding.
+          </p>
+        </div>
+
+        {/* Certificate Display Mockup with Paywall Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          {/* Certificate Visual (8 cols) */}
+          <div className="lg:col-span-8 relative">
+            <div className="relative bg-[#FCFBF7] rounded-3xl p-6 sm:p-12 border-4 border-double border-[#C9A84C] shadow-2xl overflow-hidden text-center">
+              {/* Corner Ornaments */}
+              <div className="absolute top-3 left-3 w-8 h-8 border-t-2 border-l-2 border-[#C9A84C]" />
+              <div className="absolute top-3 right-3 w-8 h-8 border-t-2 border-r-2 border-[#C9A84C]" />
+              <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-[#C9A84C]" />
+              <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-[#C9A84C]" />
+
+              {/* Watermark Ribbon */}
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-[0.5px] pointer-events-none z-10 flex items-center justify-center">
+                <div className="transform -rotate-12 px-6 py-3 border-2 border-dashed border-red-500/70 rounded-xl bg-white/95 shadow-xl text-center">
+                  <span className="text-red-600 font-extrabold text-sm sm:text-base tracking-widest uppercase block">
+                    PAY $49 TO ACCESS & DOWNLOAD
+                  </span>
+                  <span className="text-[10px] text-gray-600 font-medium">
+                    OFFICIAL HIGH-RES PDF & GOLD EMBOSSED SEAL
+                  </span>
+                </div>
+              </div>
+
+              {/* Emblem */}
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-9 flex items-center justify-center">
+                  <svg width="48" height="36" viewBox="0 0 38 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <ellipse cx="14" cy="14" rx="10" ry="10" stroke="#C9A84C" strokeWidth="2.5" />
+                    <polygon points="14,2 17,6 14,9 11,6" fill="#C9A84C" />
+                    <ellipse cx="24" cy="14" rx="10" ry="10" stroke="#C9A84C" strokeWidth="2.5" />
+                  </svg>
+                </div>
+              </div>
+
+              <span className="text-[10px] font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-1">
+                Registry of Matrimonial Capital
+              </span>
+
+              <h3 className="text-xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-2">
+                Certificate of Marriage Investment
+              </h3>
+
+              <p className="text-xs font-serif italic text-gray-600 mb-6">
+                Official Covenant of Shared Wealth & Mutual Survivorship
+              </p>
+
+              {/* Names Mockup */}
+              <div className="my-6 py-4 border-y border-[#C9A84C]/30 max-w-lg mx-auto">
+                <div className="flex items-center justify-center gap-4 text-center">
+                  <div className="flex-1">
+                    <span className="text-[9px] uppercase font-bold text-gray-400 block">First Spouse</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Sarah Jenkins</span>
+                  </div>
+                  <span className="text-[#C9A84C] font-serif text-lg font-bold">&</span>
+                  <div className="flex-1">
+                    <span className="text-[9px] uppercase font-bold text-gray-400 block">Second Spouse</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">David Jenkins</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dual Signature Stems */}
+              <div className="grid grid-cols-3 gap-4 max-w-md mx-auto items-end pt-2 text-[10px]">
+                <div className="border-t border-gray-400 pt-1">
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">Sarah Jenkins</p>
+                  <span className="text-gray-500 font-bold uppercase">Partner 1</span>
+                </div>
+
+                <div className="flex flex-col items-center">
+                  <div className="w-14 h-14 rounded-full border-2 border-[#C9A84C] bg-gradient-to-tr from-[#C9A84C] to-[#edd998] flex items-center justify-center text-[#0F1C3F] shadow-sm">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <span className="text-[8px] font-mono text-gray-500 mt-1">SEAL #98420</span>
+                </div>
+
+                <div className="border-t border-gray-400 pt-1">
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">David Jenkins</p>
+                  <span className="text-gray-500 font-bold uppercase">Partner 2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Paywall & Features Explanation (4 cols) */}
+          <div className="lg:col-span-4 space-y-6">
+            <div className="bg-[#0F1C3F] rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-4">
+                <Lock className="w-3.5 h-3.5" />
+                Certificate Issuance: $49
+              </div>
+
+              <h4 className="text-xl font-bold mb-3">
+                Why Pay Before Downloading?
+              </h4>
+
+              <p className="text-xs text-gray-300 leading-relaxed mb-6">
+                The one-time $49 fee covers legal filing, archival timestamping, and certifies your 50/50 joint ownership rights on the Union Invest registry.
+              </p>
+
+              <div className="space-y-3 mb-6">
+                {[
+                  'Removes all watermarks instantly',
+                  'Unlocks high-resolution printable PDF',
+                  'Permanent blockchain/ledger registration',
+                  'Enables mutual fund deposit & withdrawals',
+                  'Dual survivorship beneficial rights',
+                ].map((feat, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs text-gray-200">
+                    <Check className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
+                    <span>{feat}</span>
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                href="/register"
+                className="w-full py-3.5 px-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-md flex items-center justify-center gap-2 text-center"
+              >
+                Register & Create Certificate
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── INVESTMENT OPPORTUNITIES PREVIEW ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
             <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-1">
-              Curated Offerings
+              Joint Capital Opportunities
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#0F1C3F]">
-              Current Investment Opportunities
+              Current Marriage Investment Funds
             </h2>
           </div>
           <Link
@@ -275,134 +532,42 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── HOW IT WORKS ── */}
-      <section id="how-it-works" className="bg-gray-50 py-20 border-y border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-16">
-            <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
-              Step-by-Step Pathway
-            </span>
-            <h2 className="text-3xl font-bold text-[#0F1C3F] mb-4">
-              How the Investment Process Works
-            </h2>
-            <p className="text-sm text-gray-600 leading-relaxed">
-              Designed specifically for joint couple accounts, our four-step onboarding provides complete regulatory transparency and security.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                step: '01',
-                title: 'Register Joint Account',
-                description:
-                  'Create your couple investor account in minutes with dual partner email & mobile verification.',
-              },
-              {
-                step: '02',
-                title: 'Review Offer Documents',
-                description:
-                  'Access official offer documents, contractual terms, risk factors, and fee schedules.',
-              },
-              {
-                step: '03',
-                title: 'Fund USD Investment',
-                description:
-                  'Commit capital via secure USD bank transfer or payment checkout with verified settlement references.',
-              },
-              {
-                step: '04',
-                title: 'Earn & Track Portfolio',
-                description:
-                  'Receive contractual distributions into your linked account and access real-time ledger statements.',
-              },
-            ].map((s, i) => (
-              <div
-                key={i}
-                className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm relative group hover:border-[#C9A84C] transition-colors"
-              >
-                <span className="text-3xl font-bold text-gray-200 block mb-3 group-hover:text-[#C9A84C] transition-colors">
-                  {s.step}
-                </span>
-                <h3 className="text-base font-bold text-[#0F1C3F] mb-2">
-                  {s.title}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed">
-                  {s.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── OFFICIAL OFFER DOCUMENTS ACCESS ── */}
-      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-[#0F1C3F] rounded-3xl p-8 sm:p-12 text-white relative overflow-hidden">
-          <div className="max-w-2xl relative z-10">
-            <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
-              Fiduciary Transparency
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-              Official Offer Documents & Disclosures
-            </h2>
-            <p className="text-sm text-gray-300 leading-relaxed mb-6">
-              In accordance with financial compliance standards, prospective investors have unhindered access to the official offer document for each fund before committing funds.
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Link
-                href="/documents"
-                className="px-6 py-3 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm hover:bg-[#d4b460] transition-colors"
-              >
-                Explore Offer Document Library
-              </Link>
-              <Link
-                href="/about"
-                className="px-6 py-3 rounded-xl bg-white/10 text-white font-semibold text-sm border border-white/20 hover:bg-white/15 transition-colors"
-              >
-                About Company Governance
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── FAQ ACCORDION ── */}
       <section className="bg-gray-50 py-20 border-t border-gray-100">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
-              Investor Clarity
+              Couples Clarity
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#0F1C3F] mb-3">
               Frequently Asked Questions
             </h2>
             <p className="text-xs sm:text-sm text-gray-500">
-              Clear answers regarding USD operations, distributions, eligibility, and legal protections.
+              Clear answers regarding partner invitations, certificate signing, the $49 issuance fee, and joint investments.
             </p>
           </div>
 
           <div className="space-y-3">
             {[
               {
+                q: 'How does one partner invite their spouse?',
+                a: 'Once the primary partner creates an account, they can enter their spouse’s name and email in their dashboard or share a secure invitation link. The partner clicks the link, connects their login credentials, and is immediately directed to review and co-sign the Marriage Investment Certificate.',
+              },
+              {
+                q: 'Why is there a fee before downloading the Marriage Certificate?',
+                a: 'The $49 certificate issuance fee covers formal registry filing, cryptographic timestamp verification, and establishes the legal joint ownership structure of your account. Once paid, the watermark is permanently removed, the gold embossed seal is stamped, and you can download or print your official certificate at any time.',
+              },
+              {
+                q: 'Do both partners need to sign the certificate before investing?',
+                a: 'Yes. To protect both spouses and maintain complete legal transparency, both digital signatures are required along with certificate payment before capital can be deposited into active marriage investment funds.',
+              },
+              {
                 q: 'What currency does Union Invest operate in?',
-                a: 'All platform transactions, investments, distributions, and financial ledger statements are strictly denominated and accounted in United States Dollars (USD $).',
+                a: 'All platform transactions, investments, distributions, and certificate registry fees are denominated strictly in United States Dollars (USD $).',
               },
               {
-                q: 'Are projected returns guaranteed?',
-                a: 'No. Projected return rates (e.g., 8.5% p.a.) represent calculated asset yields and are not guaranteed outcomes. Full risk scenarios and stress-tests are detailed in each official offer document.',
-              },
-              {
-                q: 'How are distributions paid to investor couples?',
-                a: 'Distributions are credited directly to your verified investor cash ledger according to the fund schedule (monthly, quarterly, or at maturity), and can be withdrawn to your verified bank account.',
-              },
-              {
-                q: 'What are the withdrawal and early exit terms?',
-                a: 'Capital maturity dates are established contractually upon confirmation. Where permitted by fund terms, early withdrawal requests are processed through administrative review subject to applicable liquidity conditions and documented exit charges.',
-              },
-              {
-                q: 'Who is eligible to open a joint account?',
-                a: 'Married couples and civil partners who satisfy standard AML/KYC identity verification in approved operating jurisdictions are eligible to register and participate.',
+                q: 'How are returns and distributions distributed between spouses?',
+                a: 'Distributions are credited to the joint account ledger according to the fund schedule (monthly or quarterly). Both partners enjoy equal 50/50 beneficial entitlement and complete ledger visibility.',
               },
             ].map((faq, i) => (
               <details
@@ -421,15 +586,6 @@ export default async function HomePage() {
               </details>
             ))}
           </div>
-
-          <div className="text-center mt-8">
-            <Link
-              href="/faq"
-              className="text-xs font-semibold text-[#C9A84C] hover:underline"
-            >
-              View complete FAQ documentation →
-            </Link>
-          </div>
         </div>
       </section>
 
@@ -442,60 +598,78 @@ export default async function HomePage() {
                 Union <span className="text-[#C9A84C]">Invest</span>
               </span>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Institutional-grade marriage investment platform facilitating transparent, USD-denominated wealth creation for couples.
+                The institutional-grade marriage investment platform facilitating transparent, joint wealth creation for couples.
               </p>
             </div>
 
             <div>
               <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Platform
+                Marriage Platform
               </h4>
-              <ul className="space-y-2 text-xs text-gray-300">
-                <li><Link href="/investments" className="hover:text-white">Investment Opportunities</Link></li>
-                <li><Link href="/#how-it-works" className="hover:text-white">How It Works</Link></li>
-                <li><Link href="/documents" className="hover:text-white">Official Offer Documents</Link></li>
-                <li><Link href="/faq" className="hover:text-white">FAQs</Link></li>
+              <ul className="space-y-2 text-xs text-gray-400">
+                <li>
+                  <Link href="#certificate" className="hover:text-white transition-colors">
+                    Marriage Certificate
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#how-it-works" className="hover:text-white transition-colors">
+                    Partner Invite Process
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/investments" className="hover:text-white transition-colors">
+                    Investment Opportunities
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/documents" className="hover:text-white transition-colors">
+                    Offer Document Library
+                  </Link>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Governance
+                Corporate & Legal
               </h4>
-              <ul className="space-y-2 text-xs text-gray-300">
-                <li><Link href="/about" className="hover:text-white">About the Company</Link></li>
-                <li><Link href="/contact" className="hover:text-white">Customer Support Desk</Link></li>
-                <li><Link href="/terms" className="hover:text-white">Terms & Conditions</Link></li>
-                <li><Link href="/privacy" className="hover:text-white">Privacy & Data Notice</Link></li>
+              <ul className="space-y-2 text-xs text-gray-400">
+                <li>
+                  <Link href="/about" className="hover:text-white transition-colors">
+                    About Us
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="hover:text-white transition-colors">
+                    Terms & Joint Covenant
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/privacy" className="hover:text-white transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/contact" className="hover:text-white transition-colors">
+                    Compliance Contact
+                  </Link>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Investor Access
+                Fiduciary Compliance
               </h4>
-              <div className="space-y-2.5">
-                <Link
-                  href="/login"
-                  className="block w-full py-2 text-center text-xs font-semibold text-white border border-white/20 rounded-lg hover:bg-white/10"
-                >
-                  Investor Login
-                </Link>
-                <Link
-                  href="/register"
-                  className="block w-full py-2 text-center text-xs font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-lg hover:bg-[#d4b460]"
-                >
-                  Create Joint Account
-                </Link>
-              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Union Invest operates in compliance with relevant US financial registry and joint asset ownership guidelines. Capital at risk.
+              </p>
             </div>
           </div>
 
-          <div className="pt-8 border-t border-white/10 text-center text-[11px] text-gray-400 leading-relaxed">
-            <p className="max-w-4xl mx-auto mb-2">
-              <strong>Compliance Notice:</strong> All investment figures and transaction records are denominated in United States Dollars (USD $). Past performance or projected return rates are not guarantees of future outcomes. Read the relevant offer document prior to submitting funds.
-            </p>
-            <p>© {new Date().getFullYear()} Union Invest. All rights reserved.</p>
+          <div className="pt-8 border-t border-white/10 text-center text-xs text-gray-500">
+            © {new Date().getFullYear()} Union Invest. All rights reserved. Marriage Investment Platform.
           </div>
         </div>
       </footer>
