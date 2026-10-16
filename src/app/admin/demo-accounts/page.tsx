@@ -457,7 +457,8 @@ export default function AdminDemoAccountsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {demoUsers.map((user) => {
-              const credentialsText = `Union Invest Demo Credentials:\nEmail: ${user.email}\nPassword: ${user.plainPassword || 'DemoPass2025!'}\nLogin: https://animaltok.vercel.app/login\nPartner: ${user.partnerName}\nInvite Link: ${user.inviteLink}`
+              const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://marriage-invest.vercel.app/login'
+              const credentialsText = `Union Invest Demo Credentials:\nEmail: ${user.email}\nPassword: ${user.plainPassword || 'DemoPass2025!'}\nLogin: ${loginUrl}\nPartner: ${user.partnerName}\nInvite Link: ${user.inviteLink}`
               return (
                 <div key={user.id} className="p-5 hover:bg-gray-50/50 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
