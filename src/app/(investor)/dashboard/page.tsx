@@ -19,6 +19,8 @@ import {
   HeartHandshake,
   Award,
   MessageSquareHeart,
+  Users,
+  Sparkles,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -242,8 +244,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Matrimonial Registry, Chat & Certificate Quick Actions ──────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* ── Matrimonial Registry, Chat, Certificate & Friends Quick Actions ──────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Spouse Mutual Chat */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
           <div className="space-y-2">
@@ -257,10 +259,10 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Spouse Mutual Chat · Real-Time
+              Spouse Mutual Chat
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Encrypted channel with your partner. Propose shared vault deposits, discuss investments, and receive instant sound & push notifications.
+              Encrypted channel with your partner. Propose shared vault deposits and receive instant notifications.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
@@ -286,19 +288,19 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Get Married Online · $500 Reg
+              Get Married Online · $500
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Never been married? File your legal single-status affidavit, solemnize your union, and register both prospective spouses.
+              Never been married? File single-status affidavit and solemnize your union digitally.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400">Reg Fee: $500</span>
+            <span className="text-xs font-semibold text-gray-400">Reg: $500</span>
             <Link
               href="/get-married"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
             >
-              Start Registration <ArrowRight size={13} />
+              Start Reg <ArrowRight size={13} />
             </Link>
           </div>
         </div>
@@ -315,19 +317,49 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Marriage Certificate · $500 Cert
+              Marriage Certificate · $500
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Review, co-sign with your spouse, and unlock your authenticated 24K gold-embossed certificate with permanent cryptographic seal.
+              Review, co-sign with your spouse, and unlock your authenticated gold-embossed certificate.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400">Cert Fee: $500</span>
+            <span className="text-xs font-semibold text-gray-400">Cert: $500</span>
             <Link
               href="/certificate"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
             >
-              View Certificate <ArrowRight size={13} />
+              Certificate <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Card 4: Friends & Fanbase Syndicate */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-[#C9A84C]" />
+                Friends & Fanbase
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
+                <Users className="w-4 h-4 text-[#C9A84C]" />
+              </div>
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">
+              Friends & Fanbase Syndicates
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Co-invest with your circle or join unlisted celebrity tour & music royalty tiers via direct invite link.
+            </p>
+          </div>
+          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-semibold text-[#C9A84C]">Private Rounds</span>
+            <Link
+              href="/friends"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
+            >
+              Explore Hub <ArrowRight size={13} />
             </Link>
           </div>
         </div>
