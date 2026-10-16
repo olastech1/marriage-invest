@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Users,
@@ -10,6 +11,7 @@ import {
   Clock,
   Filter,
   Eye,
+  Sparkles,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +48,13 @@ export default async function AdminInvestorsPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            href="/admin/demo-accounts"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#0F1C3F] text-[#C9A84C] text-xs font-bold hover:bg-[#1a2e63] transition-colors shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
+            Demo Accounts Studio
+          </Link>
           <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700">
             Total Investors: {investors.length}
           </span>

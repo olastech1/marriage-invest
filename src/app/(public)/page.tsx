@@ -122,13 +122,6 @@ export default async function HomePage() {
               Start Marriage Account
             </Link>
             <Link
-              href="/demo"
-              className="w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base font-bold text-white bg-[#0F1C3F] hover:bg-[#1a2e63] rounded-xl active:scale-95 transition-all shadow-md flex items-center justify-center gap-2"
-            >
-              <Sparkles className="w-4 h-4 text-[#C9A84C]" />
-              <span>Try Demo Dashboard</span>
-            </Link>
-            <Link
               href="#certificate"
               className="w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base font-semibold text-[#0F1C3F] bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
             >
