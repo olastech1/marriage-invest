@@ -21,6 +21,8 @@ import {
   Eye as EyeIcon,
   EyeOff as EyeOffIcon,
   Loader2 as LoaderCircleIcon,
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -275,6 +277,23 @@ function LoginForm() {
           )}
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
+        {/* Demo Account Box */}
+        <div className="mt-6 p-4 rounded-2xl bg-[#0F1C3F]/5 border border-[#C9A84C]/40 text-center space-y-2">
+          <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-[#0F1C3F] uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
+            <span>Testing or Reviewing?</span>
+          </div>
+          <p className="text-xs text-gray-600">
+            Explore our live demo dashboard and test the spouse invitation studio with zero password.
+          </p>
+          <Link
+            href="/demo"
+            className="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-xs tracking-wide transition-all shadow-sm"
+          >
+            <span>Launch Demo Dashboard</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </form>
 
       {/* Register link */}
