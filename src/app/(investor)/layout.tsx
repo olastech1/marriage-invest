@@ -19,6 +19,8 @@ import {
   Award,
   PiggyBank,
   HeartHandshake,
+  MessageSquareHeart,
+  MessageSquare,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -26,9 +28,10 @@ import {
 // ---------------------------------------------------------------------------
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
-  { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
-  { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
+  { href: '/chat',          label: 'Mutual Chat',           icon: MessageSquareHeart, badge: 'Live' },
   { href: '/savings',       label: 'Marriage Savings',      icon: PiggyBank },
+  { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
+  { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
   { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },
   { href: '/transactions',  label: 'Transactions',          icon: ArrowLeftRight },
   { href: '/deposits',      label: 'Deposits',              icon: ArrowDownToLine },
@@ -77,7 +80,9 @@ function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {navItems.map((item) => {
+          const { href, label, icon: Icon } = item
+          const badge = 'badge' in item ? (item as unknown as { badge?: string }).badge : undefined
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
@@ -91,7 +96,12 @@ function Sidebar({
               }`}
             >
               <Icon size={18} className={active ? 'text-[#C9A84C]' : 'text-white/50 group-hover:text-white'} />
-              {label}
+              <span className="truncate">{label}</span>
+              {badge && !active && (
+                <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] uppercase tracking-wide">
+                  {badge}
+                </span>
+              )}
               {active && <ChevronRight size={14} className="ml-auto text-[#C9A84C]" />}
             </Link>
           )
@@ -198,19 +208,47 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             <span className="text-[#0F1C3F] font-bold tracking-tight">Union</span>
             <span className="text-[#C9A84C] font-bold tracking-tight">Invest</span>
           </div>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]">
-            {(user.name ?? 'IN')
-              .split(' ')
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join('')
-              .toUpperCase()}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/chat"
+              className="relative p-1.5 rounded-lg text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors"
+              title="Mutual Chat"
+            >
+              <MessageSquare size={19} />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </Link>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]">
+              {(user.name ?? 'IN')
+                .split(' ')
+                .slice(0, 2)
+                .map((w) => w[0])
+                .join('')
+                .toUpperCase()}
+            </div>
           </div>
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 relative">
           <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0">{children}</div>
+
+          {/* Floating Mutual Chat Launcher (when not on /chat) */}
+          {pathname !== '/chat' && (
+            <Link
+              href="/chat"
+              className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0F1C3F] text-white shadow-2xl hover:bg-[#182a57] border border-[#C9A84C]/40 transition-all hover:scale-105 active:scale-95 group"
+            >
+              <div className="relative flex items-center justify-center">
+                <MessageSquareHeart size={18} className="text-[#C9A84C]" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500" />
+              </div>
+              <span className="text-xs font-bold hidden sm:inline">Spouse Chat</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#C9A84C] text-[#0F1C3F]">
+                Marcus
+              </span>
+            </Link>
+          )}
         </main>
       </div>
     </div>

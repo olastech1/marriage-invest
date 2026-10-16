@@ -16,6 +16,7 @@ import {
   PiggyBank,
   HeartHandshake,
   Award,
+  MessageSquareHeart,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -181,9 +182,39 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Matrimonial Registry & Certificate Quick Actions ──────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Card 1: Get Married (Never Married) */}
+      {/* ── Matrimonial Registry, Chat & Certificate Quick Actions ──────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Card 1: Spouse Mutual Chat */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Mutual Chat
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
+                <MessageSquareHeart className="w-4 h-4 text-[#C9A84C]" />
+              </div>
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">
+              Spouse Mutual Chat · Real-Time
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Encrypted channel with Marcus Vance. Propose shared vault deposits, send love notes, and receive instant sound & push notifications.
+            </p>
+          </div>
+          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-600">Online now</span>
+            <Link
+              href="/chat"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
+            >
+              Open Chat <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Card 2: Get Married (Never Married) */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -195,10 +226,10 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Get Married Online · $500 Registration
+              Get Married Online · $500 Reg
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Never been married? File your legal single-status affidavit, solemnize your union under Zurich/London fiduciary codes, and register both prospective spouses.
+              Never been married? File your legal single-status affidavit, solemnize your union, and register both prospective spouses.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
@@ -212,22 +243,22 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Card 2: Certificate & Issuance */}
+        {/* Card 3: Certificate & Issuance */}
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                Legal Covenant Document
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full">
+                Legal Covenant
               </span>
               <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
                 <Award className="w-4 h-4 text-[#C9A84C]" />
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Marriage Certificate · $500 Issuance
+              Marriage Certificate · $500 Cert
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Review, co-sign with your spouse, and unlock your authenticated 24K gold-embossed certificate with permanent cryptographic seal and PDF downloads.
+              Review, co-sign with your spouse, and unlock your authenticated 24K gold-embossed certificate with permanent cryptographic seal.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
