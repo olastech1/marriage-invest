@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Award,
   PiggyBank,
+  HeartHandshake,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ import {
 // ---------------------------------------------------------------------------
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
+  { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
   { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
   { href: '/savings',       label: 'Marriage Savings',      icon: PiggyBank },
   { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },

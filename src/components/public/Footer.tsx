@@ -2,6 +2,7 @@ import Link from 'next/link';
 
 const footerLinks = {
   company: [
+    { label: 'Get Married Online', href: '/get-married' },
     { label: 'About Us', href: '/about' },
     { label: 'Investments', href: '/investments' },
     { label: 'Documents', href: '/documents' },

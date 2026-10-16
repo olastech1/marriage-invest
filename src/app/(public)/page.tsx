@@ -234,9 +234,9 @@ export default async function HomePage() {
               },
               {
                 step: '04',
-                title: 'Pay Issuance Fee ($49)',
+                title: 'Pay Fiduciary Fees',
                 description:
-                  'Complete the one-time $49 legal filing and registry fee to officially validate, stamp, and download your high-res certificate.',
+                  'Complete the $500 marriage registration fee and $500 official certificate fee to legally docket and download your certified gold-trimmed document.',
                 icon: Lock,
               },
               {
@@ -286,7 +286,7 @@ export default async function HomePage() {
             The Official Marriage Investment Certificate
           </h2>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Your physical and digital proof of joint commitment. Both partners sign digitally, and payment of the $49 issuance fee seals your legal status, unlocks full PDF downloads, and activates joint portfolio funding.
+            Your physical and digital proof of joint commitment. Both partners sign digitally, and payment of the $500 registration fee and $500 certificate fee seals your legal status, unlocks full PDF downloads, and activates joint portfolio funding.
           </p>
         </div>
 
@@ -305,10 +305,10 @@ export default async function HomePage() {
               <div className="absolute inset-0 bg-white/20 backdrop-blur-[0.5px] pointer-events-none z-10 flex items-center justify-center">
                 <div className="transform -rotate-12 px-6 py-3 border-2 border-dashed border-red-500/70 rounded-xl bg-white/95 shadow-xl text-center">
                   <span className="text-red-600 font-extrabold text-sm sm:text-base tracking-widest uppercase block">
-                    PAY $49 TO ACCESS & DOWNLOAD
+                    $500 REGISTRATION / $500 CERTIFICATE
                   </span>
                   <span className="text-[10px] text-gray-600 font-medium">
-                    OFFICIAL HIGH-RES PDF & GOLD EMBOSSED SEAL
+                    PAY FEES TO UNLOCK HIGH-RES PDF & GOLD SEAL
                   </span>
                 </div>
               </div>
@@ -378,15 +378,15 @@ export default async function HomePage() {
             <div className="bg-[#0F1C3F] rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-4">
                 <Lock className="w-3.5 h-3.5" />
-                Certificate Issuance: $49
+                $500 Reg · $500 Cert
               </div>
 
               <h4 className="text-xl font-bold mb-3">
-                Why Pay Before Downloading?
+                Why Pay Registration & Certificate Fees?
               </h4>
 
               <p className="text-xs text-gray-300 leading-relaxed mb-6">
-                The one-time $49 fee covers legal filing, archival timestamping, and certifies your 50/50 joint ownership rights on the Union Invest registry.
+                The $500 registration fee covers legal filing and statutory affidavit check, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Invest registry.
               </p>
 
               <div className="space-y-3 mb-6">
@@ -405,10 +405,10 @@ export default async function HomePage() {
               </div>
 
               <Link
-                href="/register"
+                href="/get-married"
                 className="w-full py-3.5 px-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-md flex items-center justify-center gap-2 text-center"
               >
-                Register & Create Certificate
+                Get Married & Register ($500)
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -452,6 +452,61 @@ export default async function HomePage() {
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── GET MARRIED SPOTLIGHT FOR UNMARRIED COUPLES ── */}
+        <div className="mt-8 bg-gradient-to-r from-[#0F1C3F] via-[#162752] to-[#0F1C3F] rounded-3xl p-6 sm:p-10 text-white shadow-xl border border-white/10 relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-80 h-80 bg-[#C9A84C]/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div className="max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-3">
+                <Heart className="w-3.5 h-3.5 fill-[#C9A84C]" />
+                For Couples Who Have Never Married
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-3">
+                Get Married Online & Solemnize Your Legal Union
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
+                Never been married before? Complete your first-time matrimonial application entirely online. File your legal single-status affidavit, receive statutory officiant solemnization, and get your certified marriage certificate with 50/50 joint wealth rights.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0 text-[#C9A84C] font-bold text-xs">
+                    $500
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-white">Marriage Registration Fee</span>
+                    <span className="text-[11px] text-gray-400">Affidavit check, registry docketing & officiant assignment</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0 text-[#C9A84C] font-bold text-xs">
+                    $500
+                  </div>
+                  <div>
+                    <span className="block text-xs font-bold text-white">Certified Certificate Fee</span>
+                    <span className="text-[11px] text-gray-400">24K gold embossed seal, lifetime PDF & physical archival print</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-3 flex-shrink-0">
+              <Link
+                href="/get-married"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-lg shadow-[#C9A84C]/20 text-center"
+              >
+                Get Married Online ($500)
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <span className="text-[11px] text-gray-400 text-center">
+                All-inclusive package available for $1,000
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -673,7 +728,7 @@ export default async function HomePage() {
               Frequently Asked Questions
             </h2>
             <p className="text-xs sm:text-sm text-gray-500">
-              Clear answers regarding partner invitations, certificate signing, the $49 issuance fee, and joint investments.
+              Clear answers regarding partner invitations, certificate signing, marriage registration and certificate fees, and joint investments.
             </p>
           </div>
 
@@ -684,8 +739,8 @@ export default async function HomePage() {
                 a: 'Once the primary partner creates an account, they can enter their spouse’s name and email in their dashboard or share a secure invitation link. The partner clicks the link, connects their login credentials, and is immediately directed to review and co-sign the Marriage Investment Certificate.',
               },
               {
-                q: 'Why is there a fee before downloading the Marriage Certificate?',
-                a: 'The $49 certificate issuance fee covers formal registry filing, cryptographic timestamp verification, and establishes the legal joint ownership structure of your account. Once paid, the watermark is permanently removed, the gold embossed seal is stamped, and you can download or print your official certificate at any time.',
+                q: 'What are the fees for marriage registration and certificates?',
+                a: 'The $500 marriage registration fee covers formal registry filing, identity verification, background check, and international docket recording under Zurich and London Fiduciary Registry standards. The $500 certificate issuance fee validates your authenticated digital seal, removes all watermarks, unlocks high-resolution PDF downloads, and authorizes 50/50 mutual investment access. Couples can also select the $1,000 all-inclusive package at checkout.',
               },
               {
                 q: 'Do both partners need to sign the certificate before investing?',

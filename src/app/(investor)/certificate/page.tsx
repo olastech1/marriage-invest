@@ -25,93 +25,8 @@ import {
   Users,
 } from 'lucide-react'
 
-export interface MarriageTypeOption {
-  id: string
-  label: string
-  category: string
-  certificateTitle: string
-  covenantSubtitle: string
-  sealBadgeText: string
-  defaultRole1: string
-  defaultRole2: string
-  description: string
-  badgeColor: string
-}
-
-export const MARRIAGE_TYPES: MarriageTypeOption[] = [
-  {
-    id: 'SAME_SEX_GAY',
-    label: 'Same-Sex Marriage (Gay / Husbands)',
-    category: 'Same-Sex Matrimony',
-    certificateTitle: 'Certificate of Same-Sex Marriage Investment',
-    covenantSubtitle: 'Official Matrimonial Covenant of Joint Wealth & Mutual Survivorship between Husbands',
-    sealBadgeText: 'SAME-SEX COVENANT',
-    defaultRole1: 'Husband',
-    defaultRole2: 'Husband',
-    description: 'Equal joint survivorship, 50/50 capital rights & mutual fiduciary protection for male spouses.',
-    badgeColor: 'bg-indigo-50 border-indigo-200 text-indigo-700',
-  },
-  {
-    id: 'SAME_SEX_LESBIAN',
-    label: 'Same-Sex Marriage (Lesbian / Wives)',
-    category: 'Same-Sex Matrimony',
-    certificateTitle: 'Certificate of Same-Sex Marriage Investment',
-    covenantSubtitle: 'Official Matrimonial Covenant of Joint Wealth & Mutual Survivorship between Wives',
-    sealBadgeText: 'SAME-SEX COVENANT',
-    defaultRole1: 'Wife',
-    defaultRole2: 'Wife',
-    description: 'Equal joint survivorship, 50/50 capital rights & mutual fiduciary protection for female spouses.',
-    badgeColor: 'bg-rose-50 border-rose-200 text-rose-700',
-  },
-  {
-    id: 'CIVIL_MARRIAGE',
-    label: 'Civil Marriage (Husband & Wife)',
-    category: 'Civil Matrimony',
-    certificateTitle: 'Certificate of Marriage Investment',
-    covenantSubtitle: 'Official Matrimonial Covenant of Shared Wealth & Mutual Survivorship',
-    sealBadgeText: 'CIVIL MARRIAGE',
-    defaultRole1: 'Husband',
-    defaultRole2: 'Wife',
-    description: 'Traditional civil marriage covenant under Zurich & London fiduciary protocols.',
-    badgeColor: 'bg-emerald-50 border-emerald-200 text-emerald-700',
-  },
-  {
-    id: 'CIVIL_UNION',
-    label: 'Registered Civil Union / Legal Partnership',
-    category: 'Registered Civil Union',
-    certificateTitle: 'Certificate of Civil Union & Investment',
-    covenantSubtitle: 'Official Registered Civil Union Covenant of Equal Capital Custody',
-    sealBadgeText: 'CIVIL UNION SEAL',
-    defaultRole1: 'Registered Partner',
-    defaultRole2: 'Registered Partner',
-    description: 'Statutory civil partnership enjoying identical financial rights and dual survivorship.',
-    badgeColor: 'bg-blue-50 border-blue-200 text-blue-700',
-  },
-  {
-    id: 'DOMESTIC_PARTNERSHIP',
-    label: 'Domestic Partnership',
-    category: 'Domestic Partnership',
-    certificateTitle: 'Certificate of Domestic Partnership Investment',
-    covenantSubtitle: 'Official Domestic Partnership Covenant of Shared Economic Assets',
-    sealBadgeText: 'DOMESTIC PARTNERSHIP',
-    defaultRole1: 'Domestic Partner',
-    defaultRole2: 'Domestic Partner',
-    description: 'Recognized domestic cohabitation partnership with co-beneficiary rights across all investment yields.',
-    badgeColor: 'bg-amber-50 border-amber-200 text-amber-700',
-  },
-  {
-    id: 'UNIVERSAL_COVENANT',
-    label: 'Universal Life Partnership Covenant',
-    category: 'Universal Life Union',
-    certificateTitle: 'Certificate of Life Partnership Investment',
-    covenantSubtitle: 'Universal Covenant of Mutual Capital Trust & Co-Beneficiary Entitlement',
-    sealBadgeText: 'UNIVERSAL COVENANT',
-    defaultRole1: 'Spouse',
-    defaultRole2: 'Spouse',
-    description: 'Universal fiduciary covenant applicable to all life partners with reciprocal inheritance.',
-    badgeColor: 'bg-purple-50 border-purple-200 text-purple-700',
-  },
-]
+import { MARRIAGE_TYPES, type MarriageTypeOption } from '@/types/marriage'
+export { MARRIAGE_TYPES, type MarriageTypeOption }
 
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
@@ -149,6 +64,8 @@ export default function MarriageCertificatePage() {
 
   // Payment & Access state
   const [isPaid, setIsPaid] = useState(false)
+  const [certPaymentScope, setCertPaymentScope] = useState<'both' | 'registration' | 'certificate'>('both')
+  const modalAmount = certPaymentScope === 'both' ? 1000 : 500
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [processingPayment, setProcessingPayment] = useState(false)
   const [cardNumber, setCardNumber] = useState('•••• •••• •••• 4242')
@@ -195,7 +112,7 @@ export default function MarriageCertificatePage() {
             Official Marriage Investment Certificate
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-            Invite your spouse, sign your digital covenant together, and complete the one-time $49 legal registry fee to unlock your official high-resolution certificate and start investing.
+            Invite your spouse, sign your digital covenant together, and complete your $500 legal registration filing and $500 certified certificate fee to unlock your official high-resolution certificate and start investing.
           </p>
         </div>
 
@@ -223,7 +140,7 @@ export default function MarriageCertificatePage() {
               className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2c5e] transition-colors shadow-md shadow-[#0F1C3F]/25 w-full sm:w-auto"
             >
               <Lock className="w-4 h-4 text-[#C9A84C]" />
-              Pay $49 to Unlock Certificate
+              Pay Fees ($500 Reg / $500 Cert)
             </button>
           )}
         </div>
@@ -272,9 +189,9 @@ export default function MarriageCertificatePage() {
             <Lock className="w-5 h-5 text-[#C9A84C] flex-shrink-0" />
           )}
           <div>
-            <span className="block font-bold">4. Pay & Unlock ($49)</span>
+            <span className="block font-bold">4. Pay & Unlock</span>
             <span className="text-[11px] font-semibold text-[#C9A84C]">
-              {isPaid ? 'Paid & Certified' : 'Issuance Fee Due'}
+              {isPaid ? 'Paid & Certified ($1,000)' : '$500 Reg / $500 Cert Due'}
             </span>
           </div>
         </div>
@@ -482,10 +399,10 @@ export default function MarriageCertificatePage() {
               Certificate Access Locked
             </div>
             <h3 className="text-xl font-bold">
-              Pay the $49 Issuance Fee to Download Your Certified Certificate
+              Complete the $500 Registration & $500 Certificate Fees to Download
             </h3>
             <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-              Before accessing, printing, or downloading your high-resolution Marriage Investment Certificate, the official legal registration fee must be settled. This permanently records your joint beneficial covenant on the platform ledger.
+              Before accessing, printing, or downloading your high-resolution Marriage Investment Certificate, the official legal registration filing ($500) and certificate issuance ($500) fees must be settled. This permanently records your joint beneficial covenant on the international fiduciary ledger.
             </p>
           </div>
 
@@ -493,7 +410,7 @@ export default function MarriageCertificatePage() {
             onClick={() => setShowPaymentModal(true)}
             className="flex-shrink-0 px-8 py-3.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-lg shadow-[#C9A84C]/30 active:scale-95"
           >
-            Pay $49 & Unlock Certificate
+            Pay Fees ($500 Reg / $500 Cert)
           </button>
         </div>
       )}
@@ -540,7 +457,7 @@ export default function MarriageCertificatePage() {
                   PAYMENT REQUIRED TO DOWNLOAD
                 </span>
                 <span className="text-gray-700 font-semibold text-xs mt-1 block">
-                  OFFICIAL ISSUANCE FEE ($49) PENDING · WATERMARKED PREVIEW
+                  OFFICIAL DOCKET FEES ($500 REGISTRATION / $500 CERTIFICATE) PENDING · WATERMARKED PREVIEW
                 </span>
               </div>
             </div>
@@ -677,7 +594,7 @@ export default function MarriageCertificatePage() {
                 <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center">
                   <CreditCard className="w-4 h-4 text-[#C9A84C]" />
                 </div>
-                <h3 className="text-lg font-bold text-[#0F1C3F]">Certificate Issuance Fee</h3>
+                <h3 className="text-lg font-bold text-[#0F1C3F]">Matrimonial Docket Fees</h3>
               </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
@@ -688,14 +605,64 @@ export default function MarriageCertificatePage() {
             </div>
 
             <div className="space-y-4 mb-6">
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                <div className="flex justify-between items-center text-sm font-semibold text-gray-900 mb-1">
-                  <span>Marriage Certificate Issuance</span>
-                  <span>$49.00 USD</span>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Includes digital registry filing, official embossed seal, lifetime PDF download, and activates joint portfolio funding.
-                </p>
+              {/* Fee Selection Radio Buttons */}
+              <div className="space-y-2">
+                <label
+                  onClick={() => setCertPaymentScope('both')}
+                  className={`flex items-start justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    certPaymentScope === 'both'
+                      ? 'border-[#C9A84C] bg-[#C9A84C]/10 ring-1 ring-[#C9A84C]'
+                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <div>
+                    <span className="block text-xs font-bold text-[#0F1C3F]">
+                      Complete Bundle: Registration & Certificate
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      $500 registration filing + $500 official certificate issuance
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-[#0F1C3F]">$1,000</span>
+                </label>
+
+                <label
+                  onClick={() => setCertPaymentScope('registration')}
+                  className={`flex items-start justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    certPaymentScope === 'registration'
+                      ? 'border-[#0F1C3F] bg-[#0F1C3F]/5 ring-1 ring-[#0F1C3F]'
+                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <div>
+                    <span className="block text-xs font-bold text-[#0F1C3F]">
+                      Marriage Registration Fee Only
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Legal filing, identity verification & statutory docketing
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-[#0F1C3F]">$500</span>
+                </label>
+
+                <label
+                  onClick={() => setCertPaymentScope('certificate')}
+                  className={`flex items-start justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
+                    certPaymentScope === 'certificate'
+                      ? 'border-[#0F1C3F] bg-[#0F1C3F]/5 ring-1 ring-[#0F1C3F]'
+                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <div>
+                    <span className="block text-xs font-bold text-[#0F1C3F]">
+                      Marriage Certificate Fee Only
+                    </span>
+                    <span className="text-[11px] text-gray-500">
+                      Gold-embossed certificate, seal stamp & lifetime PDF
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-[#0F1C3F]">$500</span>
+                </label>
               </div>
 
               <div>
@@ -744,7 +711,9 @@ export default function MarriageCertificatePage() {
               disabled={processingPayment}
               className="w-full py-3.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-md shadow-[#C9A84C]/25 disabled:opacity-50"
             >
-              {processingPayment ? 'Processing $49.00 Payment...' : 'Pay $49.00 & Unlock Certificate'}
+              {processingPayment
+                ? `Processing $${modalAmount}.00 Payment...`
+                : `Pay $${modalAmount}.00 & Unlock Certificate`}
             </button>
 
             <p className="text-[11px] text-gray-400 text-center mt-3">

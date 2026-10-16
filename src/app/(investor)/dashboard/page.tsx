@@ -14,6 +14,8 @@ import {
   ArrowRight,
   TrendingUp,
   PiggyBank,
+  HeartHandshake,
+  Award,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -176,6 +178,67 @@ export default async function DashboardPage() {
             Open Savings Vault
             <ArrowRight size={15} />
           </Link>
+        </div>
+      </div>
+
+      {/* ── Matrimonial Registry & Certificate Quick Actions ──────── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Card 1: Get Married (Never Married) */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] bg-[#C9A84C]/10 px-2.5 py-0.5 rounded-full">
+                For Unmarried Couples
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
+                <HeartHandshake className="w-4 h-4 text-[#C9A84C]" />
+              </div>
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">
+              Get Married Online · $500 Registration
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Never been married? File your legal single-status affidavit, solemnize your union under Zurich/London fiduciary codes, and register both prospective spouses.
+            </p>
+          </div>
+          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400">Reg Fee: $500</span>
+            <Link
+              href="/get-married"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
+            >
+              Start Registration <ArrowRight size={13} />
+            </Link>
+          </div>
+        </div>
+
+        {/* Card 2: Certificate & Issuance */}
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+                Legal Covenant Document
+              </span>
+              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
+                <Award className="w-4 h-4 text-[#C9A84C]" />
+              </div>
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">
+              Marriage Certificate · $500 Issuance
+            </h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Review, co-sign with your spouse, and unlock your authenticated 24K gold-embossed certificate with permanent cryptographic seal and PDF downloads.
+            </p>
+          </div>
+          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-xs font-semibold text-gray-400">Cert Fee: $500</span>
+            <Link
+              href="/certificate"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
+            >
+              View Certificate <ArrowRight size={13} />
+            </Link>
+          </div>
         </div>
       </div>
 

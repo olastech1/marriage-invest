@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
 const navLinks = [
+  { label: 'Get Married', href: '/get-married', badge: 'New' },
   { label: 'Marriage Certificate', href: '/#certificate' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Investment Opportunities', href: '/investments' },
@@ -97,13 +98,18 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`text-sm font-medium transition-colors duration-200 ${
+                  className={`text-sm font-medium transition-colors duration-200 inline-flex items-center ${
                     isActive(link.href)
                       ? 'text-[#C9A84C]'
                       : 'text-gray-200 hover:text-white'
                   }`}
                 >
                   {link.label}
+                  {link.badge && (
+                    <span className="ml-1.5 px-1.5 py-0.2 rounded text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] uppercase tracking-wide">
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
@@ -169,9 +175,14 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="block text-base font-medium text-gray-200 hover:text-[#C9A84C] py-2 transition-colors"
+                  className="flex items-center justify-between text-base font-medium text-gray-200 hover:text-[#C9A84C] py-2 transition-colors"
                 >
-                  {link.label}
+                  <span>{link.label}</span>
+                  {link.badge && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] uppercase tracking-wide">
+                      {link.badge}
+                    </span>
+                  )}
                 </Link>
               ))}
             </nav>
