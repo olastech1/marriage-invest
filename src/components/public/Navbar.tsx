@@ -10,6 +10,7 @@ const navLinks = [
   { label: 'Marriage Certificate', href: '/#certificate' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Investment Opportunities', href: '/investments' },
+  { label: 'Community', href: '/community', badge: 'Impact' },
   { label: 'Offer Documents', href: '/documents' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },

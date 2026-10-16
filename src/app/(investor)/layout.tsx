@@ -22,6 +22,7 @@ import {
   MessageSquareHeart,
   MessageSquare,
   Users,
+  Heart,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 
@@ -35,6 +36,7 @@ const navItems = [
   { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
   { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
   { href: '/friends',       label: 'Friends & Fanbase',     icon: Users, badge: 'New' },
+  { href: '/community',     label: 'Community Giving',      icon: Heart, badge: 'Impact' },
   { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },
   { href: '/transactions',  label: 'Transactions',          icon: ArrowLeftRight },
   { href: '/deposits',      label: 'Deposits',              icon: ArrowDownToLine },

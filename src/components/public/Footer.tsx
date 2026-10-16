@@ -5,6 +5,7 @@ const footerLinks = {
     { label: 'Get Married Online', href: '/get-married' },
     { label: 'About Us', href: '/about' },
     { label: 'Investments', href: '/investments' },
+    { label: 'Community & Philanthropy', href: '/community' },
     { label: 'Documents', href: '/documents' },
     { label: 'FAQ', href: '/faq' },
     { label: 'Contact', href: '/contact' },
