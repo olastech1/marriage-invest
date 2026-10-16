@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 
 const navLinks = [
   { label: 'Get Married', href: '/get-married', badge: 'New' },
@@ -15,6 +16,7 @@ const navLinks = [
 ]
 
 export default function Navbar() {
+  const { data: session } = useSession()
   const pathname = usePathname()
   const [scrolled, setScrolled] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -115,23 +117,37 @@ export default function Navbar() {
             </nav>
 
             {/* Desktop Auth Buttons */}
-            <div className="hidden lg:flex items-center gap-3">
-              <Link
-                href="/login"
-                className="px-4 py-2 text-sm font-medium text-white border border-white/30 rounded-lg hover:bg-white/10 hover:border-white transition-all duration-200"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="px-5 py-2 text-sm font-semibold text-[#0F1C3F] bg-[#C9A84C] rounded-lg hover:bg-[#d4b460] active:scale-95 transition-all duration-200 shadow-md shadow-[#C9A84C]/20"
-              >
-                Get Started
-              </Link>
-            </div>
+            {session?.user ? (
+              <div className="hidden lg:flex items-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="px-4 py-2 text-sm font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-lg hover:bg-[#d4b460] active:scale-95 transition-all duration-200 shadow-md shadow-[#C9A84C]/20 flex items-center gap-2"
+                >
+                  <div className="w-5 h-5 rounded-full bg-[#0F1C3F] text-[#C9A84C] text-[10px] font-bold flex items-center justify-center">
+                    {(session.user.name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                  <span>Dashboard</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center gap-3">
+                <Link
+                  href="/login"
+                  className="px-4 py-2 text-sm font-medium text-white border border-white/30 rounded-lg hover:bg-white/10 hover:border-white transition-all duration-200"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/register"
+                  className="px-5 py-2 text-sm font-semibold text-[#0F1C3F] bg-[#C9A84C] rounded-lg hover:bg-[#d4b460] active:scale-95 transition-all duration-200 shadow-md shadow-[#C9A84C]/20"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
 
-            {/* Mobile Actions: Hamburger + Sign In */}
-            <div className="lg:hidden flex items-center gap-3">
+            {/* Mobile Actions: Hamburger + Action Button */}
+            <div className="lg:hidden flex items-center gap-2.5">
               <button
                 onClick={() => setDrawerOpen(true)}
                 className="p-2 rounded-md text-gray-200 hover:text-white hover:bg-white/10 transition-colors"
@@ -141,12 +157,21 @@ export default function Navbar() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <Link
-                href="/login"
-                className="px-3 py-1.5 text-xs font-semibold text-white border border-white/30 rounded-lg hover:bg-white/10"
-              >
-                Sign In
-              </Link>
+              {session?.user ? (
+                <Link
+                  href="/dashboard"
+                  className="px-3 py-1.5 text-xs font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-lg hover:bg-[#d4b460] shadow-sm flex items-center gap-1.5"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="px-3 py-1.5 text-xs font-semibold text-white border border-white/30 rounded-lg hover:bg-white/10"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -188,18 +213,34 @@ export default function Navbar() {
             </nav>
 
             <div className="pt-6 border-t border-white/10 space-y-3">
-              <Link
-                href="/login"
-                className="block w-full py-2.5 text-center text-sm font-semibold text-white border border-white/20 rounded-xl hover:bg-white/5"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="block w-full py-2.5 text-center text-sm font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460]"
-              >
-                Get Started
-              </Link>
+              {session?.user ? (
+                <>
+                  <div className="px-1 text-xs text-gray-300">
+                    Signed in as <strong className="text-white">{session.user.name || 'Investor'}</strong>
+                  </div>
+                  <Link
+                    href="/dashboard"
+                    className="block w-full py-2.5 text-center text-sm font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460]"
+                  >
+                    Go to Dashboard
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    className="block w-full py-2.5 text-center text-sm font-semibold text-white border border-white/20 rounded-xl hover:bg-white/5"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/register"
+                    className="block w-full py-2.5 text-center text-sm font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460]"
+                  >
+                    Get Started
+                  </Link>
+                </>
+              )}
             </div>
           </div>
         </div>

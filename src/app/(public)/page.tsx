@@ -703,8 +703,8 @@ export default async function HomePage() {
                   <div className="bg-[#C9A84C] h-full w-[21%]" title="Spouse 2" />
                 </div>
                 <div className="flex justify-between text-[11px] text-gray-500 font-medium">
-                  <span>Julian Sterling: $11,400</span>
-                  <span>Marcus Vance: $10,600</span>
+                  <span>Partner 1: $11,400</span>
+                  <span>Partner 2: $10,600</span>
                 </div>
               </div>
 

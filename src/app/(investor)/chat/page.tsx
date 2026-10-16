@@ -16,7 +16,6 @@ import {
   CreditCard,
   PiggyBank,
   Award,
-  Sparkles,
   Play,
   Pause,
   MessageSquare,
@@ -486,33 +485,6 @@ export default function MutualChatPage() {
     }, 1800)
   }
 
-  // Trigger a test partner message (great for testing the notification sound & toast!)
-  const triggerTestPartnerMessage = () => {
-    setIsTyping(true)
-    setTimeout(() => {
-      setIsTyping(false)
-      const testReplies = [
-        'Hey Julian! Just checking in on our 6.8% compounding interest yield. Everything looks right on target!',
-        'Just reviewed our joint savings progress! We are over 60% of the way to our Amalfi Coast goal. 🏖️',
-        'Hey love! Hope work is going well today. Our Marriage Certificate is looking sharp in the portal. ❤️',
-        'Should we allocate another $500 toward our liquid emergency buffer before the month ends?',
-      ]
-      const chosen = testReplies[Math.floor(Math.random() * testReplies.length)]
-      const testMsg: ChatMessage = {
-        id: `test-${Date.now()}`,
-        sender: 'partner',
-        senderName: partnerName,
-        text: chosen,
-        timestamp: 'Just now',
-        read: true,
-        type: 'text',
-        reactions: { '❤️': 1 },
-      }
-      setSpouseMessages((prev) => [...prev, testMsg])
-      dispatchIncomingNotification(partnerName, chosen)
-    }, 1200)
-  }
-
   const currentMessages = activeChannel === 'spouse' ? spouseMessages : advisorMessages
 
   return (
@@ -593,15 +565,6 @@ export default function MutualChatPage() {
               <span>Push Enabled</span>
             </div>
           )}
-
-          {/* Simulate Partner Incoming Message */}
-          <button
-            onClick={triggerTestPartnerMessage}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] transition-all shadow-xs shadow-[#C9A84C]/20"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>Test Chat</span>
-          </button>
         </div>
       </div>
 

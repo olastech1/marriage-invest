@@ -574,7 +574,7 @@ export default function MarriageSavingsPage() {
               How Fast Your Joint Savings Grow Together
             </h3>
             <p className="text-xs text-gray-500 mt-1">
-              Simulate monthly savings at our fixed 6.8% APY high-yield marital vault rate.
+              Calculate projected returns at our fixed 6.8% APY high-yield marital vault rate.
             </p>
           </div>
 

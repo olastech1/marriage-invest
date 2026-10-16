@@ -200,7 +200,7 @@ export default async function DashboardPage() {
               Spouse Mutual Chat · Real-Time
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Encrypted channel with Marcus Vance. Propose shared vault deposits, send love notes, and receive instant sound & push notifications.
+              Encrypted channel with your partner. Propose shared vault deposits, discuss investments, and receive instant sound & push notifications.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">

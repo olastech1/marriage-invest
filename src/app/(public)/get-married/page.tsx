@@ -254,69 +254,6 @@ export default function GetMarriedPage() {
           </div>
         </div>
 
-        {/* ── AUTO-DETECTION STATUS BANNER (NEW USER VS ALREADY LOGGED IN) ── */}
-        {isLoggedIn ? (
-          <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border-2 border-emerald-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0">
-                <UserCheck className="w-6 h-6 text-white" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-emerald-950 text-sm truncate">
-                    Authenticated Account Detected
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-bold">
-                    Logged In
-                  </span>
-                </div>
-                <p className="text-emerald-800 text-xs mt-0.5 leading-relaxed">
-                  Welcome back, <strong className="font-semibold text-emerald-950">{session?.user?.name || 'Investor'}</strong> (<code className="font-mono text-emerald-900">{session?.user?.email}</code>). Your legal marriage registration will be automatically linked to your active portfolio, certified certificate vault, and spouse mutual chat.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-emerald-200">
-              <span className="text-[11px] text-emerald-800 font-semibold hidden md:inline">
-                Partner 1 Auto-Filled ✓
-              </span>
-              <Link
-                href="/dashboard"
-                className="px-3.5 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-950 font-bold text-xs hover:bg-emerald-100/50 transition-colors shadow-xs"
-              >
-                Go to Dashboard
-              </Link>
-            </div>
-          </div>
-        ) : (
-          <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-50 border-2 border-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fade-in">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-[#C9A84C] text-[#0F1C3F] flex items-center justify-center font-bold text-base shadow-sm flex-shrink-0">
-                <UserPlus className="w-6 h-6 text-[#0F1C3F]" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-amber-950 text-sm">
-                    New Couple Registration Detected
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-bold">
-                    New User Mode
-                  </span>
-                </div>
-                <p className="text-amber-900 text-xs mt-0.5 leading-relaxed">
-                  First time registering your union? Complete the declaration below. An investor account will be auto-provisioned so you and your spouse can access your official certificate and 6.8% APY joint savings immediately.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/login?callbackUrl=/get-married"
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#0F1C3F] text-[#C9A84C] font-bold text-xs hover:bg-[#1a2c5e] transition-all shadow-sm flex-shrink-0"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Already Have an Account? Sign In</span>
-            </Link>
-          </div>
-        )}
-
         {/* ── STEP 1: SELECT MARRIAGE TYPE ── */}
         {currentStep === 1 && (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-gray-200 shadow-sm space-y-8 animate-fade-in">
@@ -398,17 +335,12 @@ export default function GetMarriedPage() {
               <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#0F1C3F] flex items-center gap-1.5">
                   <Heart className="w-3.5 h-3.5 text-[#C9A84C]" />
-                  Partner 1 ({currentType.defaultRole1} / {isLoggedIn ? 'You' : 'Primary Applicant'})
+                  Partner 1 ({currentType.defaultRole1})
                 </span>
-                {isLoggedIn ? (
-                  <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                    <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
-                    Verified Investor Account
-                  </span>
-                ) : (
-                  <span className="text-[11px] font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-xs">
-                    <UserPlus className="w-3.5 h-3.5 text-amber-700" />
-                    New Joint Account
+                {isLoggedIn && (
+                  <span className="text-[11px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                    <UserCheck className="w-3 h-3 text-emerald-600" />
+                    Primary Account Holder
                   </span>
                 )}
               </div>
@@ -468,25 +400,14 @@ export default function GetMarriedPage() {
                 </div>
               </div>
 
-              {/* Logged in auto-fill note */}
-              {isLoggedIn && (
-                <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200 text-[11px] text-emerald-900 flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>
-                    Auto-detected and synchronized with your authenticated profile (<strong>{session?.user?.name}</strong> · <code className="font-mono text-emerald-950">{session?.user?.email}</code>).
-                  </span>
-                </div>
-              )}
-
-              {/* New user password creation box */}
+              {/* Account password setup for new applicants */}
               {!isLoggedIn && (
-                <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200 space-y-2">
+                <div className="p-4 rounded-xl bg-white border border-gray-200 space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                       <KeyRound className="w-3.5 h-3.5 text-[#C9A84C]" />
-                      Create Account Password (Optional for New Users)
+                      Create Account Password (Optional)
                     </label>
-                    <span className="text-[10px] text-amber-800 font-semibold">Auto-Provisions Joint Login</span>
                   </div>
                   <div className="relative">
                     <input
@@ -505,7 +426,7 @@ export default function GetMarriedPage() {
                     </button>
                   </div>
                   <p className="text-[11px] text-gray-500 leading-relaxed">
-                    Set a password now so you and your spouse can immediately log in to access your official Marriage Certificate, mutual chat, and start your 6.8% APY marriage savings vault.
+                    Set a password to access your joint dashboard and digital certificate after registration.
                   </p>
                 </div>
               )}
@@ -529,10 +450,10 @@ export default function GetMarriedPage() {
               <div className="flex items-center justify-between border-b border-gray-200 pb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-[#0F1C3F] flex items-center gap-1.5">
                   <Heart className="w-3.5 h-3.5 text-[#C9A84C]" />
-                  Partner 2 ({currentType.defaultRole2} / Spouse-to-be)
+                  Partner 2 ({currentType.defaultRole2})
                 </span>
-                <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100 px-2.5 py-0.5 rounded-full">
-                  Will Receive Digital Sign Invitation
+                <span className="text-[11px] font-medium text-gray-600 bg-gray-100 px-2.5 py-0.5 rounded-full">
+                  Joint Signatory
                 </span>
               </div>
 
@@ -793,7 +714,7 @@ export default function GetMarriedPage() {
               <div className="flex justify-between text-xs text-gray-600">
                 <span>Parties:</span>
                 <span className="font-semibold text-gray-900">
-                  {partner1Name || 'Julian Sterling'} & {partner2Name || 'Marcus Vance'}
+                  {partner1Name || 'Partner 1'} & {partner2Name || 'Partner 2'}
                 </span>
               </div>
               <div className="flex justify-between text-xs text-gray-600">
@@ -920,16 +841,16 @@ export default function GetMarriedPage() {
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                 <span className="text-xs text-gray-400">Solemnized Spouses</span>
-                <span className="text-xs font-semibold">{partner1Name || 'Julian'} & {partner2Name || 'Marcus'}</span>
+                <span className="text-xs font-semibold">{partner1Name || 'Partner 1'} & {partner2Name || 'Partner 2'}</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
                 <span className="text-xs text-gray-400">Classification</span>
                 <span className="text-xs text-[#C9A84C]">{currentType.label}</span>
               </div>
               <div className="flex justify-between items-center border-b border-white/10 pb-2.5">
-                <span className="text-xs text-gray-400">Account Linkage</span>
+                <span className="text-xs text-gray-400">Primary Account</span>
                 <span className="text-xs font-mono font-bold text-[#C9A84C]">
-                  {isLoggedIn ? `${session?.user?.email} (Verified)` : `${partner1Email} (New User)`}
+                  {session?.user?.email || partner1Email}
                 </span>
               </div>
               <div className="flex justify-between items-center">

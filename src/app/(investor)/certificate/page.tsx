@@ -383,7 +383,7 @@ export default function MarriageCertificatePage() {
                 onClick={() => setPartnerSigned(true)}
                 className="px-3 py-1.5 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460]"
               >
-                Sign on Behalf (Demo)
+                Attest & Sign
               </button>
             )}
           </div>
