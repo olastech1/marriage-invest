@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { isDemoTransaction } from '@/lib/rating'
 import {
   CreditCard,
   ArrowDownLeft,
@@ -9,6 +10,7 @@ import {
   Filter,
   Download,
   Calendar,
+  ShieldCheck,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -21,7 +23,7 @@ export default async function TransactionsPage() {
 
   const userId = session.user.id
 
-  const transactions = await prisma.transaction.findMany({
+  const allTransactions = await prisma.transaction.findMany({
     where: { userId },
     include: {
       investment: {
@@ -32,6 +34,9 @@ export default async function TransactionsPage() {
     },
     orderBy: { createdAt: 'desc' },
   })
+
+  // Strictly filter out demo deposits — only real stuff
+  const transactions = allTransactions.filter((t) => !isDemoTransaction(t))
 
   const totalDeposited = transactions
     .filter((t) => t.type === 'DEPOSIT' && t.status === 'COMPLETED')
@@ -49,9 +54,14 @@ export default async function TransactionsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-[#0F1C3F]">Transaction Ledger & History</h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Complete USD transaction audit trail including deposits, distributions, and disbursements.
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold text-[#0F1C3F]">Transaction Ledger & History</h1>
+            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+              Verified Real Ledger Only
+            </span>
+          </div>
+          <p className="text-xs text-gray-500">
+            Complete USD transaction audit trail of settled deposits, distributions, and disbursements. Demo allocations are strictly excluded.
           </p>
         </div>
       </div>

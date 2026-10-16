@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { isDemoInvestment } from '@/lib/rating'
 import {
   Briefcase,
   TrendingUp,
@@ -24,7 +25,7 @@ export default async function PortfolioPage() {
 
   const userId = session.user.id
 
-  const investments = await prisma.investment.findMany({
+  const allInvestments = await prisma.investment.findMany({
     where: { userId },
     include: {
       opportunity: true,
@@ -37,6 +38,9 @@ export default async function PortfolioPage() {
     },
     orderBy: { createdAt: 'desc' },
   })
+
+  // Strictly filter out demo investments — only real stuff
+  const investments = allInvestments.filter((inv) => !isDemoInvestment(inv))
 
   const totalInvested = investments
     .filter((inv) => inv.status === 'ACTIVE' || inv.status === 'MATURED')

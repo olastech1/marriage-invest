@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Users,
   Search,
@@ -12,6 +13,7 @@ import {
   Filter,
   Eye,
   Sparkles,
+  Award,
 } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -23,17 +25,26 @@ export default async function AdminInvestorsPage() {
   }
 
   let investors: any[] = []
+  let allDocuments: any[] = []
   try {
-    investors = await prisma.user.findMany({
-      where: { role: 'INVESTOR' },
-      include: {
-        investments: true,
-        transactions: {
-          where: { type: 'DEPOSIT', status: 'COMPLETED' },
+    const [invs, docs] = await Promise.all([
+      prisma.user.findMany({
+        where: { role: 'INVESTOR' },
+        include: {
+          investments: true,
+          documents: true,
+          transactions: {
+            where: { status: 'COMPLETED' },
+          },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-    })
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.document.findMany({
+        select: { id: true, name: true, type: true },
+      }),
+    ])
+    investors = invs
+    allDocuments = docs
   } catch {
     // DB offline
   }
@@ -81,16 +92,32 @@ export default async function AdminInvestorsPage() {
                 <th className="py-3 px-6">Investor / Couple</th>
                 <th className="py-3 px-6">Contact Email & Phone</th>
                 <th className="py-3 px-6">Registration Date</th>
+                <th className="py-3 px-6">Account Rating</th>
                 <th className="py-3 px-6">KYC Status</th>
                 <th className="py-3 px-6">Active Investments</th>
-                <th className="py-3 px-6">Total Funded (USD)</th>
+                <th className="py-3 px-6">Real Funded (USD)</th>
                 <th className="py-3 px-6 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {investors.map((inv: any) => {
-                const totalFunded = (inv.investments || []).reduce((sum: number, i: any) => sum + Number(i.amount), 0)
-                const activeCount = (inv.investments || []).filter((i: any) => i.status === 'ACTIVE').length
+                const realInvestments = (inv.investments || []).filter((i: any) => !isDemoInvestment(i))
+                const realTransactions = (inv.transactions || []).filter((t: any) => !isDemoTransaction(t))
+                const totalFunded = realInvestments.reduce((sum: number, i: any) => sum + Number(i.amount), 0)
+                const realDeposited = realTransactions
+                  .filter((t: any) => t.type === 'DEPOSIT')
+                  .reduce((sum: number, t: any) => sum + Number(t.netAmount), 0)
+                const activeCount = realInvestments.filter((i: any) => i.status === 'ACTIVE').length
+
+                const docIds = (inv.documents || []).map((d: any) => d.documentId)
+                const rating = computeAccountRating({
+                  acknowledgedDocIds: docIds,
+                  allDocuments,
+                  isIdentityVerified: Boolean(inv.identityVerified),
+                  hasMarriageCovenant: realTransactions.some((t: any) => t.type === 'FEE'),
+                  realDepositedAmount: realDeposited,
+                  realInvestedAmount: totalFunded,
+                })
 
                 return (
                   <tr key={inv.id} className="hover:bg-gray-50/50">
@@ -103,6 +130,16 @@ export default async function AdminInvestorsPage() {
                     </td>
                     <td className="py-3.5 px-6 text-gray-500 font-mono">
                       {formatDate(inv.createdAt)}
+                    </td>
+                    <td className="py-3.5 px-6">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-serif font-black text-xs px-2 py-0.5 rounded-md bg-[#0F1C3F] text-[#C9A84C] border border-[#C9A84C]/40">
+                          {rating.tier}
+                        </span>
+                        <span className="text-[10px] text-gray-500 font-medium">
+                          {rating.documentCount} docs
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3.5 px-6">
                       {inv.identityVerified ? (
@@ -119,7 +156,8 @@ export default async function AdminInvestorsPage() {
                       {activeCount} Active
                     </td>
                     <td className="py-3.5 px-6 font-bold text-[#0F1C3F]">
-                      {formatCurrency(totalFunded)}
+                      <div>{formatCurrency(totalFunded)}</div>
+                      <span className="text-[9px] text-gray-400 font-normal">Real capital</span>
                     </td>
                     <td className="py-3.5 px-6 text-right">
                       <button className="px-3 py-1 rounded-lg border border-gray-200 text-gray-700 text-[11px] font-medium hover:bg-gray-50">

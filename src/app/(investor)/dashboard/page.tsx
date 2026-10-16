@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Decimal } from '@prisma/client/runtime/library'
 import DashboardStatsPanel, { type DashboardStats } from '@/components/investor/DashboardStats'
+import AccountRatingCard from '@/components/investor/AccountRatingCard'
+import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
   Calendar,
@@ -76,7 +78,21 @@ export default async function DashboardPage() {
   const userId = session.user.id
 
   // ── parallel data fetch ────────────────────────────────────────────────
-  const [investments, transactions, notifications, activeOpportunities] = await Promise.all([
+  const [
+    userRecord,
+    investments,
+    transactions,
+    allCompletedTransactions,
+    notifications,
+    activeOpportunities,
+    allDocuments,
+    userAcknowledgments,
+    marriageAudit,
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { identityVerified: true },
+    }),
     prisma.investment.findMany({
       where: { userId },
       include: { opportunity: true },
@@ -85,8 +101,11 @@ export default async function DashboardPage() {
     prisma.transaction.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 5,
+      take: 10,
       include: { investment: { include: { opportunity: true } } },
+    }),
+    prisma.transaction.findMany({
+      where: { userId, status: 'COMPLETED' },
     }),
     prisma.notification.findMany({
       where: { userId },
@@ -98,23 +117,42 @@ export default async function DashboardPage() {
       take: 3,
       orderBy: { createdAt: 'desc' },
     }),
+    prisma.document.findMany({
+      select: { id: true, name: true, type: true, version: true },
+      orderBy: { createdAt: 'asc' },
+    }),
+    prisma.documentAcknowledgment.findMany({
+      where: { userId },
+      select: { documentId: true, signedAt: true },
+    }),
+    prisma.auditLog.findFirst({
+      where: { userId, action: 'MARRIAGE_REGISTRATION_CREATED' },
+    }),
   ])
 
-  // ── compute stats ──────────────────────────────────────────────────────
-  const totalInvested = investments
+  // ── compute real stats (strictly excluding demo deposits & investments) ─
+  const realInvestments = investments.filter((i) => !isDemoInvestment(i))
+  const realCompletedTransactions = allCompletedTransactions.filter((t) => !isDemoTransaction(t))
+
+  const realDepositedAmount = realCompletedTransactions
+    .filter((t) => t.type === 'DEPOSIT')
+    .reduce((s, t) => s + Number(t.netAmount), 0)
+
+  const totalInvested = realInvestments
     .filter((i) => i.status === 'ACTIVE' || i.status === 'MATURED')
     .reduce((s, i) => s + Number(i.amount), 0)
 
-  const activeInvestmentsCount = investments.filter((i) => i.status === 'ACTIVE').length
+  const activeInvestmentsCount = realInvestments.filter((i) => i.status === 'ACTIVE').length
 
-  const totalDistributions = transactions
-    .filter((t) => t.type === 'DISTRIBUTION' && t.status === 'COMPLETED')
+  const totalDistributions = realCompletedTransactions
+    .filter((t) => t.type === 'DISTRIBUTION')
     .reduce((s, t) => s + Number(t.netAmount), 0)
 
-  // fetch pending count separately (not limited to 5)
-  const pendingTransactions = await prisma.transaction.count({
+  // fetch real pending count separately
+  const pendingTransactionsList = await prisma.transaction.findMany({
     where: { userId, status: 'PENDING' },
   })
+  const pendingTransactions = pendingTransactionsList.filter((t) => !isDemoTransaction(t)).length
 
   const stats: DashboardStats = {
     totalInvested,
@@ -123,10 +161,29 @@ export default async function DashboardPage() {
     pendingTransactions,
   }
 
-  // ── upcoming maturities (next 90 days) ────────────────────────────────
+  // Filter recent transactions for table (real transactions only)
+  const realRecentTransactions = transactions.filter((t) => !isDemoTransaction(t)).slice(0, 5)
+
+  // Check matrimonial covenant record (audit log, or completed marriage fee transaction)
+  const hasFeeCovenant = realCompletedTransactions.some(
+    (t) => t.type === 'FEE' && (t.description?.toLowerCase().includes('matrimonial') || t.reference?.startsWith('FEE-REG'))
+  )
+  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant)
+
+  // Compute Account Rating based on accumulated documents & real capital
+  const accountRating = computeAccountRating({
+    acknowledgedDocIds: userAcknowledgments.map((a) => a.documentId),
+    allDocuments,
+    isIdentityVerified: Boolean(userRecord?.identityVerified),
+    hasMarriageCovenant,
+    realDepositedAmount,
+    realInvestedAmount: totalInvested,
+  })
+
+  // ── upcoming maturities (next 90 days, real investments only) ─────────
   const now = new Date()
   const in90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
-  const upcomingMaturities = investments.filter(
+  const upcomingMaturities = realInvestments.filter(
     (i) => i.status === 'ACTIVE' && i.maturityDate && i.maturityDate > now && i.maturityDate < in90,
   )
 
@@ -155,6 +212,9 @@ export default async function DashboardPage() {
 
       {/* ── Stats ───────────────────────────────────────────────────── */}
       <DashboardStatsPanel stats={stats} />
+
+      {/* ── Account Fiduciary Rating (Based on Accumulated Documents) ── */}
+      <AccountRatingCard rating={accountRating} />
 
       {/* ── Joint Marriage Savings Banner ──────────────────────────── */}
       <div className="rounded-2xl bg-gradient-to-r from-[#0F1C3F] via-[#1a2f64] to-[#0F1C3F] p-5 sm:p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-[#C9A84C]/30 relative overflow-hidden">
@@ -282,8 +342,8 @@ export default async function DashboardPage() {
               View all <ArrowRight size={12} />
             </Link>
           </div>
-          {transactions.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-slate-400">No transactions yet.</p>
+          {realRecentTransactions.length === 0 ? (
+            <p className="px-5 py-8 text-center text-sm text-slate-400">No verified transactions yet.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -297,7 +357,7 @@ export default async function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {transactions.map((tx) => {
+                  {realRecentTransactions.map((tx) => {
                     const isCredit = tx.type === 'DEPOSIT' || tx.type === 'DISTRIBUTION' || tx.type === 'REFUND'
                     return (
                       <tr key={tx.id} className="hover:bg-slate-50">
