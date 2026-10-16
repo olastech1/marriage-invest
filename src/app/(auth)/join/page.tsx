@@ -19,6 +19,8 @@ function JoinContent() {
   const router = useRouter()
   const inviterName = searchParams.get('partner') || 'Your Spouse'
   const prefillEmail = searchParams.get('email') || ''
+  const unionType = searchParams.get('type') || 'Marriage'
+  const partnerRole = searchParams.get('role') || 'Spouse / Partner'
 
   const [partnerName, setPartnerName] = useState('')
   const [partnerEmail, setPartnerEmail] = useState(prefillEmail)
@@ -45,14 +47,14 @@ function JoinContent() {
         <div className="w-14 h-14 rounded-2xl bg-[#C9A84C]/15 text-[#C9A84C] flex items-center justify-center mx-auto mb-4">
           <Heart className="w-7 h-7 fill-[#C9A84C]" />
         </div>
-        <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] block mb-1">
-          Joint Matrimonial Covenant
-        </span>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F1C3F]/5 border border-gray-200 text-[#0F1C3F] text-xs font-bold uppercase tracking-wider mb-2">
+          {unionType}
+        </div>
         <h1 className="text-2xl font-bold text-[#0F1C3F]">
           You&apos;ve Been Invited by {inviterName}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed">
-          {inviterName} has initiated your official Marriage Investment account on Union Invest. Complete your registration to review and sign your joint certificate.
+          {inviterName} has initiated your official <strong>{unionType}</strong> account on Union Invest. Complete your registration as <strong>{partnerRole}</strong> to review and digitally execute your joint investment certificate.
         </p>
       </div>
 
@@ -127,7 +129,7 @@ function JoinContent() {
               className="mt-0.5 rounded text-[#C9A84C] focus:ring-[#C9A84C]"
             />
             <label htmlFor="covenant-agree" className="text-xs text-gray-600 leading-normal">
-              I agree to the Joint Matrimonial Investment Terms, 50/50 shared beneficial ownership, and mutual digital certificate signing.
+              I agree to the <strong>{unionType}</strong> Investment Terms, 50/50 shared beneficial ownership, and mutual digital certificate signing as <strong>{partnerRole}</strong>.
             </label>
           </div>
 
@@ -136,7 +138,7 @@ function JoinContent() {
             disabled={loading}
             className="w-full py-3.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white font-bold text-sm tracking-wide transition-all shadow-md shadow-[#0F1C3F]/25 flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
           >
-            {loading ? 'Connecting Account...' : 'Accept Invitation & Sign Certificate'}
+            {loading ? 'Connecting Account...' : `Accept Invitation & Sign Certificate`}
             <ArrowRight className="w-4 h-4 text-[#C9A84C]" />
           </button>
         </form>

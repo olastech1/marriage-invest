@@ -22,16 +22,121 @@ import {
   Sparkles,
   ArrowRight,
   FileCheck,
+  Users,
 } from 'lucide-react'
+
+export interface MarriageTypeOption {
+  id: string
+  label: string
+  category: string
+  certificateTitle: string
+  covenantSubtitle: string
+  sealBadgeText: string
+  defaultRole1: string
+  defaultRole2: string
+  description: string
+  badgeColor: string
+}
+
+export const MARRIAGE_TYPES: MarriageTypeOption[] = [
+  {
+    id: 'SAME_SEX_GAY',
+    label: 'Same-Sex Marriage (Gay / Husbands)',
+    category: 'Same-Sex Matrimony',
+    certificateTitle: 'Certificate of Same-Sex Marriage Investment',
+    covenantSubtitle: 'Official Matrimonial Covenant of Joint Wealth & Mutual Survivorship between Husbands',
+    sealBadgeText: 'SAME-SEX COVENANT',
+    defaultRole1: 'Husband',
+    defaultRole2: 'Husband',
+    description: 'Equal joint survivorship, 50/50 capital rights & mutual fiduciary protection for male spouses.',
+    badgeColor: 'bg-indigo-50 border-indigo-200 text-indigo-700',
+  },
+  {
+    id: 'SAME_SEX_LESBIAN',
+    label: 'Same-Sex Marriage (Lesbian / Wives)',
+    category: 'Same-Sex Matrimony',
+    certificateTitle: 'Certificate of Same-Sex Marriage Investment',
+    covenantSubtitle: 'Official Matrimonial Covenant of Joint Wealth & Mutual Survivorship between Wives',
+    sealBadgeText: 'SAME-SEX COVENANT',
+    defaultRole1: 'Wife',
+    defaultRole2: 'Wife',
+    description: 'Equal joint survivorship, 50/50 capital rights & mutual fiduciary protection for female spouses.',
+    badgeColor: 'bg-rose-50 border-rose-200 text-rose-700',
+  },
+  {
+    id: 'CIVIL_MARRIAGE',
+    label: 'Civil Marriage (Husband & Wife)',
+    category: 'Civil Matrimony',
+    certificateTitle: 'Certificate of Marriage Investment',
+    covenantSubtitle: 'Official Matrimonial Covenant of Shared Wealth & Mutual Survivorship',
+    sealBadgeText: 'CIVIL MARRIAGE',
+    defaultRole1: 'Husband',
+    defaultRole2: 'Wife',
+    description: 'Traditional civil marriage covenant under Zurich & London fiduciary protocols.',
+    badgeColor: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+  },
+  {
+    id: 'CIVIL_UNION',
+    label: 'Registered Civil Union / Legal Partnership',
+    category: 'Registered Civil Union',
+    certificateTitle: 'Certificate of Civil Union & Investment',
+    covenantSubtitle: 'Official Registered Civil Union Covenant of Equal Capital Custody',
+    sealBadgeText: 'CIVIL UNION SEAL',
+    defaultRole1: 'Registered Partner',
+    defaultRole2: 'Registered Partner',
+    description: 'Statutory civil partnership enjoying identical financial rights and dual survivorship.',
+    badgeColor: 'bg-blue-50 border-blue-200 text-blue-700',
+  },
+  {
+    id: 'DOMESTIC_PARTNERSHIP',
+    label: 'Domestic Partnership',
+    category: 'Domestic Partnership',
+    certificateTitle: 'Certificate of Domestic Partnership Investment',
+    covenantSubtitle: 'Official Domestic Partnership Covenant of Shared Economic Assets',
+    sealBadgeText: 'DOMESTIC PARTNERSHIP',
+    defaultRole1: 'Domestic Partner',
+    defaultRole2: 'Domestic Partner',
+    description: 'Recognized domestic cohabitation partnership with co-beneficiary rights across all investment yields.',
+    badgeColor: 'bg-amber-50 border-amber-200 text-amber-700',
+  },
+  {
+    id: 'UNIVERSAL_COVENANT',
+    label: 'Universal Life Partnership Covenant',
+    category: 'Universal Life Union',
+    certificateTitle: 'Certificate of Life Partnership Investment',
+    covenantSubtitle: 'Universal Covenant of Mutual Capital Trust & Co-Beneficiary Entitlement',
+    sealBadgeText: 'UNIVERSAL COVENANT',
+    defaultRole1: 'Spouse',
+    defaultRole2: 'Spouse',
+    description: 'Universal fiduciary covenant applicable to all life partners with reciprocal inheritance.',
+    badgeColor: 'bg-purple-50 border-purple-200 text-purple-700',
+  },
+]
 
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
-  const userName = session?.user?.name || 'Amélie Laurent'
-  const userEmail = session?.user?.email || 'amelie.laurent@unioninvest.com'
+  const userName = session?.user?.name || 'Julian Sterling'
+  const userEmail = session?.user?.email || 'julian.sterling@unioninvest.com'
+
+  // Union & Marriage Type state
+  const [selectedTypeId, setSelectedTypeId] = useState('SAME_SEX_GAY')
+  const [role1, setRole1] = useState('Husband')
+  const [role2, setRole2] = useState('Husband')
+
+  const currentType = MARRIAGE_TYPES.find((t) => t.id === selectedTypeId) || MARRIAGE_TYPES[0]
+
+  const handleTypeSelect = (typeId: string) => {
+    setSelectedTypeId(typeId)
+    const t = MARRIAGE_TYPES.find((item) => item.id === typeId)
+    if (t) {
+      setRole1(t.defaultRole1)
+      setRole2(t.defaultRole2)
+    }
+  }
 
   // Invitation state
-  const [partnerName, setPartnerName] = useState('Sebastian Laurent')
-  const [partnerEmail, setPartnerEmail] = useState('sebastian.laurent@unioninvest.com')
+  const [partnerName, setPartnerName] = useState('Marcus Vance')
+  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
   const [weddingDate, setWeddingDate] = useState('2024-06-15')
   const [inviteSent, setInviteSent] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -58,7 +163,7 @@ export default function MarriageCertificatePage() {
   }
 
   const handleCopyLink = () => {
-    const inviteUrl = `${window.location.origin}/join?partner=${encodeURIComponent(userName)}&email=${encodeURIComponent(partnerEmail)}`
+    const inviteUrl = `${window.location.origin}/join?partner=${encodeURIComponent(userName)}&email=${encodeURIComponent(partnerEmail)}&type=${encodeURIComponent(currentType.label)}&role=${encodeURIComponent(role2)}`
     navigator.clipboard.writeText(inviteUrl)
     setCopied(true)
     setTimeout(() => setCopied(false), 2500)
@@ -175,8 +280,8 @@ export default function MarriageCertificatePage() {
         </div>
       </div>
 
-      {/* ── PARTNER INVITATION CARD ── */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+      {/* ── PARTNER INVITATION & COVENANT CARD ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
@@ -184,7 +289,7 @@ export default function MarriageCertificatePage() {
             </div>
             <div>
               <h2 className="text-base font-bold text-[#0F1C3F]">Partner Invitation & Joint Covenant</h2>
-              <p className="text-xs text-gray-500">Invite your spouse to verify and jointly sign your investment bond.</p>
+              <p className="text-xs text-gray-500">Configure your marriage type, customize spouse roles, and invite your partner to sign.</p>
             </div>
           </div>
 
@@ -204,6 +309,55 @@ export default function MarriageCertificatePage() {
           )}
         </div>
 
+        {/* ── UNION & MARRIAGE TYPE SELECTOR ── */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold uppercase tracking-wider text-[#0F1C3F] flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-[#C9A84C]" />
+              Select Marriage / Partnership Type
+            </label>
+            <span className="text-xs text-gray-500 font-medium">
+              Active: <strong className="text-[#0F1C3F]">{currentType.label}</strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {MARRIAGE_TYPES.map((type) => {
+              const isSelected = type.id === selectedTypeId
+              return (
+                <button
+                  key={type.id}
+                  type="button"
+                  onClick={() => handleTypeSelect(type.id)}
+                  className={`text-left p-3.5 rounded-xl border transition-all relative ${
+                    isSelected
+                      ? 'border-[#C9A84C] bg-[#C9A84C]/5 shadow-sm ring-2 ring-[#C9A84C]/30'
+                      : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${type.badgeColor}`}>
+                      {type.category}
+                    </span>
+                    {isSelected && (
+                      <span className="w-4 h-4 rounded-full bg-[#C9A84C] text-[#0F1C3F] flex items-center justify-center text-[10px] font-bold">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-xs font-bold text-[#0F1C3F] leading-snug">
+                    {type.label}
+                  </h4>
+                  <p className="text-[11px] text-gray-500 mt-1 line-clamp-2 leading-relaxed">
+                    {type.description}
+                  </p>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── PARTNER & ROLE DETAILS FORM ── */}
         <form onSubmit={handleSendInvite} className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
           <div>
             <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1.5">
@@ -244,13 +398,44 @@ export default function MarriageCertificatePage() {
           </div>
         </form>
 
+        {/* ── CUSTOM SPOUSE / PARTNER ROLES ── */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1.5">
+              Primary Partner Role Title
+            </label>
+            <input
+              type="text"
+              value={role1}
+              onChange={(e) => setRole1(e.target.value)}
+              placeholder="Husband, Wife, Spouse, Partner..."
+              className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]"
+            />
+            <span className="text-[10px] text-gray-400 mt-1 block">Displayed on certificate for {userName}</span>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-gray-600 mb-1.5">
+              Second Partner Role Title
+            </label>
+            <input
+              type="text"
+              value={role2}
+              onChange={(e) => setRole2(e.target.value)}
+              placeholder="Husband, Wife, Spouse, Partner..."
+              className="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C]"
+            />
+            <span className="text-[10px] text-gray-400 mt-1 block">Displayed on certificate for {partnerName}</span>
+          </div>
+        </div>
+
         {/* Dual Signature Controls */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
           {/* Partner 1 (User) */}
           <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 block">
-                Primary Partner
+                {role1} (Primary)
               </span>
               <p className="text-sm font-bold text-[#0F1C3F]">{userName}</p>
               <p className="text-xs text-gray-500">Signed: {primarySignDate}</p>
@@ -264,7 +449,7 @@ export default function MarriageCertificatePage() {
           <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 flex items-center justify-between">
             <div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400 block">
-                Spouse / Joint Partner
+                {role2} (Joint Partner)
               </span>
               <p className="text-sm font-bold text-[#0F1C3F]">{partnerName}</p>
               <p className="text-xs text-gray-500">
@@ -379,16 +564,16 @@ export default function MarriageCertificatePage() {
           </div>
 
           {/* Headers */}
-          <span className="text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.3em] text-[#0F1C3F]/70 block mb-2">
-            International Matrimonial Capital Registry · Zurich & London
+          <span className="text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-2">
+            {currentType.category} · International Matrimonial Capital Registry · Zurich & London
           </span>
 
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-4">
-            Certificate of Marriage Investment
+            {currentType.certificateTitle}
           </h2>
 
           <p className="text-xs sm:text-sm font-serif italic text-gray-600 max-w-xl mx-auto mb-8">
-            This certifies that the mutual partners named herein have entered into an official Marriage Investment Covenant under Union Invest fiduciary protocols.
+            {currentType.covenantSubtitle}
           </p>
 
           {/* Couple Names */}
@@ -396,7 +581,7 @@ export default function MarriageCertificatePage() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8">
               <div className="text-center sm:text-right flex-1">
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
-                  First Partner
+                  {role1}
                 </span>
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-wide">
                   {userName}
@@ -409,7 +594,7 @@ export default function MarriageCertificatePage() {
 
               <div className="text-center sm:text-left flex-1">
                 <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block">
-                  Second Partner
+                  {role2}
                 </span>
                 <span className="text-2xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-wide">
                   {partnerName}
@@ -431,7 +616,7 @@ export default function MarriageCertificatePage() {
                 {userName}
               </p>
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">
-                Primary Signature
+                {role1} Signature
               </span>
               <span className="text-[10px] text-gray-400 font-mono">
                 {primarySigned ? primarySignDate : 'Pending'}
@@ -440,16 +625,16 @@ export default function MarriageCertificatePage() {
 
             {/* Official Gold Seal */}
             <div className="flex flex-col items-center justify-center">
-              <div className={`w-24 h-24 rounded-full border-4 border-[#C9A84C] flex flex-col items-center justify-center shadow-lg relative ${
+              <div className={`w-24 h-24 rounded-full border-4 border-[#C9A84C] flex flex-col items-center justify-center shadow-lg relative p-1 ${
                 isPaid ? 'bg-gradient-to-tr from-[#C9A84C] via-[#e8cb7a] to-[#C9A84C] text-[#0F1C3F]' : 'bg-gray-100 text-gray-400'
               }`}>
                 {isPaid ? (
                   <>
-                    <Award className="w-8 h-8 text-[#0F1C3F] mb-0.5" />
-                    <span className="text-[8px] font-extrabold uppercase tracking-widest text-[#0F1C3F]">
-                      OFFICIAL SEAL
+                    <Award className="w-7 h-7 text-[#0F1C3F] mb-0.5" />
+                    <span className="text-[7px] font-extrabold uppercase tracking-wider text-[#0F1C3F] text-center leading-tight">
+                      {currentType.sealBadgeText}
                     </span>
-                    <span className="text-[7px] font-bold text-[#0F1C3F]/80">
+                    <span className="text-[6.5px] font-bold text-[#0F1C3F]/80">
                       UNION INVEST
                     </span>
                   </>
@@ -473,7 +658,7 @@ export default function MarriageCertificatePage() {
                 {partnerSigned ? partnerName : 'Pending Signature'}
               </p>
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">
-                Partner Signature
+                {role2} Signature
               </span>
               <span className="text-[10px] text-gray-400 font-mono">
                 {partnerSigned ? partnerSignDate : 'Awaiting sign-off'}

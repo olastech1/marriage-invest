@@ -413,6 +413,46 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
+
+        {/* ── UNION & PARTNERSHIP DIVERSITY RECOGNITION ── */}
+        <div className="mt-12 bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] block mb-1">
+                Equal Legal & Fiduciary Protection
+              </span>
+              <h3 className="text-xl font-bold text-[#0F1C3F]">
+                Full Recognition for All Marriages & Partnership Types
+              </h3>
+            </div>
+            <p className="text-xs sm:text-sm text-gray-500 max-w-lg leading-relaxed">
+              Union Invest provides full statutory survivorship entitlement and 50/50 capital custody across all recognized international unions, filed under Zurich & London fiduciary standards.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {[
+              { label: 'Gay Marriage', sub: 'Husband & Husband', badge: 'Same-Sex', color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
+              { label: 'Lesbian Marriage', sub: 'Wife & Wife', badge: 'Same-Sex', color: 'text-rose-600 bg-rose-50 border-rose-100' },
+              { label: 'Civil Marriage', sub: 'Husband & Wife', badge: 'Opposite-Sex', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
+              { label: 'Civil Union', sub: 'Partner & Partner', badge: 'Registered', color: 'text-blue-600 bg-blue-50 border-blue-100' },
+              { label: 'Domestic Union', sub: 'Partner & Partner', badge: 'Cohabitation', color: 'text-amber-600 bg-amber-50 border-amber-100' },
+              { label: 'Life Covenant', sub: 'Spouse & Spouse', badge: 'Universal', color: 'text-purple-600 bg-purple-50 border-purple-100' },
+            ].map((u, i) => (
+              <div key={i} className={`p-3.5 rounded-xl border transition-all hover:shadow-sm ${u.color}`}>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider block mb-1 opacity-80">
+                  {u.badge}
+                </span>
+                <span className="text-xs font-bold text-[#0F1C3F] block leading-snug">
+                  {u.label}
+                </span>
+                <span className="text-[11px] text-gray-500 block mt-0.5">
+                  {u.sub}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── INVESTMENT OPPORTUNITIES PREVIEW ── */}
