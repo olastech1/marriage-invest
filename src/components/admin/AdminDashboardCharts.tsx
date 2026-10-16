@@ -43,8 +43,8 @@ export default function AdminDashboardCharts({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="h-64 w-full">
+    <div className="space-y-6 w-full min-w-0 overflow-hidden">
+      <div className="h-64 w-full min-w-0">
         {lineData.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">
             No transaction data available

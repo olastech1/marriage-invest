@@ -12,7 +12,6 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
 import {
   LayoutDashboard,
   Users,
@@ -22,9 +21,8 @@ import {
   FileText,
   BarChart3,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   LogOut,
+  X,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -98,123 +96,129 @@ const ROLE_BADGE_COLOR: Record<AdminRole, string> = {
 
 interface Props {
   role: AdminRole
+  mobileOpen?: boolean
+  onCloseMobile?: () => void
 }
 
-export default function AdminSidebar({ role }: Props) {
+export default function AdminSidebar({ role, mobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
-
   const visibleItems = NAV_ITEMS.filter((item) => item.roles.includes(role))
+
+  const renderContent = (isMobile = false) => (
+    <div className="flex flex-col h-full">
+      {/* Logo & close button (on mobile) */}
+      <div className="flex items-center justify-between h-16 px-5 border-b border-white/10">
+        <Link
+          href="/admin/dashboard"
+          onClick={() => isMobile && onCloseMobile?.()}
+          className="flex items-center gap-2.5"
+        >
+          <div className="w-8 h-8 rounded-lg bg-[#C9A84C] flex items-center justify-center flex-shrink-0 shadow-xs">
+            <span className="text-[#0F1C3F] font-bold text-xs">UI</span>
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-sm tracking-wide text-white leading-tight">
+              Union Invest
+            </span>
+            <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+              Admin Suite
+            </span>
+          </div>
+        </Link>
+
+        {isMobile && (
+          <button
+            onClick={onCloseMobile}
+            className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Close navigation"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+
+      {/* Role badge */}
+      <div className="px-5 py-3.5 border-b border-white/10 bg-white/[0.02]">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] text-gray-400 uppercase font-semibold tracking-wider">
+            Access Role
+          </span>
+          <span
+            className={cn(
+              'inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider',
+              ROLE_BADGE_COLOR[role],
+            )}
+          >
+            {role}
+          </span>
+        </div>
+      </div>
+
+      {/* Navigation items */}
+      <nav className="flex-1 py-4 overflow-y-auto px-3 space-y-1">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3 block mb-2">
+          Management
+        </span>
+        {visibleItems.map((item) => {
+          const Icon = item.icon
+          const isActive =
+            pathname === item.href ||
+            (item.href !== '/admin/dashboard' && pathname.startsWith(item.href))
+
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => isMobile && onCloseMobile?.()}
+              className={cn(
+                'flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all',
+                isActive
+                  ? 'bg-[#C9A84C] text-[#0F1C3F] shadow-sm font-bold'
+                  : 'text-gray-300 hover:bg-white/10 hover:text-white',
+              )}
+            >
+              <Icon className={cn('w-4 h-4 flex-shrink-0', isActive ? 'text-[#0F1C3F]' : 'text-gray-400')} />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+
+      {/* Sign out */}
+      <div className="p-3 border-t border-white/10">
+        <button
+          onClick={() => signOut({ callbackUrl: '/login' })}
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0 text-red-400" />
+          <span>Sign out</span>
+        </button>
+      </div>
+    </div>
+  )
 
   return (
     <>
-      {/* ── Mobile overlay backdrop ─────────────────────────────── */}
-      <div className="lg:hidden fixed inset-0 z-20 bg-black/40 hidden" />
-
-      {/* ── Sidebar panel ───────────────────────────────────────── */}
-      <aside
-        className={cn(
-          'fixed top-0 left-0 h-full z-30 flex flex-col',
-          'bg-[#0F1C3F] text-white shadow-2xl transition-all duration-300',
-          collapsed ? 'w-16' : 'w-64',
-        )}
-      >
-        {/* Logo + collapse toggle */}
-        <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
-          {!collapsed && (
-            <Link href="/admin/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#C9A84C] flex items-center justify-center flex-shrink-0">
-                <span className="text-[#0F1C3F] font-bold text-xs">UI</span>
-              </div>
-              <span className="font-bold text-sm tracking-wide text-white">
-                Union Invest
-              </span>
-            </Link>
-          )}
-          {collapsed && (
-            <div className="w-8 h-8 rounded-lg bg-[#C9A84C] mx-auto flex items-center justify-center">
-              <span className="text-[#0F1C3F] font-bold text-xs">UI</span>
-            </div>
-          )}
-          <button
-            onClick={() => setCollapsed((c) => !c)}
-            className={cn(
-              'ml-auto p-1 rounded hover:bg-white/10 transition-colors',
-              collapsed && 'mx-auto',
-            )}
-            aria-label="Toggle sidebar"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4 text-gray-400" />
-            ) : (
-              <ChevronLeft className="w-4 h-4 text-gray-400" />
-            )}
-          </button>
-        </div>
-
-        {/* Role badge */}
-        {!collapsed && (
-          <div className="px-4 py-3 border-b border-white/10">
-            <span
-              className={cn(
-                'inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold text-white',
-                ROLE_BADGE_COLOR[role],
-              )}
-            >
-              {role}
-            </span>
-            <p className="text-xs text-gray-400 mt-1">Admin Portal</p>
-          </div>
-        )}
-
-        {/* Navigation items */}
-        <nav className="flex-1 py-4 overflow-y-auto">
-          <ul className="space-y-1 px-2">
-            {visibleItems.map((item) => {
-              const Icon = item.icon
-              const isActive =
-                pathname === item.href ||
-                (item.href !== '/admin/dashboard' &&
-                  pathname.startsWith(item.href))
-
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-[#C9A84C] text-[#0F1C3F]'
-                        : 'text-gray-300 hover:bg-white/10 hover:text-white',
-                      collapsed && 'justify-center px-2',
-                    )}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <Icon className="w-5 h-5 flex-shrink-0" />
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        </nav>
-
-        {/* Sign out */}
-        <div className="px-2 py-4 border-t border-white/10">
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
-            className={cn(
-              'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium',
-              'text-gray-400 hover:bg-red-500/20 hover:text-red-400 transition-colors',
-              collapsed && 'justify-center px-2',
-            )}
-            title={collapsed ? 'Sign out' : undefined}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span>Sign out</span>}
-          </button>
-        </div>
+      {/* ── DESKTOP SIDEBAR: Docked permanently on >= lg screens, hidden on mobile ── */}
+      <aside className="hidden lg:flex lg:flex-col lg:fixed lg:top-0 lg:left-0 lg:h-full lg:z-30 lg:w-64 bg-[#0F1C3F] text-white shadow-2xl">
+        {renderContent(false)}
       </aside>
+
+      {/* ── MOBILE DRAWER: Only visible on mobile when toggled ── */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50 flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            onClick={onCloseMobile}
+          />
+
+          {/* Slide-out Drawer */}
+          <aside className="relative z-50 w-72 max-w-[85vw] h-full bg-[#0F1C3F] text-white shadow-2xl animate-in slide-in-from-left duration-200">
+            {renderContent(true)}
+          </aside>
+        </div>
+      )}
     </>
   )
 }

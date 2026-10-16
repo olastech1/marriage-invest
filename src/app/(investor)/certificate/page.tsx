@@ -199,19 +199,19 @@ export default function MarriageCertificatePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {isPaid ? (
             <>
               <button
                 onClick={handlePrint}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm"
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-700 font-semibold text-sm hover:bg-gray-50 transition-colors shadow-sm"
               >
                 <Printer className="w-4 h-4 text-gray-500" />
                 Print / PDF
               </button>
               <Link
                 href="/deposits"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
               >
                 Start Investing
                 <ArrowRight className="w-4 h-4" />
@@ -220,7 +220,7 @@ export default function MarriageCertificatePage() {
           ) : (
             <button
               onClick={() => setShowPaymentModal(true)}
-              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2c5e] transition-colors shadow-md shadow-[#0F1C3F]/25"
+              className="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2c5e] transition-colors shadow-md shadow-[#0F1C3F]/25 w-full sm:w-auto"
             >
               <Lock className="w-4 h-4 text-[#C9A84C]" />
               Pay $49 to Unlock Certificate
@@ -230,22 +230,22 @@ export default function MarriageCertificatePage() {
       </div>
 
       {/* ── STEPS PROGRESS BAR ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-white p-4 rounded-2xl border border-gray-200 shadow-sm text-xs">
-        <div className="flex items-center gap-3 p-2 rounded-lg bg-emerald-50 text-emerald-800 font-medium">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-          <div>
-            <span className="block font-bold">1. Account Registered</span>
-            <span className="text-[11px] text-emerald-700">{userName}</span>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-gray-200 shadow-sm text-xs">
+        <div className="flex items-center gap-2.5 p-2 rounded-lg bg-emerald-50 text-emerald-800 font-medium">
+          <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 flex-shrink-0" />
+          <div className="min-w-0">
+            <span className="block font-bold text-[11px] sm:text-xs">1. Registered</span>
+            <span className="text-[10px] sm:text-[11px] text-emerald-700 truncate block">{userName}</span>
           </div>
         </div>
 
-        <div className={`flex items-center gap-3 p-2 rounded-lg font-medium ${
+        <div className={`flex items-center gap-2.5 p-2 rounded-lg font-medium ${
           inviteSent ? 'bg-emerald-50 text-emerald-800' : 'bg-gray-50 text-gray-600'
         }`}>
-          <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${inviteSent ? 'text-emerald-600' : 'text-gray-400'}`} />
-          <div>
-            <span className="block font-bold">2. Partner Invited</span>
-            <span className="text-[11px]">{inviteSent ? partnerName : 'Pending'}</span>
+          <CheckCircle2 className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${inviteSent ? 'text-emerald-600' : 'text-gray-400'}`} />
+          <div className="min-w-0">
+            <span className="block font-bold text-[11px] sm:text-xs">2. Invited</span>
+            <span className="text-[10px] sm:text-[11px] truncate block">{inviteSent ? partnerName : 'Pending'}</span>
           </div>
         </div>
 
@@ -523,7 +523,7 @@ export default function MarriageCertificatePage() {
 
         <div
           id="printable-certificate"
-          className="relative bg-[#FCFBF7] rounded-3xl p-8 sm:p-14 border-8 border-double border-[#C9A84C] shadow-2xl overflow-hidden text-center"
+          className="relative bg-[#FCFBF7] rounded-2xl sm:rounded-3xl p-4 sm:p-12 border-4 sm:border-8 border-double border-[#C9A84C] shadow-2xl overflow-hidden text-center"
           style={{ minHeight: '620px' }}
         >
           {/* Ornate corner embellishments */}

@@ -291,7 +291,7 @@ export default async function AdminDashboardPage() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="xl:col-span-2 bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 w-full min-w-0 overflow-hidden">
           <h2 className="text-base font-semibold text-gray-900 mb-4">
             Monthly Deposits (12 months)
           </h2>
@@ -301,7 +301,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Pending Withdrawals quick-action */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 w-full min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">
               Pending Withdrawals
@@ -348,7 +348,7 @@ export default async function AdminDashboardPage() {
       {/* Bottom grids */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Recent registrations */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 w-full min-w-0 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">
               Recent Registrations
@@ -360,7 +360,7 @@ export default async function AdminDashboardPage() {
               View all →
             </Link>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left border-b border-gray-100">
@@ -376,7 +376,7 @@ export default async function AdminDashboardPage() {
                     key={inv.id}
                     className="border-b border-gray-50 last:border-0"
                   >
-                    <td className="py-2.5 font-medium text-gray-900 pr-4">
+                    <td className="py-2.5 font-medium text-gray-900 pr-4 whitespace-nowrap">
                       <Link
                         href={`/admin/investors?id=${inv.id}`}
                         className="hover:text-[#C9A84C] hover:underline"
@@ -387,7 +387,7 @@ export default async function AdminDashboardPage() {
                     <td className="py-2.5 text-gray-500 pr-4 truncate max-w-[140px]">
                       {inv.email}
                     </td>
-                    <td className="py-2.5">
+                    <td className="py-2.5 whitespace-nowrap">
                       {inv.identityVerified ? (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 text-xs font-medium">
                           <CheckCircle2 className="w-3 h-3" /> Verified
@@ -409,7 +409,7 @@ export default async function AdminDashboardPage() {
         </div>
 
         {/* Recent transactions */}
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6">
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 w-full min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900">
               Recent Transactions

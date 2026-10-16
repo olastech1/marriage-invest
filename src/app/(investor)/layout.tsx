@@ -205,8 +205,8 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0">
+          <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0">{children}</div>
         </main>
       </div>
     </div>

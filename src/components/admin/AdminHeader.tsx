@@ -5,55 +5,77 @@
  * Displays user name, role badge, and avatar with a notification bell.
  */
 
-import { Bell, User } from 'lucide-react'
+import { Bell, User, Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AdminRole = 'ADMIN' | 'FINANCE' | 'COMPLIANCE' | 'SUPPORT'
 
 const ROLE_COLOR: Record<AdminRole, string> = {
-  ADMIN: 'text-red-400',
-  FINANCE: 'text-emerald-400',
-  COMPLIANCE: 'text-purple-400',
-  SUPPORT: 'text-sky-400',
+  ADMIN: 'text-red-500 bg-red-50',
+  FINANCE: 'text-emerald-600 bg-emerald-50',
+  COMPLIANCE: 'text-purple-600 bg-purple-50',
+  SUPPORT: 'text-sky-600 bg-sky-50',
 }
 
 interface Props {
   user: { name?: string | null; email?: string | null }
   role: AdminRole
+  onMenuClick?: () => void
 }
 
-export default function AdminHeader({ user, role }: Props) {
+export default function AdminHeader({ user, role, onMenuClick }: Props) {
   return (
-    <header className="sticky top-0 z-20 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm">
-      {/* Left – page title placeholder (overridden by page-level h1) */}
-      <div className="flex items-center gap-2">
-        <span className="hidden sm:inline text-sm text-gray-500">
-          Union Invest
-        </span>
-        <span className="hidden sm:inline text-gray-300">/</span>
-        <span className="text-sm font-medium text-gray-700">Admin Portal</span>
+    <header className="sticky top-0 z-20 h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-6 shadow-xs">
+      {/* Left – Hamburger menu for mobile + breadcrumb */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 -ml-1 text-gray-600 hover:text-[#0F1C3F] hover:bg-gray-100 rounded-lg transition-colors"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-[#0F1C3F] flex items-center justify-center lg:hidden">
+            <span className="text-[#C9A84C] font-bold text-xs">UI</span>
+          </div>
+          <span className="hidden sm:inline text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Union Invest
+          </span>
+          <span className="hidden sm:inline text-gray-300">/</span>
+          <span className="text-xs sm:text-sm font-bold text-[#0F1C3F]">Admin Portal</span>
+        </div>
       </div>
 
       {/* Right – controls */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Role badge */}
+        <span className={cn('text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full border border-current/20 uppercase tracking-wider', ROLE_COLOR[role])}>
+          {role}
+        </span>
+
         {/* Notification bell */}
         <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
-          <Bell className="w-5 h-5 text-gray-500" />
+          <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
         {/* Avatar + user info */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-900 leading-none">
+            <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-none">
               {user.name ?? 'Admin'}
             </p>
-            <p className={cn('text-xs font-semibold mt-0.5', ROLE_COLOR[role])}>
-              {role}
-            </p>
+            <p className="text-[10px] text-gray-400 mt-0.5">{user.email ?? ''}</p>
           </div>
-          <div className="w-9 h-9 rounded-full bg-[#0F1C3F] flex items-center justify-center">
-            <User className="w-5 h-5 text-white" />
+          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0F1C3F] flex items-center justify-center text-[#C9A84C] font-bold text-xs">
+            {(user.name ?? 'AD')
+              .split(' ')
+              .slice(0, 2)
+              .map((w) => w[0])
+              .join('')
+              .toUpperCase()}
           </div>
         </div>
       </div>
