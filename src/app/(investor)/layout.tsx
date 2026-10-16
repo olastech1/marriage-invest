@@ -22,6 +22,7 @@ import {
   MessageSquareHeart,
   MessageSquare,
 } from 'lucide-react'
+import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 
 // ---------------------------------------------------------------------------
 // Nav items
@@ -232,23 +233,8 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 relative">
           <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0">{children}</div>
 
-          {/* Floating Mutual Chat Launcher (when not on /chat) */}
-          {pathname !== '/chat' && (
-            <Link
-              href="/chat"
-              className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2.5 px-4 py-2.5 rounded-full bg-[#0F1C3F] text-white shadow-2xl hover:bg-[#182a57] border border-[#C9A84C]/40 transition-all hover:scale-105 active:scale-95 group"
-            >
-              <div className="relative flex items-center justify-center">
-                <MessageSquareHeart size={18} className="text-[#C9A84C]" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500" />
-              </div>
-              <span className="text-xs font-bold hidden sm:inline">Spouse Chat</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-[#C9A84C] text-[#0F1C3F]">
-                Marcus
-              </span>
-            </Link>
-          )}
+          {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages) */}
+          <FloatingChatWidget partnerName="Marcus Vance" />
         </main>
       </div>
     </div>

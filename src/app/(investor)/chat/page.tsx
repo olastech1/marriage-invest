@@ -32,6 +32,7 @@ import {
   Headphones,
   CheckCircle2,
   AlertCircle,
+  ArrowLeft,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,7 @@ export default function MutualChatPage() {
 
   // Channels & Active Thread
   const [activeChannel, setActiveChannel] = useState<ChannelType>('spouse')
+  const [mobileTab, setMobileTab] = useState<'channels' | 'chat'>('chat')
 
   // Notification settings
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -514,7 +516,7 @@ export default function MutualChatPage() {
   const currentMessages = activeChannel === 'spouse' ? spouseMessages : advisorMessages
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto pb-12">
+    <div className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100vh-5.5rem)] flex flex-col min-w-0 max-w-7xl mx-auto">
       {/* ── TOP NOTIFICATION TOAST ── */}
       {incomingToast && (
         <div className="fixed top-5 right-5 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border-2 border-[#C9A84C] p-4 flex items-start gap-3 animate-slide-up">
@@ -541,18 +543,18 @@ export default function MutualChatPage() {
         </div>
       )}
 
-      {/* ── HEADER & NOTIFICATION SETTINGS ── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+      {/* ── COMPACT HEADER & NOTIFICATION SETTINGS ── */}
+      <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-2 border-b border-gray-200">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-2">
-            <Heart className="w-3.5 h-3.5 fill-[#C9A84C]" />
+          <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] text-[11px] font-bold uppercase tracking-wider mb-1">
+            <Heart className="w-3 h-3 fill-[#C9A84C]" />
             Spouse & Fiduciary Mutual Chat
           </div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#0F1C3F]">
+          <h1 className="text-xl sm:text-2xl font-bold text-[#0F1C3F]">
             Matrimonial Real-Time Chat
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Private, encrypted communication between spouses and your Zurich matrimonial wealth advisor with instant notifications.
+          <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">
+            Private, encrypted communication between spouses and your Zurich matrimonial wealth advisor.
           </p>
         </div>
 
@@ -564,7 +566,7 @@ export default function MutualChatPage() {
               setSoundEnabled(!soundEnabled)
               if (!soundEnabled) playNotificationChime()
             }}
-            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
               soundEnabled
                 ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                 : 'bg-gray-100 border-gray-200 text-gray-500'
@@ -579,13 +581,14 @@ export default function MutualChatPage() {
           {!desktopNotifGranted ? (
             <button
               onClick={requestDesktopPermission}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white transition-all shadow-sm"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white transition-all shadow-xs"
             >
               <Bell className="w-3.5 h-3.5 text-[#C9A84C]" />
-              <span>Enable Browser Alerts</span>
+              <span className="hidden sm:inline">Browser Alerts</span>
+              <span className="sm:hidden">Alerts</span>
             </button>
           ) : (
-            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               <span>Push Enabled</span>
             </div>
@@ -594,20 +597,24 @@ export default function MutualChatPage() {
           {/* Simulate Partner Incoming Message */}
           <button
             onClick={triggerTestPartnerMessage}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] transition-all shadow-sm shadow-[#C9A84C]/20"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] transition-all shadow-xs shadow-[#C9A84C]/20"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Test Incoming Chat</span>
+            <span>Test Chat</span>
           </button>
         </div>
       </div>
 
-      {/* ── MAIN CHAT INTERFACE GRID ── */}
-      <div className="bg-white rounded-3xl border border-gray-200 shadow-xl overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[640px]">
-        {/* ── LEFT SIDEBAR: THREADS & CHANNELS (4 cols) ── */}
-        <div className="lg:col-span-4 border-r border-gray-100 bg-[#FCFBF7]/50 flex flex-col">
+      {/* ── MAIN CHAT CANVAS (Fills Remaining Screen Height) ── */}
+      <div className="flex-1 min-h-0 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden flex flex-col lg:flex-row relative">
+        {/* ── LEFT SIDEBAR: THREADS & CHANNELS ── */}
+        <div
+          className={`w-full lg:w-80 xl:w-96 flex-shrink-0 border-r border-gray-100 bg-[#FCFBF7]/60 flex-col h-full ${
+            mobileTab === 'channels' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {/* Channel selector header */}
-          <div className="p-4 border-b border-gray-100">
+          <div className="p-4 border-b border-gray-100 flex-shrink-0">
             <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-3">
               Encrypted Matrimonial Channels
             </span>
@@ -615,7 +622,10 @@ export default function MutualChatPage() {
             <div className="space-y-2">
               {/* Channel 1: Married Partner */}
               <div
-                onClick={() => setActiveChannel('spouse')}
+                onClick={() => {
+                  setActiveChannel('spouse')
+                  setMobileTab('chat')
+                }}
                 className={`p-3.5 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
                   activeChannel === 'spouse'
                     ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
@@ -646,7 +656,10 @@ export default function MutualChatPage() {
 
               {/* Channel 2: Zurich Wealth Concierge */}
               <div
-                onClick={() => setActiveChannel('advisor')}
+                onClick={() => {
+                  setActiveChannel('advisor')
+                  setMobileTab('chat')
+                }}
                 className={`p-3.5 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
                   activeChannel === 'advisor'
                     ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
@@ -700,50 +713,67 @@ export default function MutualChatPage() {
           </div>
         </div>
 
-        {/* ── RIGHT AREA: ACTIVE CHAT THREAD (8 cols) ── */}
-        <div className="lg:col-span-8 flex flex-col h-[650px] bg-white">
+        {/* ── RIGHT AREA: ACTIVE CHAT THREAD ── */}
+        <div
+          className={`flex-1 min-w-0 flex-col h-full bg-white ${
+            mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
+          }`}
+        >
           {/* Thread Header */}
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-sm shadow-sm">
+          <div className="px-4 sm:px-6 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white/90 backdrop-blur-sm sticky top-0 z-10 flex-shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+              {/* Back to Channels button on Mobile */}
+              <button
+                type="button"
+                onClick={() => setMobileTab('channels')}
+                className="lg:hidden p-2 -ml-1 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 flex items-center gap-1 text-xs font-bold transition-colors"
+                title="Back to Channels"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="text-[11px] hidden xs:inline">Channels</span>
+              </button>
+
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-sm flex-shrink-0">
                 {activeChannel === 'spouse' ? 'MV' : <Shield className="w-5 h-5 text-[#C9A84C]" />}
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-[#0F1C3F] flex items-center gap-2">
-                  {activeChannel === 'spouse' ? `${partnerName} (Spouse)` : advisorName}
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <div className="min-w-0">
+                <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] flex items-center gap-2 truncate">
+                  <span className="truncate">{activeChannel === 'spouse' ? `${partnerName} (Spouse)` : advisorName}</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                 </h3>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[10px] sm:text-[11px] text-gray-400 block truncate">
                   {activeChannel === 'spouse'
-                    ? 'Encrypted Matrimonial Line · Zurich & London Protocol'
-                    : 'Senior Matrimonial Wealth Manager · Certified Fiduciary'}
+                    ? 'Encrypted Matrimonial Line · Zurich Protocol'
+                    : 'Senior Matrimonial Wealth Manager'}
                 </span>
               </div>
             </div>
 
             {/* Quick action triggers */}
             {activeChannel === 'spouse' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => setShowProposalModal(true)}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
                 >
                   <PiggyBank className="w-3.5 h-3.5 text-[#C9A84C]" />
-                  <span>Propose Deposit</span>
+                  <span className="hidden xs:inline">Propose Deposit</span>
+                  <span className="xs:hidden">Deposit</span>
                 </button>
                 <button
                   onClick={() => setShowLoveNoteModal(true)}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
                 >
                   <Heart className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Love Note</span>
+                  <span className="hidden xs:inline">Love Note</span>
+                  <span className="xs:hidden">Note</span>
                 </button>
               </div>
             )}
           </div>
 
           {/* Messages Stream */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50/50">
+          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50/50">
             {/* Encryption Notice */}
             <div className="text-center my-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-xs">
@@ -965,7 +995,7 @@ export default function MutualChatPage() {
           </div>
 
           {/* Quick Reply Chips */}
-          <div className="px-4 py-2 border-t border-gray-100 bg-white flex items-center gap-2 overflow-x-auto text-xs no-scrollbar">
+          <div className="px-4 py-2 border-t border-gray-100 bg-white flex items-center gap-2 overflow-x-auto text-xs no-scrollbar flex-shrink-0">
             <span className="text-[10px] uppercase font-bold text-gray-400 flex-shrink-0">
               Quick:
             </span>
@@ -991,7 +1021,7 @@ export default function MutualChatPage() {
           {/* Bottom Chat Input Form */}
           <form
             onSubmit={handleSendMessage}
-            className="p-3 sm:p-4 border-t border-gray-200 bg-white flex items-center gap-2 sm:gap-3"
+            className="p-3 sm:p-4 border-t border-gray-200 bg-white flex items-center gap-2 sm:gap-3 flex-shrink-0"
           >
             {/* Action buttons (Propose deposit, love note) */}
             <button
