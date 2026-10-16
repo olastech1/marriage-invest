@@ -19,6 +19,7 @@ import {
   Download,
   Sparkles,
   Check,
+  PiggyBank,
 } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -569,6 +570,95 @@ export default async function HomePage() {
               </div>
             )
           })}
+        </div>
+      </section>
+
+      {/* ── MARRIAGE SAVINGS VAULT SHOWCASE ── */}
+      <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="rounded-3xl bg-gradient-to-br from-[#0F1C3F] via-[#142654] to-[#0F1C3F] p-8 sm:p-14 text-white shadow-2xl border border-[#C9A84C]/30 relative overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
+            <div className="lg:col-span-7 space-y-4">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
+                <PiggyBank className="w-3.5 h-3.5" />
+                New: Marriage Savings Vaults · 6.8% APY
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white tracking-tight leading-tight">
+                Save Together for Life Milestones. <br />
+                <span className="text-[#C9A84C]">Both Spouses Contribute. 100% Shared.</span>
+              </h2>
+              <p className="text-sm text-gray-300 leading-relaxed max-w-xl">
+                Whether you’re saving for a home down payment, family education fund, or an anniversary dream vacation, Union Invest lets both spouses deposit separately or split 50/50 while earning daily compounding 6.8% APY.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">Dual Contributions</span>
+                  <span className="text-xs font-semibold text-white">Both Partners Save</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">High-Yield Interest</span>
+                  <span className="text-xs font-semibold text-white">6.8% APY Compounding</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
+                  <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">Shared Milestones</span>
+                  <span className="text-xs font-semibold text-white">Equal 50/50 Rights</span>
+                </div>
+              </div>
+
+              <div className="pt-4 flex flex-col sm:flex-row gap-3">
+                <Link
+                  href="/register"
+                  className="px-6 py-3.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm text-center hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
+                >
+                  Start Marriage Savings
+                </Link>
+                <Link
+                  href="/certificate"
+                  className="px-6 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white font-semibold text-sm text-center hover:bg-white/15 transition-colors"
+                >
+                  View Certificate & Vaults
+                </Link>
+              </div>
+            </div>
+
+            {/* Savings Mockup Card */}
+            <div className="lg:col-span-5 bg-white rounded-2xl p-6 text-gray-900 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase">
+                  Real Estate Vault
+                </span>
+                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5" /> 6.8% APY
+                </span>
+              </div>
+
+              <div>
+                <h4 className="text-base font-bold text-[#0F1C3F]">Family Home Down Payment</h4>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-extrabold text-[#0F1C3F]">$22,000</span>
+                  <span className="text-xs text-gray-400">of $50,000 goal</span>
+                  <span className="ml-auto text-xs font-bold text-[#C9A84C]">44% Funded</span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1">
+                <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden flex">
+                  <div className="bg-indigo-600 h-full w-[23%]" title="Spouse 1" />
+                  <div className="bg-[#C9A84C] h-full w-[21%]" title="Spouse 2" />
+                </div>
+                <div className="flex justify-between text-[11px] text-gray-500 font-medium">
+                  <span>Julian Sterling: $11,400</span>
+                  <span>Marcus Vance: $10,600</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-gray-50 text-xs text-gray-600 flex items-center justify-between">
+                <span>Recent Deposit:</span>
+                <span className="font-semibold text-emerald-700">+$400 (50/50 Joint Match)</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   ArrowRight,
   TrendingUp,
+  PiggyBank,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -151,6 +152,32 @@ export default async function DashboardPage() {
 
       {/* ── Stats ───────────────────────────────────────────────────── */}
       <DashboardStatsPanel stats={stats} />
+
+      {/* ── Joint Marriage Savings Banner ──────────────────────────── */}
+      <div className="rounded-2xl bg-gradient-to-r from-[#0F1C3F] via-[#1a2f64] to-[#0F1C3F] p-5 sm:p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-[#C9A84C]/30 relative overflow-hidden">
+        <div className="space-y-1.5 z-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
+            <PiggyBank className="w-3.5 h-3.5" />
+            Joint Marriage Savings Vault · 6.8% APY
+          </div>
+          <h2 className="text-lg sm:text-xl font-bold text-white">
+            Save Together Toward Your Shared Marital Goals
+          </h2>
+          <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
+            Both spouses can contribute to shared milestone funds (home down payment, anniversary trips, education nest egg) with equal 50/50 balance tracking and monthly interest yield payouts.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3 z-10 w-full md:w-auto">
+          <Link
+            href="/savings"
+            className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#C9A84C] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#0F1C3F] shadow-sm hover:bg-[#d4b460] transition-colors"
+          >
+            Open Savings Vault
+            <ArrowRight size={15} />
+          </Link>
+        </div>
+      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Recent Transactions ─────────────────────────────────── */}

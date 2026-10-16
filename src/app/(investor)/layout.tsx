@@ -17,6 +17,7 @@ import {
   X,
   ChevronRight,
   Award,
+  PiggyBank,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ import {
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
   { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
+  { href: '/savings',       label: 'Marriage Savings',      icon: PiggyBank },
   { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },
   { href: '/transactions',  label: 'Transactions',          icon: ArrowLeftRight },
   { href: '/deposits',      label: 'Deposits',              icon: ArrowDownToLine },
