@@ -22,6 +22,7 @@ import {
   Users,
   Sparkles,
 } from 'lucide-react'
+import { CoupleStreakCard } from '@/components/quests/CoupleStreakCard'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -243,6 +244,9 @@ export default async function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* ── Couple Daily Financial Streak & Quest Card ─────────────────── */}
+      <CoupleStreakCard />
 
       {/* ── Matrimonial Registry, Chat, Certificate & Friends Quick Actions ──────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

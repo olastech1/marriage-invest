@@ -23,14 +23,19 @@ import {
   MessageSquare,
   Users,
   Heart,
+  Flame,
+  Gift,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
+import { LiveActivityPulse } from '@/components/common/LiveActivityPulse'
 
 // ---------------------------------------------------------------------------
 // Nav items
 // ---------------------------------------------------------------------------
 const navItems = [
   { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
+  { href: '/quests',        label: 'Daily Quests',          icon: Flame, badge: 'Streak' },
+  { href: '/registry',      label: 'Wedding Registry',      icon: Gift, badge: 'Gifts' },
   { href: '/chat',          label: 'Mutual Chat',           icon: MessageSquareHeart, badge: 'Live' },
   { href: '/savings',       label: 'Marriage Savings',      icon: PiggyBank },
   { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
@@ -239,6 +244,9 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
 
           {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages) */}
           <FloatingChatWidget partnerName="Marcus Vance" />
+
+          {/* Floating Live Activity Pulse (positioned at bottom-left) */}
+          <LiveActivityPulse />
         </main>
       </div>
     </div>

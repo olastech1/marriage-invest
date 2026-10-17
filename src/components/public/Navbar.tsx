@@ -8,6 +8,7 @@ import { useSession } from 'next-auth/react'
 const navLinks = [
   { label: 'Get Married', href: '/get-married', badge: 'New' },
   { label: 'Marriage Certificate', href: '/#certificate' },
+  { label: 'Wedding Registry', href: '/registry', badge: 'Gifts' },
   { label: 'How It Works', href: '/#how-it-works' },
   { label: 'Investment Opportunities', href: '/investments' },
   { label: 'Community', href: '/community', badge: 'Impact' },

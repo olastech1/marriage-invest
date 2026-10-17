@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/public/Navbar';
 import Footer from '@/components/public/Footer';
+import { LiveActivityPulse } from '@/components/common/LiveActivityPulse';
 
 export const metadata: Metadata = {
   title: {
@@ -34,6 +35,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       <div className="h-16 lg:h-20 flex-shrink-0" />
       <main className="flex-1">{children}</main>
       <Footer />
+      <LiveActivityPulse />
     </div>
   );
 }
