@@ -60,12 +60,12 @@ export default function AdminSettingsPage() {
 
   // SMTP Email Settings
   const [emailSettings, setEmailSettings] = useState({
-    host: 'mail.donateplea.com',
+    host: 'mail.unioninvest.com',
     port: '587',
     encryption: 'STARTTLS',
-    user: 'invest@donateplea.com',
+    user: 'invest@unioninvest.com',
     pass: 'UnionM@il_98Fid!2026',
-    fromEmail: 'invest@donateplea.com',
+    fromEmail: 'invest@unioninvest.com',
     fromName: 'Union Invest Notifications',
     testRecipient: 'admin@unioninvest.com',
   })
@@ -133,40 +133,40 @@ export default function AdminSettingsPage() {
     if (type === 'invest') {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.donateplea.com',
+        host: 'mail.unioninvest.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'invest@donateplea.com',
+        user: 'invest@unioninvest.com',
         pass: 'UnionM@il_98Fid!2026',
-        fromEmail: 'invest@donateplea.com',
+        fromEmail: 'invest@unioninvest.com',
         fromName: 'Union Invest Notifications',
       })
     } else if (type === 'noreply') {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.donateplea.com',
+        host: 'mail.unioninvest.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'noreply@donateplea.com',
+        user: 'noreply@unioninvest.com',
         pass: 'UnionInvest_Smtp2026!',
-        fromEmail: 'noreply@donateplea.com',
+        fromEmail: 'noreply@unioninvest.com',
         fromName: 'Union Invest Fiduciary',
       })
     } else {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.donateplea.com',
+        host: 'mail.unioninvest.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'admin@donateplea.com',
+        user: 'admin@unioninvest.com',
         pass: 'UnionInvest_Smtp2026!',
-        fromEmail: 'admin@donateplea.com',
+        fromEmail: 'admin@unioninvest.com',
         fromName: 'Union Invest Administration',
       })
     }
     setEmailStatus({
       type: 'success',
-      message: `VPS Mailcow preset (${type}@donateplea.com) loaded. Click "Verify SMTP Connection" to test.`,
+      message: `VPS Mailcow preset (${type}@unioninvest.com) loaded. Click "Verify SMTP Connection" to test.`,
     })
   }
 
@@ -506,7 +506,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   SMTP Mail Server on VPS (144.91.68.190)
                 </h3>
                 <p className="text-xs text-gray-300">
-                  Host: <code className="text-[#C9A84C]">mail.donateplea.com</code> · Port: <code className="text-[#C9A84C]">587</code> (STARTTLS) or <code className="text-[#C9A84C]">465</code> (SSL)
+                  Host: <code className="text-[#C9A84C]">mail.unioninvest.com</code> · Port: <code className="text-[#C9A84C]">587</code> (STARTTLS) or <code className="text-[#C9A84C]">465</code> (SSL)
                 </p>
               </div>
 
@@ -516,21 +516,21 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   onClick={() => handleApplyVpsPreset('invest')}
                   className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm"
                 >
-                  invest@donateplea.com (Official Dispatch)
+                  invest@unioninvest.com (Official Dispatch)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplyVpsPreset('noreply')}
                   className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  noreply@donateplea.com
+                  noreply@unioninvest.com
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplyVpsPreset('admin')}
                   className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  admin@donateplea.com
+                  admin@unioninvest.com
                 </button>
               </div>
             </div>
@@ -554,7 +554,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   type="text"
                   value={emailSettings.host}
                   onChange={(e) => setEmailSettings({ ...emailSettings, host: e.target.value })}
-                  placeholder="e.g. mail.donateplea.com"
+                  placeholder="e.g. mail.unioninvest.com"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                 />
               </div>
@@ -597,7 +597,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   type="text"
                   value={emailSettings.user}
                   onChange={(e) => setEmailSettings({ ...emailSettings, user: e.target.value })}
-                  placeholder="noreply@donateplea.com"
+                  placeholder="noreply@unioninvest.com"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                 />
               </div>
@@ -841,7 +841,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`}
                   </span>
                 </div>
                 <div className="text-xs text-gray-600 font-mono bg-white p-2.5 rounded border border-gray-200 truncate">
-                  mail.donateplea.com:587 (TLS)
+                  mail.unioninvest.com:587 (TLS)
                 </div>
                 <button
                   type="button"

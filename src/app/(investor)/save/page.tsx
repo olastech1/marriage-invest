@@ -102,6 +102,14 @@ export default function SavePage() {
 
   useEffect(() => {
     loadReciprocation()
+    fetch('/api/dashboard/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && typeof data.totalInvested === 'number' && data.totalInvested > 0) {
+          setVaultPrincipal(data.totalInvested)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   const handleOneClickReciprocate = () => {

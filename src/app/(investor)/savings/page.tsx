@@ -50,7 +50,7 @@ interface SavingsActivity {
 
 export default function MarriageSavingsPage() {
   const { data: session } = useSession()
-  const partner1Name = session?.user?.name || 'Julian Sterling'
+  const partner1Name = session?.user?.name || 'Jane Doe'
   const [partner2Name, setPartner2Name] = useState('Marcus Vance')
 
   // Initial joint goals
@@ -106,7 +106,7 @@ export default function MarriageSavingsPage() {
   const [activities, setActivities] = useState<SavingsActivity[]>([
     {
       id: 'a1',
-      contributor: 'Julian Sterling',
+      contributor: 'Jane Doe',
       goalTitle: 'Family Dream Home Down Payment',
       amount: 400,
       date: 'Today, 2:15 PM',
@@ -142,7 +142,7 @@ export default function MarriageSavingsPage() {
     },
     {
       id: 'a5',
-      contributor: 'Julian Sterling',
+      contributor: 'Jane Doe',
       goalTitle: 'First Baby & Education Nest Egg',
       amount: 200,
       date: 'Sep 22, 2026',

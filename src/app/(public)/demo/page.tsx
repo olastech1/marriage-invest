@@ -32,14 +32,14 @@ import { MARRIAGE_TYPES } from '@/types/marriage'
 
 export default function DemoDashboardPage() {
   // Demo Personas
-  const [activePersona, setActivePersona] = useState<'julian' | 'marcus'>('julian')
+  const [activePersona, setActivePersona] = useState<'jane' | 'marcus'>('jane')
 
   // Spouse Invitation & Status State
   const [partnerName, setPartnerName] = useState('Marcus Vance')
   const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
-  const [selectedTypeId, setSelectedTypeId] = useState('SAME_SEX_GAY')
+  const [selectedTypeId, setSelectedTypeId] = useState('OPPOSITE_SEX')
   const [invitationMessage, setInvitationMessage] = useState(
-    'Julian has invited you to connect as equal co-spouse on Union Invest to co-sign your Marriage Certificate and manage joint 6.8% APY savings vaults.'
+    'Jane has invited you to connect as equal co-spouse on Union Invest to co-sign your Marriage Certificate and manage joint 6.8% APY savings vaults.'
   )
 
   const [inviteStatus, setInviteStatus] = useState<'pending' | 'sent' | 'accepted'>('accepted')
@@ -50,8 +50,8 @@ export default function DemoDashboardPage() {
 
   const currentType = MARRIAGE_TYPES.find((t) => t.id === selectedTypeId) || MARRIAGE_TYPES[0]
 
-  const currentSpouseName = activePersona === 'julian' ? 'Julian Sterling' : partnerName
-  const partnerSpouseName = activePersona === 'julian' ? partnerName : 'Julian Sterling'
+  const currentSpouseName = activePersona === 'jane' ? 'Jane Doe' : partnerName
+  const partnerSpouseName = activePersona === 'jane' ? partnerName : 'Jane Doe'
 
   const showToast = (msg: string) => {
     setToastNotification(msg)
@@ -146,14 +146,14 @@ export default function DemoDashboardPage() {
               View Dashboard As:
             </span>
             <button
-              onClick={() => setActivePersona('julian')}
+              onClick={() => setActivePersona('jane')}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activePersona === 'julian'
+                activePersona === 'jane'
                   ? 'bg-[#C9A84C] text-[#0F1C3F] shadow-sm'
                   : 'text-gray-300 hover:text-white'
               }`}
             >
-              Spouse 1 (Julian)
+              Spouse 1 (Jane)
             </button>
             <button
               onClick={() => setActivePersona('marcus')}

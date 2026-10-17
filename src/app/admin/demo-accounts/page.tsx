@@ -36,14 +36,14 @@ interface DemoUser {
 
 const PRESETS = [
   {
-    name: 'Julian Vance',
-    email: 'julian.vance@unioninvest.ch',
+    name: 'Jane Doe',
+    email: 'jane.doe@unioninvest.com',
     password: 'DemoPass2025!',
     partnerName: 'Marcus Vance',
-    partnerEmail: 'marcus.vance@unioninvest.ch',
-    marriageType: 'Same-Sex Marriage (Gay/Lesbian)',
+    partnerEmail: 'marcus.vance@unioninvest.com',
+    marriageType: 'Civil Marriage / Registered Union',
     initialDeposit: 50000,
-    note: 'Executive demonstration for Same-Sex Marriage Joint Reserve',
+    note: 'Executive demonstration for Joint Spousal Reserve',
   },
   {
     name: 'Alexander Roth',
@@ -76,12 +76,12 @@ export default function AdminDemoAccountsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   // Form State
-  const [name, setName] = useState('Julian Vance')
-  const [email, setEmail] = useState('julian.vance@unioninvest.ch')
+  const [name, setName] = useState('Jane Doe')
+  const [email, setEmail] = useState('jane.doe@unioninvest.com')
   const [password, setPassword] = useState('DemoPass2025!')
   const [partnerName, setPartnerName] = useState('Marcus Vance')
-  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.ch')
-  const [marriageType, setMarriageType] = useState('Same-Sex Marriage (Gay/Lesbian)')
+  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
+  const [marriageType, setMarriageType] = useState('Civil Marriage / Registered Union')
   const [initialDeposit, setInitialDeposit] = useState<number>(50000)
   const [note, setNote] = useState('Executive demo account for prospective couples')
 

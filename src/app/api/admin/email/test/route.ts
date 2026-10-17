@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      host = process.env.SMTP_HOST || 'mail.donateplea.com',
+      host = process.env.SMTP_HOST || 'mail.unioninvest.com',
       port = Number(process.env.SMTP_PORT || 587),
-      user = process.env.SMTP_USER || 'invest@donateplea.com',
+      user = process.env.SMTP_USER || 'invest@unioninvest.com',
       pass = process.env.SMTP_PASS || 'UnionM@il_98Fid!2026',
       secure = false,
-      fromEmail = 'invest@donateplea.com',
+      fromEmail = 'invest@unioninvest.com',
       fromName = 'Union Invest Notifications',
       toEmail,
       sendTest = false,
@@ -57,7 +57,7 @@ Details:
 - Timestamp: ${formattedDate}
 
 Union Invest Fiduciary AG · Zurich & London
-If you did not request this verification, please contact admin@donateplea.com.`
+If you did not request this verification, please contact admin@unioninvest.com.`
 
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
@@ -99,7 +99,7 @@ If you did not request this verification, please contact admin@donateplea.com.`
           </div>
         `,
         headers: {
-          'List-Unsubscribe': `<mailto:admin@donateplea.com?subject=unsubscribe>`,
+          'List-Unsubscribe': `<mailto:admin@unioninvest.com?subject=unsubscribe>`,
           'X-Entity-Ref-ID': `UI-${Date.now()}`,
         },
       })

@@ -30,12 +30,12 @@ export { MARRIAGE_TYPES, type MarriageTypeOption }
 
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
-  const userName = session?.user?.name || 'Julian Sterling'
-  const userEmail = session?.user?.email || 'julian.sterling@unioninvest.com'
+  const userName = session?.user?.name || 'Jane Doe'
+  const userEmail = session?.user?.email || 'jane.doe@unioninvest.com'
 
   // Union & Marriage Type state
-  const [selectedTypeId, setSelectedTypeId] = useState('SAME_SEX_GAY')
-  const [role1, setRole1] = useState('Husband')
+  const [selectedTypeId, setSelectedTypeId] = useState('OPPOSITE_SEX')
+  const [role1, setRole1] = useState('Wife')
   const [role2, setRole2] = useState('Husband')
 
   const currentType = MARRIAGE_TYPES.find((t) => t.id === selectedTypeId) || MARRIAGE_TYPES[0]

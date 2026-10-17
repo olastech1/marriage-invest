@@ -37,16 +37,16 @@ interface FriendsPool {
 const INITIAL_POOLS: FriendsPool[] = [
   {
     id: 'pool-1',
-    name: 'Day 1 Friends · Davido Timeless VIP Pass',
-    targetAmount: 1000,
-    fundedAmount: 750,
+    name: 'Amalfi Coast 10-Year Anniversary Celebration Syndicate',
+    targetAmount: 3000,
+    fundedAmount: 2250,
     memberCount: 3,
-    targetCategory: 'Davido Timeless World Tour VIP Pass',
+    targetCategory: 'Couples & Family Celebration Vault',
     status: 'ACTIVE',
     members: [
-      { name: 'Julian Sterling (You)', amount: 250, isHost: true },
-      { name: 'Samira Chen', amount: 250 },
-      { name: 'Marcus Vance', amount: 250 },
+      { name: 'Jane Doe (You)', amount: 750, isHost: true },
+      { name: 'Marcus Vance', amount: 750 },
+      { name: 'Samira Chen', amount: 750 },
     ],
   },
   {
@@ -58,7 +58,7 @@ const INITIAL_POOLS: FriendsPool[] = [
     targetCategory: 'Union Stable Income Bond',
     status: 'FUNDED',
     members: [
-      { name: 'Julian Sterling (You)', amount: 1000, isHost: true },
+      { name: 'Jane Doe (You)', amount: 1000, isHost: true },
       { name: 'Elena Rostova', amount: 1000 },
       { name: 'David Okafor', amount: 1000 },
       { name: 'Chloe Martin', amount: 1000 },

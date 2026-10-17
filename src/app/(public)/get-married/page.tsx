@@ -355,7 +355,7 @@ export default function GetMarriedPage() {
                     required
                     value={partner1Name}
                     onChange={(e) => setPartner1Name(e.target.value)}
-                    placeholder="e.g. Julian Sterling"
+                    placeholder="e.g. Jane Doe"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] bg-white"
                   />
                 </div>
@@ -369,7 +369,7 @@ export default function GetMarriedPage() {
                     required
                     value={partner1Email}
                     onChange={(e) => setPartner1Email(e.target.value)}
-                    placeholder="e.g. julian@example.com"
+                    placeholder="e.g. jane@example.com"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] bg-white"
                   />
                 </div>
