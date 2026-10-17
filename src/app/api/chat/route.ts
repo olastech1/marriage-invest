@@ -17,6 +17,9 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'asc' },
     })
 
+    const user = await prisma.user.findUnique({ where: { id: session?.user?.id || 'usr_jane_doe' } })
+    const spouse = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
+
     return NextResponse.json({
       success: true,
       thread,
@@ -24,10 +27,26 @@ export async function GET(req: NextRequest) {
       currentUser: {
         id: session?.user?.id || 'usr_jane_doe',
         name: session?.user?.name || 'Jane Doe',
+        email: user?.email || 'jane.doe@unioninvest.com',
+        phone: (user as any)?.phone || '+1 (555) 349-8821',
       },
       partners: {
-        partner1: { id: 'usr_jane_doe', name: 'Jane Doe', status: 'Online' },
-        partner2: { id: 'usr_marcus_vance', name: 'Marcus Vance', status: 'Online' },
+        partner1: {
+          id: 'usr_jane_doe',
+          name: 'Jane Doe',
+          email: 'jane.doe@unioninvest.com',
+          phone: '+1 (555) 349-8821',
+          status: 'Online',
+          covenantId: 'CH-MIC-2026-98420',
+        },
+        partner2: {
+          id: 'usr_marcus_vance',
+          name: 'Marcus Vance',
+          email: spouse?.email || 'marcus.vance@unioninvest.com',
+          phone: (spouse as any)?.phone || '+1 (555) 782-9940',
+          status: 'Online',
+          covenantId: 'CH-MIC-2026-98420',
+        },
       },
     })
   } catch (err: any) {
@@ -54,7 +73,7 @@ export async function POST(req: Request) {
       voiceDuration,
     } = body
 
-    if (!text && !proposalData && !loveNoteTitle) {
+    if (!text && !proposalData && !loveNoteTitle && type !== 'system_reminder') {
       return NextResponse.json({ success: false, error: 'Message content cannot be empty' }, { status: 400 })
     }
 

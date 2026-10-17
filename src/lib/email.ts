@@ -492,3 +492,84 @@ export async function sendPaymentReceiptEmail(
     html,
   })
 }
+
+// ---------------------------------------------------------------------------
+// Deposit Reminder email
+// ---------------------------------------------------------------------------
+
+/**
+ * Send an automated or spousal deposit reminder email to a partner.
+ */
+export async function sendDepositReminderEmail({
+  to,
+  recipientName,
+  senderName,
+  amount,
+  vaultName = 'Jane Doe & Marcus Vance Spousal Contribution',
+  note,
+  frequency = 'Monthly',
+}: {
+  to: string
+  recipientName: string
+  senderName: string
+  amount: number
+  vaultName?: string
+  note?: string
+  frequency?: string
+}): Promise<boolean> {
+  const html = baseTemplate(
+    /* html */ `
+    <div style="text-align:center;margin-bottom:20px;">
+      <span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;background:#FEF3C7;color:#92400E;">
+        ⏰ Matrimonial Deposit Reminder
+      </span>
+    </div>
+    <h2>Deposit Reminder from ${senderName}</h2>
+    <p>Hi ${recipientName},</p>
+    <p>
+      <strong>${senderName}</strong> has sent you a scheduled deposit reminder for your joint matrimonial wealth vault:
+      <strong style="color:#0F1C3F;">${vaultName}</strong>.
+    </p>
+
+    <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;padding:20px;margin:24px 0;">
+      <table class="table" style="margin:0;">
+        <tr>
+          <td>Target Amount</td>
+          <td><strong style="font-size:18px;color:#0F1C3F;">${fmtCurrency(amount)}</strong></td>
+        </tr>
+        <tr>
+          <td>Vault Target</td>
+          <td>${vaultName}</td>
+        </tr>
+        <tr>
+          <td>Compounding Yield</td>
+          <td><strong style="color:#059669;">6.8% APY (Compounding Every Second)</strong></td>
+        </tr>
+        <tr>
+          <td>Schedule</td>
+          <td>${frequency} Spousal Contribution</td>
+        </tr>
+        ${note ? `<tr><td>Personal Note</td><td><em>&ldquo;${note}&rdquo;</em></td></tr>` : ''}
+      </table>
+    </div>
+
+    <p style="font-size:13px;color:#64748B;line-height:1.6;">
+      Under your Spousal Covenant, maintaining consistent matching deposits preserves maximum compounding acceleration and protects your dual-signatory liquidity covenant.
+    </p>
+
+    <p style="text-align:center;margin:32px 0 24px;">
+      <a href="${APP_URL}/save?amount=${amount}&target=joint" class="btn" style="background:#0F1C3F;color:#ffffff;padding:14px 32px;font-weight:700;border-radius:12px;text-decoration:none;display:inline-block;">
+        Deposit ${fmtCurrency(amount)} Now ↗
+      </a>
+    </p>
+    `,
+    `Deposit Reminder: ${senderName} sent you a reminder to deposit ${fmtCurrency(amount)} into your joint vault.`,
+  )
+
+  return sendEmail({
+    to,
+    subject: `⏰ Deposit Reminder: ${senderName} nudged you to deposit ${fmtCurrency(amount)}`,
+    html,
+  })
+}
+

@@ -12,12 +12,34 @@ export interface MockUser {
   id: string
   name: string
   email: string
+  phone?: string | null
   passwordHash?: string
   role: 'INVESTOR' | 'ADMIN' | 'FINANCE' | 'COMPLIANCE' | 'SUPPORT'
   emailVerified: Date | null
   twoFactorEnabled: boolean
   identityVerified: boolean
   identityVerifiedAt?: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export interface MockDepositReminder {
+  id: string
+  userId: string
+  targetPartnerId: string
+  targetPartnerName: string
+  targetEmail: string
+  targetPhone?: string
+  amount: number
+  frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'ONCE'
+  dayOfWeek?: string
+  dayOfMonth?: number
+  time?: string
+  note: string
+  channels: ('EMAIL' | 'IN_APP' | 'CHAT_SYSTEM')[]
+  active: boolean
+  nextReminderDate: string
+  lastSentAt?: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -171,6 +193,7 @@ const users: MockUser[] = [
     id: 'usr_jane_doe',
     name: 'Jane Doe',
     email: 'jane.doe@unioninvest.com',
+    phone: '+1 (555) 349-8821',
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
     twoFactorEnabled: false,
@@ -183,6 +206,7 @@ const users: MockUser[] = [
     id: 'usr_marcus_vance',
     name: 'Marcus Vance',
     email: 'marcus.vance@unioninvest.com',
+    phone: '+1 (555) 782-9940',
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
     twoFactorEnabled: false,
@@ -195,6 +219,7 @@ const users: MockUser[] = [
     id: 'usr_admin',
     name: 'Platform Administrator',
     email: 'admin@unioninvest.com',
+    phone: '+1 (800) 555-0199',
     role: 'ADMIN',
     emailVerified: new Date('2024-01-01'),
     twoFactorEnabled: true,
@@ -205,6 +230,26 @@ const users: MockUser[] = [
 ]
 
 const opportunities: MockOpportunity[] = [
+  {
+    id: 'opp_couple_joint',
+    title: 'Jane Doe & Marcus Vance Spousal Contribution',
+    slug: 'jane-doe-marcus-vance-spousal-contribution',
+    description: 'Dedicated joint matrimonial wealth accumulation vault for Jane Doe & Marcus Vance with 6.8% compounding interest, mutual parity enforcement, and dual-custody protection.',
+    shortDescription: 'Dedicated Jane Doe & Marcus Vance spousal wealth vault with real-time interest compounding.',
+    minAmount: new Prisma.Decimal(10),
+    maxAmount: new Prisma.Decimal(500000),
+    targetAmount: new Prisma.Decimal(250000),
+    fundedAmount: new Prisma.Decimal(0),
+    termMonths: 12,
+    annualReturnRate: new Prisma.Decimal(6.8),
+    distributionType: 'MONTHLY',
+    status: 'ACTIVE',
+    riskLevel: 'LOW',
+    openDate: new Date('2024-01-01'),
+    closeDate: new Date('2030-12-31'),
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01'),
+  },
   {
     id: 'opp_swiss',
     title: 'Swiss Matrimonial Reserve Vault',
@@ -360,6 +405,8 @@ const auditLogs: MockAuditLog[] = []
 
 export const chatMessages: MockChatMessage[] = []
 
+export const depositReminders: MockDepositReminder[] = []
+
 // ---------------------------------------------------------------------------
 // Mock Prisma Delegate Implementations
 // ---------------------------------------------------------------------------
@@ -392,7 +439,29 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
       if (typeof args?.take === 'number') {
         result = result.slice(0, args.take)
       }
-      return result
+
+      // If select is provided, project the requested fields
+      if (args?.select) {
+        return result.map((item: any) => {
+          const projected: any = {}
+          for (const key of Object.keys(args.select)) {
+            if (key === '_count') {
+              projected._count = { investments: 0 }
+            } else if (item[key] !== undefined) {
+              projected[key] = item[key]
+            }
+          }
+          if (args.select._count && !projected._count) {
+            projected._count = { investments: 0 }
+          }
+          return projected as T
+        })
+      }
+
+      return result.map((item: any) => ({
+        ...item,
+        _count: item._count || { investments: 0 },
+      })) as T[]
     },
 
     async findFirst(args?: any): Promise<T | null> {
@@ -508,6 +577,7 @@ export const mockPrismaClient = {
   documentAcknowledgment: makeDelegate(documentAcknowledgments),
   auditLog: makeDelegate(auditLogs),
   chatMessage: makeDelegate(chatMessages),
+  depositReminder: makeDelegate(depositReminders),
 
   async $transaction<T>(cb: (tx: any) => Promise<T>): Promise<T> {
     return cb(mockPrismaClient)

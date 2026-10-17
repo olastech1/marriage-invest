@@ -22,6 +22,9 @@ import {
   RefreshCw,
   Sparkles,
   DollarSign,
+  Bell,
+  Phone,
+  Mail,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -39,7 +42,7 @@ export interface ChatMessage {
   timestamp: string
   read: boolean
   reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder'
   proposalData?: {
     goalName: string
     amount: number
@@ -113,6 +116,10 @@ export default function MutualChatPage() {
   const [showLoveNoteModal, setShowLoveNoteModal] = useState(false)
   const [loveNoteText, setLoveNoteText] = useState('Adding $150 to our Amalfi Coast fund today. Loving our life together! ❤️')
   const [loveNotePreset, setLoveNotePreset] = useState('Vacation Nest Egg')
+
+  // Instant Spousal Deposit Nudge
+  const [isNudging, setIsNudging] = useState(false)
+  const [nudgeBanner, setNudgeBanner] = useState('')
 
   // Scroll anchor
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -272,6 +279,37 @@ export default function MutualChatPage() {
         setAdvisorMessages((prev) => [...prev, advisorReply])
         playNotificationChime()
       }, 1200)
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Send Instant Spousal Deposit Nudge
+  // -------------------------------------------------------------------------
+  const handleSendInstantNudge = async () => {
+    setIsNudging(true)
+    try {
+      const res = await fetch('/api/savings/reminders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'send_now',
+          amount: 500,
+          targetPartnerName: partnerName,
+          targetEmail: isMarcus ? 'jane.doe@unioninvest.com' : 'marcus.vance@unioninvest.com',
+          vaultName: `${currentUserName} & ${partnerName} Spousal Contribution`,
+          note: `Hey ${partnerName}, sending a deposit reminder to keep our joint compounding vault growing! ❤️`,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setNudgeBanner(`✓ Deposit reminder dispatched to ${partnerName} via Email, Notification, and Couple Chat!`)
+        fetchSpouseMessages(false)
+        setTimeout(() => setNudgeBanner(''), 4500)
+      }
+    } catch (err) {
+      console.error('Failed to send instant nudge:', err)
+    } finally {
+      setIsNudging(false)
     }
   }
 
@@ -538,8 +576,41 @@ export default function MutualChatPage() {
             </div>
           </div>
 
-          {/* Matrimonial Covenant Snapshot Card */}
+          {/* Connected Spousal Contact Card */}
           <div className="p-4 flex-1 flex flex-col justify-end space-y-3">
+            <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm text-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#0F1C3F] flex items-center gap-1.5">
+                  <UserCheck className="w-4 h-4 text-[#C9A84C]" />
+                  Verified Spouse Contact
+                </span>
+                <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                  Online
+                </span>
+              </div>
+              <div className="space-y-1.5 text-[11px] text-gray-600">
+                <div className="font-bold text-gray-900">{partnerName}</div>
+                <div className="flex items-center gap-1.5 text-gray-500">
+                  <Mail className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
+                  <span className="truncate">{isMarcus ? 'jane.doe@unioninvest.com' : 'marcus.vance@unioninvest.com'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-500">
+                  <Phone className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
+                  <span>{isMarcus ? '+1 (555) 349-8821' : '+1 (555) 782-9940'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleSendInstantNudge}
+                disabled={isNudging}
+                className="w-full py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] transition-colors border border-amber-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Bell className="w-3.5 h-3.5 text-amber-600" />
+                <span>{isNudging ? 'Dispatching Nudge...' : 'Send Deposit Nudge'}</span>
+              </button>
+            </div>
+
+            {/* Matrimonial Covenant Snapshot Card */}
             <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F]/5 to-[#C9A84C]/10 border border-[#C9A84C]/30 text-xs text-gray-700 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-[#0F1C3F] flex items-center gap-1.5">
@@ -600,6 +671,16 @@ export default function MutualChatPage() {
             {activeChannel === 'spouse' && (
               <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <button
+                  onClick={handleSendInstantNudge}
+                  disabled={isNudging}
+                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
+                  title="Send instant deposit reminder to spouse via Email, Notification, and Chat"
+                >
+                  <Bell className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="hidden xs:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
+                  <span className="xs:hidden">Nudge</span>
+                </button>
+                <button
                   onClick={() => setShowProposalModal(true)}
                   className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
                 >
@@ -621,6 +702,14 @@ export default function MutualChatPage() {
 
           {/* Messages Stream */}
           <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50/50">
+            {/* Instant Nudge Feedback Banner */}
+            {nudgeBanner && (
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in-50 slide-in-from-top-2 duration-200 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                <span>{nudgeBanner}</span>
+              </div>
+            )}
+
             {/* Encryption Notice */}
             <div className="text-center my-2">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-xs">
@@ -745,6 +834,48 @@ export default function MutualChatPage() {
                             Approved by Both Partners · Vault Updated
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* OFFICIAL SYSTEM DEPOSIT REMINDER CARD */}
+                    {(msg.type === 'system_reminder' || msg.type === 'reminder') && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F] via-[#162752] to-[#0F1C3F] text-white border-2 border-[#C9A84C] shadow-xl text-xs space-y-3 min-w-[280px] sm:min-w-[340px]">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-[#C9A84C] flex items-center gap-1.5">
+                            <Bell className="w-4 h-4 text-[#C9A84C] animate-bounce" />
+                            Official System Deposit Reminder
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A84C]/20 text-[#C9A84C] border border-[#C9A84C]/30">
+                            Covenant Priority
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                          {msg.text}
+                        </p>
+
+                        <div className="p-3 rounded-xl bg-white/10 border border-white/15 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Target Deposit</span>
+                            <span className="text-base font-black text-[#C9A84C]">
+                              ${Number(msg.proposalData?.amount || 500).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Compounding</span>
+                            <span className="text-xs font-bold text-emerald-400">6.8% APY Active</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-1">
+                          <Link
+                            href={`/save?amount=${msg.proposalData?.amount || 500}&target=joint`}
+                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                          >
+                            <Sparkles className="w-4 h-4" />
+                            <span>Go to Vault & Deposit ${Number(msg.proposalData?.amount || 500).toLocaleString()} ↗</span>
+                          </Link>
+                        </div>
                       </div>
                     )}
 

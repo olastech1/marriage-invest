@@ -201,11 +201,12 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           opportunityId: opportunity.id,
           referenceNumber: investmentRef,
           amount: new Prisma.Decimal(amount),
-          status: 'PENDING',
+          status: isSave ? 'ACTIVE' : 'PENDING',
           maturityDate,
         },
       })
 
+      const userName = session?.user?.name || 'Jane Doe'
       await tx.transaction.create({
         data: {
           userId,
@@ -214,7 +215,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           amount: new Prisma.Decimal(amount),
           fee: new Prisma.Decimal(0),
           netAmount: new Prisma.Decimal(amount),
-          status: 'PENDING',
+          status: isSave ? 'COMPLETED' : 'PENDING',
           reference: transactionRef,
           stripePaymentIntentId: paymentIntentId,
           description: invTitle,
@@ -224,6 +225,8 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
             soloTier: tierKey,
             isSolo,
             isSave,
+            depositorName: userName,
+            status: parsed.data.isReciprocalMatch ? 'APPROVED' : (isSave ? 'PENDING_MATCH' : 'APPROVED'),
             paymentIntentId,
           },
         },

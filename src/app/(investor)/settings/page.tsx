@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   User,
   Shield,
@@ -16,9 +16,12 @@ export default function InvestorSettingsPage() {
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'notifications'>('profile')
 
   const [profile, setProfile] = useState({
-    name: 'Amélie & Sebastian Laurent',
-    phone: '+41 44 214 8820',
-    email: 'amelie.laurent@unioninvest.com',
+    name: 'Jane Doe',
+    phone: '+1 (555) 349-8821',
+    email: 'jane.doe@unioninvest.com',
+    spouseName: 'Marcus Vance',
+    spouseEmail: 'marcus.vance@unioninvest.com',
+    spousePhone: '+1 (555) 782-9940',
   })
 
   const [passwords, setPasswords] = useState({
@@ -31,10 +34,46 @@ export default function InvestorSettingsPage() {
   const [statusMsg, setStatusMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  // Load live profile & spouse contact details on client mount
+  useEffect(() => {
+    fetch('/api/user/profile')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) {
+          setProfile({
+            name: data.user.name || 'Jane Doe',
+            phone: data.user.phone || '+1 (555) 349-8821',
+            email: data.user.email || 'jane.doe@unioninvest.com',
+            spouseName: data.spouse?.name || 'Marcus Vance',
+            spouseEmail: data.spouse?.email || 'marcus.vance@unioninvest.com',
+            spousePhone: data.spouse?.phone || '+1 (555) 782-9940',
+          })
+        }
+      })
+      .catch(console.error)
+  }, [])
+
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault()
-    setStatusMsg('Profile details successfully updated.')
-    setTimeout(() => setStatusMsg(''), 3000)
+    try {
+      const res = await fetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: profile.name,
+          phone: profile.phone,
+          spouseEmail: profile.spouseEmail,
+          spousePhone: profile.spousePhone,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to update profile')
+      setStatusMsg('✓ Profile & spouse contact details successfully updated and synced with Chat & Reminders!')
+      setTimeout(() => setStatusMsg(''), 3500)
+    } catch (err: any) {
+      setErrorMsg(err.message)
+      setTimeout(() => setErrorMsg(''), 3500)
+    }
   }
 
   const handlePasswordSave = (e: React.FormEvent) => {
@@ -108,52 +147,117 @@ export default function InvestorSettingsPage() {
 
       {/* Profile Form */}
       {activeTab === 'profile' && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-          <h2 className="text-base font-bold text-[#0F1C3F] mb-6">Joint Account Details</h2>
-          <form onSubmit={handleProfileSave} className="space-y-5">
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Joint Legal Name *
-              </label>
-              <input
-                type="text"
-                value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-              />
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm space-y-8">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-base font-bold text-[#0F1C3F] flex items-center gap-2">
+                <User className="w-4 h-4 text-[#C9A84C]" />
+                Primary Partner (Your Profile)
+              </h2>
+              <span className="text-[10px] font-mono bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
+                Signatory Verified
+              </span>
             </div>
+            <form onSubmit={handleProfileSave} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Your Legal Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.name}
+                    onChange={(e) => setProfile({ ...profile, name: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Your Primary Account Email (Read-only)
+                  </label>
+                  <input
+                    type="email"
+                    disabled
+                    value={profile.email}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500 outline-none"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Primary Account Email (Read-only)
-              </label>
-              <input
-                type="email"
-                disabled
-                value={profile.email}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-500 outline-none"
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Your Verified Contact Telephone
+                </label>
+                <input
+                  type="tel"
+                  value={profile.phone}
+                  onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
+                />
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Verified Contact Telephone
-              </label>
-              <input
-                type="tel"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-              />
-            </div>
+              <div className="pt-6 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-[#0F1C3F] flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-[#C9A84C]" />
+                    Connected Spouse Contact (Linked to Chat & Reminders)
+                  </h3>
+                  <span className="text-[10px] font-mono bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full font-bold">
+                    Covenant Connected
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mb-4">
+                  Deposit reminders, reciprocation notifications, and chat invites will be delivered to this email and telephone number.
+                </p>
 
-            <button
-              type="submit"
-              className="px-6 py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#162c5e] text-white text-xs font-bold transition-colors"
-            >
-              Save Profile Changes
-            </button>
-          </form>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Spouse / Partner Name
+                    </label>
+                    <input
+                      type="text"
+                      value={profile.spouseName}
+                      disabled
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                      Spouse Delivery Email (For Deposit Nudges)
+                    </label>
+                    <input
+                      type="email"
+                      value={profile.spouseEmail}
+                      onChange={(e) => setProfile({ ...profile, spouseEmail: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-4">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                    Spouse Verified Mobile / SMS Contact
+                  </label>
+                  <input
+                    type="tel"
+                    value={profile.spousePhone}
+                    onChange={(e) => setProfile({ ...profile, spousePhone: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#162c5e] text-white text-xs font-bold transition-colors shadow-sm"
+                >
+                  Save Profile & Contact Information
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

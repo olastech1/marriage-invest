@@ -123,6 +123,30 @@ export async function POST(req: NextRequest) {
         },
       })
 
+      // 3. Create transaction record for partner's deposit
+      try {
+        await prisma.transaction.create({
+          data: {
+            userId: 'usr_marcus_vance',
+            type: 'DEPOSIT',
+            amount: depositAmount as any,
+            fee: 0 as any,
+            netAmount: depositAmount as any,
+            status: 'PENDING',
+            reference: `RECIP-${Date.now().toString(36).toUpperCase()}`,
+            description: `${DEFAULT_PARTNER_NAME} Vault Deposit ($${depositAmount.toLocaleString()}) — Pending Spousal Match`,
+            metadata: {
+              depositorName: DEFAULT_PARTNER_NAME,
+              targetPartnerName: userName,
+              status: 'PENDING_MATCH',
+              requiresMatch: true,
+            },
+          },
+        })
+      } catch (e) {
+        console.warn('Failed to record transaction:', e)
+      }
+
       return NextResponse.json({
         success: true,
         message: `${DEFAULT_PARTNER_NAME} deposited $${depositAmount.toLocaleString()}. Reciprocation obligation is now ACTIVE.`,
@@ -167,6 +191,30 @@ export async function POST(req: NextRequest) {
           link: '/save',
         },
       })
+
+      // 3. Create completed transaction record for user match
+      try {
+        await prisma.transaction.create({
+          data: {
+            userId,
+            type: 'DEPOSIT',
+            amount: matchAmount as any,
+            fee: 0 as any,
+            netAmount: matchAmount as any,
+            status: 'COMPLETED',
+            reference: `MATCH-${Date.now().toString(36).toUpperCase()}`,
+            description: `${userName} Spousal Match Deposit ($${matchAmount.toLocaleString()}) — Covenant Fulfilled`,
+            metadata: {
+              depositorName: userName,
+              targetPartnerName: DEFAULT_PARTNER_NAME,
+              status: 'APPROVED',
+              matched: true,
+            },
+          },
+        })
+      } catch (e) {
+        console.warn('Failed to record match transaction:', e)
+      }
 
       return NextResponse.json({
         success: true,
