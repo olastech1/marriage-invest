@@ -62,6 +62,13 @@ export function FloatingChatWidget({
       time: '10:45 AM',
       type: 'text',
     },
+    {
+      id: 'm4',
+      sender: 'partner',
+      text: 'I just saved $500 to our Joint Vault! Under our Spousal Covenant (Rule 4.2), your matching reciprocal deposit is now due ❤️',
+      time: '11:02 AM',
+      type: 'proposal',
+    },
   ])
 
   // Don't render on the full chat page to avoid redundancy
@@ -242,7 +249,19 @@ export function FloatingChatWidget({
                         : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                     }`}
                   >
-                    {m.text}
+                    <p>{m.text}</p>
+                    {m.type === 'proposal' && (
+                      <div className="mt-2 pt-2 border-t border-amber-100 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-amber-800">Rule 4.2 Obligation</span>
+                        <Link
+                          href="/save"
+                          onClick={() => setIsOpen(false)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors"
+                        >
+                          Match Deposit →
+                        </Link>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1 px-1 mt-0.5 text-[9px] text-gray-400">
                     <span>{m.time}</span>

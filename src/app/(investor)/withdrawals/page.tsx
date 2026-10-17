@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
+import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   ArrowDownToLine,
+  ArrowRight,
   Building2,
   AlertCircle,
   CheckCircle2,
@@ -336,6 +338,8 @@ export default function WithdrawalsPage() {
   const [success, setSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [showDrainer, setShowDrainer] = useState(false)
+  const [hasPendingReciprocation, setHasPendingReciprocation] = useState(false)
+  const [pendingReciprocation, setPendingReciprocation] = useState<any>(null)
 
   const feePercent = 0.02
   const penaltyPercent = 0.01
@@ -363,6 +367,12 @@ export default function WithdrawalsPage() {
         if (data.partnerName) {
           setPartnerName(data.partnerName)
         }
+        if (typeof data.hasPendingReciprocation === 'boolean') {
+          setHasPendingReciprocation(data.hasPendingReciprocation)
+        }
+        if (data.pendingReciprocation) {
+          setPendingReciprocation(data.pendingReciprocation)
+        }
       })
       .catch((err) => console.error(err))
   }
@@ -376,6 +386,12 @@ export default function WithdrawalsPage() {
     setError('')
     if (!selectedInvestmentId) {
       setError('Please select an investment to withdraw from.')
+      return
+    }
+    if (!isSolo && hasPendingReciprocation) {
+      setError(
+        `Withdrawal locked: Under Spousal Covenant Rule 4.2, you must reciprocate ${pendingReciprocation?.depositorName || partnerName}'s deposit of $${Number(pendingReciprocation?.amount || 500).toLocaleString()} before withdrawing joint funds.`
+      )
       return
     }
     if (numAmount < 100) {
@@ -544,6 +560,38 @@ export default function WithdrawalsPage() {
           Simulate Partner Request
         </button>
       </div>
+
+      {/* ── COVENANT RECIPROCATION LOCK BANNER ── */}
+      {hasPendingReciprocation && (
+        <div className="rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-red-300">
+          <div className="flex items-start gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0 shadow-inner">
+              <Lock className="w-6 h-6 text-amber-200" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-black/30 px-2.5 py-0.5 rounded-full text-amber-200">
+                  Covenant Lock Active · Rule 4.2
+                </span>
+                <span className="text-xs text-red-100 font-semibold">Deposit Parity Incomplete</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-black">
+                Joint Vault Withdrawals Locked — Reciprocation Required
+              </h3>
+              <p className="text-xs text-red-100 leading-relaxed max-w-xl">
+                {pendingReciprocation?.depositorName || partnerName} deposited ${Number(pendingReciprocation?.amount || 500).toLocaleString()} into the joint vault. Under your Spousal Covenant, you must reciprocate with a matching contribution before joint capital can be liquidated.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/save"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all flex-shrink-0 transform hover:scale-105"
+          >
+            Go to Save &amp; Match ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* ── SPOUSAL APPROVAL REQUIRED CALLOUT CARD (IF PARTNER REQUESTED) ── */}
       {pendingPartnerApprovals.length > 0 && (
@@ -752,10 +800,14 @@ export default function WithdrawalsPage() {
 
             <button
               type="submit"
-              disabled={loading || eligibleInvestments.length === 0}
-              className="w-full py-3 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-colors disabled:opacity-50"
+              disabled={loading || eligibleInvestments.length === 0 || (!isSolo && hasPendingReciprocation)}
+              className="w-full py-3.5 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-colors disabled:opacity-50"
             >
-              {loading ? 'Processing...' : 'Review Withdrawal Impact'}
+              {loading
+                ? 'Processing...'
+                : !isSolo && hasPendingReciprocation
+                ? `Locked — Reciprocate ${pendingReciprocation?.depositorName || partnerName}'s $${Number(pendingReciprocation?.amount || 500).toLocaleString()} First`
+                : 'Review Withdrawal Impact'}
             </button>
           </form>
         </div>

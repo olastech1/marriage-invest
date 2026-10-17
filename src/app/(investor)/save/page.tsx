@@ -19,6 +19,10 @@ import {
   BarChart3,
   Heart,
   Users,
+  Scale,
+  Zap,
+  AlertTriangle,
+  ShieldCheck,
 } from 'lucide-react'
 
 const APY = 0.068
@@ -57,7 +61,7 @@ export default function SavePage() {
   const name = session?.user?.name?.split(' ')[0] || 'Investor'
 
   // Simulated current vault state
-  const [vaultPrincipal] = useState(24750)
+  const [vaultPrincipal, setVaultPrincipal] = useState(24750)
   const [saveAmount, setSaveAmount] = useState('500')
   const [frequency, setFrequency] = useState<'ONCE' | 'WEEKLY' | 'MONTHLY'>('MONTHLY')
   const [beneficiary, setBeneficiary] = useState<'PARTNER' | 'JOINT'>('PARTNER')
@@ -65,7 +69,13 @@ export default function SavePage() {
   const partnerName = 'Marcus Vance'
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   const [error, setError] = useState('')
+
+  // Spousal Reciprocation Covenant State
+  const [reciprocationData, setReciprocationData] = useState<any>(null)
+  const [isReciprocalMatch, setIsReciprocalMatch] = useState(false)
+  const [simulatingPartner, setSimulatingPartner] = useState(false)
 
   const liveBalance = useLiveVaultBalance(vaultPrincipal)
   const todayEarned = vaultPrincipal * DAILY_RATE
@@ -77,6 +87,54 @@ export default function SavePage() {
   const newTotal = vaultPrincipal + numSaveAmount
   const newDailyEarned = newTotal * DAILY_RATE
   const newMonthlyEarned = newTotal * (APY / 12)
+
+  const loadReciprocation = async () => {
+    try {
+      const res = await fetch('/api/savings/reciprocation')
+      const data = await res.json()
+      if (data) {
+        setReciprocationData(data)
+      }
+    } catch (err) {
+      console.error('Failed to load reciprocation data', err)
+    }
+  }
+
+  useEffect(() => {
+    loadReciprocation()
+  }, [])
+
+  const handleOneClickReciprocate = () => {
+    const targetAmount = reciprocationData?.pendingReciprocation?.amount || 500
+    setSaveAmount(String(targetAmount))
+    setBeneficiary('JOINT')
+    setIsReciprocalMatch(true)
+    // Scroll smoothly to the form
+    document.getElementById('save-deposit-form')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleSimulatePartnerDeposit = async () => {
+    setSimulatingPartner(true)
+    setError('')
+    try {
+      const res = await fetch('/api/savings/reciprocation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'simulate_partner_deposit',
+          amount: 500,
+          partnerNote: 'I just saved $500 for our trip to Italy! Under our Spousal Covenant, you must match this deposit ❤️',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to simulate partner deposit')
+      await loadReciprocation()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSimulatingPartner(false)
+    }
+  }
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,17 +163,30 @@ export default function SavePage() {
           partnerName,
           partnerNote: beneficiary === 'PARTNER' ? partnerNote : undefined,
           type: 'SAVE',
+          isReciprocalMatch: isReciprocalMatch || (reciprocationData?.hasPendingReciprocation && numSaveAmount >= (reciprocationData?.pendingReciprocation?.amount || 0)),
         }),
       })
       const investData = await investRes.json()
       if (!investRes.ok) throw new Error(investData.error || 'Saving failed.')
+
+      setVaultPrincipal((prev) => prev + numSaveAmount)
       setSuccess(true)
+      if (isReciprocalMatch || reciprocationData?.hasPendingReciprocation) {
+        setSuccessMessage(`✓ Spousal Reciprocation Fulfilled! You matched ${partnerName}'s deposit with $${numSaveAmount.toLocaleString()}. Both partners are in full financial parity and vault withdrawals are unlocked!`)
+      } else {
+        setSuccessMessage(`Savings added! Under Spousal Covenant Rule 4.2, ${partnerName} is now required to reciprocate with a matching deposit.`)
+      }
+      setIsReciprocalMatch(false)
+      loadReciprocation()
     } catch (err: any) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
+
+  const hasPendingReciprocation = Boolean(reciprocationData?.hasPendingReciprocation)
+  const pendingReciprocation = reciprocationData?.pendingReciprocation
 
   return (
     <div className="space-y-6">
@@ -128,7 +199,7 @@ export default function SavePage() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#0F1C3F]">Save Together, Grow Every Second</h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Your joint marriage savings vault compounds interest <strong>every single second</strong>. Watch your wealth grow in real-time.
+            Your joint marriage savings vault compounds interest <strong>every single second</strong>. Under our Spousal Covenant, whenever one partner saves, the other must reciprocate.
           </p>
         </div>
         <Link
@@ -181,17 +252,125 @@ export default function SavePage() {
         </div>
       </div>
 
+      {/* ── COMPULSORY SPOUSAL RECIPROCATION COVENANT PANEL ───────── */}
+      <div
+        className={`rounded-3xl p-6 sm:p-7 border-2 transition-all shadow-md relative overflow-hidden ${
+          hasPendingReciprocation
+            ? 'bg-gradient-to-br from-amber-500/15 via-rose-500/10 to-amber-500/5 border-amber-300 ring-2 ring-amber-400/30'
+            : 'bg-emerald-500/5 border-emerald-200'
+        }`}
+      >
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="space-y-2 max-w-2xl">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-black tracking-wider uppercase flex items-center gap-1.5 ${
+                  hasPendingReciprocation
+                    ? 'bg-amber-500 text-white animate-pulse'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}
+              >
+                {hasPendingReciprocation ? (
+                  <>
+                    <Zap size={13} className="fill-white" />
+                    Compulsory Reciprocation Active · Rule 4.2
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={13} className="text-emerald-600" />
+                    Spousal Parity in 100% Harmony
+                  </>
+                )}
+              </span>
+              <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                <Scale size={13} className="text-[#C9A84C]" />
+                Mutual Spousal Match Covenant
+              </span>
+            </div>
+
+            {hasPendingReciprocation ? (
+              <>
+                <h3 className="text-xl sm:text-2xl font-black text-[#0F1C3F]">
+                  {pendingReciprocation?.depositorName || partnerName} Deposited ${Number(pendingReciprocation?.amount || 500).toLocaleString()} — Your Reciprocation is Compulsory
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                  Under your Spousal Financial Covenant, every deposit made into the vault requires mandatory partner reciprocation within 48 hours to preserve parity.
+                </p>
+                {pendingReciprocation?.partnerNote && (
+                  <div className="inline-flex items-center gap-2 p-2.5 rounded-xl bg-white/80 border border-amber-200 text-xs text-amber-900 font-medium">
+                    <Heart size={13} className="text-rose-500 fill-rose-500 flex-shrink-0" />
+                    <span>&ldquo;{pendingReciprocation.partnerNote}&rdquo;</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 pt-1 text-xs text-amber-900 font-bold flex-wrap">
+                  <span className="flex items-center gap-1 bg-amber-100/80 px-2.5 py-1 rounded-lg">
+                    <Clock size={13} className="text-amber-700" />
+                    Covenant Window: 41h remaining
+                  </span>
+                  <span className="flex items-center gap-1 bg-rose-100/80 text-rose-800 px-2.5 py-1 rounded-lg">
+                    <Lock size={13} className="text-rose-700" />
+                    Vault Withdrawals Locked Until Matched
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg sm:text-xl font-bold text-[#0F1C3F]">
+                  Spousal Savings Parity is 100% Balanced
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Every deposit made by you or {partnerName} has been reciprocated. Whenever one partner saves, the other partner is required to match within 48 hours.
+                </p>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row md:flex-col items-stretch sm:items-center gap-2.5 w-full md:w-auto flex-shrink-0">
+            {hasPendingReciprocation && (
+              <button
+                type="button"
+                onClick={handleOneClickReciprocate}
+                className="px-6 py-3.5 rounded-2xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
+              >
+                <Sparkles size={15} className="text-[#C9A84C]" />
+                Reciprocate & Match ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={simulatingPartner}
+              onClick={handleSimulatePartnerDeposit}
+              className="px-4 py-2.5 rounded-xl border border-gray-300 hover:border-[#C9A84C] bg-white text-gray-700 font-bold text-xs hover:bg-gray-50 flex items-center justify-center gap-1.5 transition-all"
+            >
+              <RefreshCw size={12} className={simulatingPartner ? 'animate-spin' : ''} />
+              {simulatingPartner ? 'Simulating...' : `Simulate ${partnerName} Depositing $500`}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── SAVE / DEPOSIT FORM ──────────────────────────────────── */}
-        <div className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6 space-y-5">
-          <h2 className="font-bold text-[#0F1C3F]">Add Savings to Your Vault</h2>
+        <div id="save-deposit-form" className="rounded-3xl border border-gray-200 bg-white shadow-sm p-6 space-y-5">
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-[#0F1C3F]">Add Savings to Your Vault</h2>
+            {isReciprocalMatch && (
+              <span className="text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full flex items-center gap-1">
+                <Zap size={11} className="fill-amber-600" />
+                Matching Spousal Deposit
+              </span>
+            )}
+          </div>
 
           {success ? (
             <div className="py-6 text-center space-y-3">
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-              <h4 className="font-black text-emerald-800">Savings Added Successfully!</h4>
-              <p className="text-xs text-emerald-700">Your vault balance is already compounding your new deposit.</p>
-              <button onClick={() => setSuccess(false)} className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors">
+              <h4 className="font-black text-emerald-800 text-base">Savings Added Successfully!</h4>
+              <p className="text-xs text-emerald-700 max-w-md mx-auto leading-relaxed">{successMessage}</p>
+              <button
+                onClick={() => setSuccess(false)}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-sm"
+              >
                 Add More Savings
               </button>
             </div>
@@ -207,7 +386,10 @@ export default function SavePage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setBeneficiary('PARTNER')}
+                    onClick={() => {
+                      setBeneficiary('PARTNER')
+                      setIsReciprocalMatch(false)
+                    }}
                     className={`p-3 rounded-2xl border text-left transition-all ${
                       beneficiary === 'PARTNER'
                         ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#0F1C3F] ring-1 ring-[#C9A84C]'
@@ -233,7 +415,7 @@ export default function SavePage() {
                       <Users size={14} className="text-[#0F1C3F]" />
                       Joint Spousal Vault
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-0.5">Shared 50/50 with dual-signature lock</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Shared 50/50 with compulsory reciprocation</p>
                   </button>
                 </div>
               </div>
@@ -256,7 +438,14 @@ export default function SavePage() {
 
               {/* Amount */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Amount to Save (USD)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Amount to Save (USD)</label>
+                  {hasPendingReciprocation && (
+                    <span className="text-[11px] font-bold text-amber-700">
+                      Match Required: ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+                    </span>
+                  )}
+                </div>
                 <div className="relative">
                   <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 font-bold">$</span>
                   <input
@@ -323,13 +512,13 @@ export default function SavePage() {
                 </div>
               )}
 
-              {/* Dual-Signature Protection Covenant Notice */}
+              {/* Dual-Signature & Compulsory Reciprocation Covenant Notice */}
               <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900">
-                <Lock size={15} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                <Scale size={15} className="text-amber-700 flex-shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
-                  <span className="font-bold block">Mutual Dual-Signature Covenant</span>
+                  <span className="font-bold block">Compulsory Reciprocation Protocol (Rule 4.2)</span>
                   <span className="text-[11px] text-amber-800 leading-relaxed block">
-                    Neither partner can withdraw funds unilaterally. Once a withdrawal is requested, the other partner must review and digitally approve before any money is released.
+                    Under our Spousal Covenant, every deposit made into the joint vault is <strong>compulsory for the partner to reciprocate</strong> within 48 hours. Vault withdrawals are locked until parity is restored.
                   </span>
                 </div>
               </div>
@@ -337,7 +526,7 @@ export default function SavePage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full py-3.5 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
               >
                 {loading ? (
                   <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Adding...</>

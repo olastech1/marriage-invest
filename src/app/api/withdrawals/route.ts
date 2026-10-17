@@ -24,7 +24,7 @@ export async function GET() {
     const userId = session.user.id
     const userName = session.user.name || 'Investor'
 
-    const [userWithdrawals, allPendingWithdrawals, eligibleInvestments] = await Promise.all([
+    const [userWithdrawals, allPendingWithdrawals, eligibleInvestments, latestReciprocationLog] = await Promise.all([
       prisma.withdrawalRequest.findMany({
         where: { userId },
         include: {
@@ -76,6 +76,13 @@ export async function GET() {
           },
         },
       }),
+      prisma.auditLog.findFirst({
+        where: {
+          userId,
+          action: { in: ['RECIPROCATION_OBLIGATION_CREATED', 'RECIPROCATION_OBLIGATION_FULFILLED'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
     ])
 
     // Parse adminNote metadata on user's own withdrawals
@@ -125,11 +132,24 @@ export async function GET() {
       })
       .filter((w) => w.requiresPartnerApproval && w.partnerApprovalStatus === 'AWAITING_PARTNER')
 
+    const hasPendingReciprocation = Boolean(
+      latestReciprocationLog && latestReciprocationLog.action === 'RECIPROCATION_OBLIGATION_CREATED',
+    )
+    const pendingReciprocation = hasPendingReciprocation
+      ? {
+          amount: Number((latestReciprocationLog?.after as any)?.amount || 500),
+          depositorName: (latestReciprocationLog?.after as any)?.depositorName || 'Marcus Vance',
+          dueDate: (latestReciprocationLog?.after as any)?.dueDate,
+        }
+      : null
+
     return NextResponse.json({
       withdrawals,
       eligibleInvestments,
       pendingPartnerApprovals,
       partnerName: 'Marcus Vance',
+      hasPendingReciprocation,
+      pendingReciprocation,
     })
   } catch (error) {
     console.error('[GET /api/withdrawals]', error)
@@ -176,6 +196,30 @@ export async function POST(req: NextRequest) {
     }
 
     const isSolo = investment.referenceNumber?.startsWith('SOLO-')
+
+    // Enforce compulsory reciprocation lock on joint withdrawals
+    if (!isSolo) {
+      const latestRecip = await prisma.auditLog.findFirst({
+        where: {
+          userId,
+          action: { in: ['RECIPROCATION_OBLIGATION_CREATED', 'RECIPROCATION_OBLIGATION_FULFILLED'] },
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      if (latestRecip && latestRecip.action === 'RECIPROCATION_OBLIGATION_CREATED') {
+        const recipAmount = Number((latestRecip.after as any)?.amount || 500)
+        const depositor = (latestRecip.after as any)?.depositorName || 'Marcus Vance'
+        return NextResponse.json(
+          {
+            error: `Withdrawal locked: A reciprocal deposit obligation of $${recipAmount.toLocaleString()} from ${depositor} is pending. Under Spousal Covenant Rule 4.2, both partners must maintain reciprocal balance before joint capital can be liquidated.`,
+            reciprocationBlocked: true,
+          },
+          { status: 400 },
+        )
+      }
+    }
+
     const fee = amount * 0.02
     const penalty = amount * 0.01
     const netAmount = Math.max(0, amount - fee - penalty)

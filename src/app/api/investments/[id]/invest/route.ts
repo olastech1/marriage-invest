@@ -27,6 +27,10 @@ const investSchema = z.object({
   tier: z.string().optional(),
   frequency: z.string().optional(),
   type: z.string().optional(),
+  beneficiary: z.string().optional(),
+  partnerNote: z.string().optional(),
+  partnerName: z.string().optional(),
+  isReciprocalMatch: z.boolean().optional(),
 })
 
 type Params = { params: Promise<{ id: string }> }
@@ -229,6 +233,67 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
         },
       })
     })
+
+    // Spousal Reciprocation Protocol
+    if (isSave || !isSolo) {
+      const partnerName = parsed.data.partnerName || 'Marcus Vance'
+      const userName = session.user.name || 'Investor'
+
+      if (parsed.data.isReciprocalMatch) {
+        // Fulfill the outstanding reciprocation obligation
+        await prisma.auditLog.create({
+          data: {
+            userId,
+            action: 'RECIPROCATION_OBLIGATION_FULFILLED',
+            entity: 'SavingsVault',
+            after: {
+              reciprocatedBy: userName,
+              partnerName,
+              amount,
+              fulfilledAt: new Date().toISOString(),
+            },
+          },
+        }).catch(console.error)
+
+        await prisma.notification.create({
+          data: {
+            userId,
+            title: '✓ Spousal Covenant Reciprocated!',
+            message: `You successfully matched ${partnerName}'s deposit with $${amount.toLocaleString()}! Both spouses are in full financial parity. Vault withdrawals unlocked.`,
+            type: 'SUCCESS',
+            link: '/save',
+          },
+        }).catch(console.error)
+      } else {
+        // New deposit triggers a mandatory reciprocation obligation on the partner
+        const dueDate = new Date(Date.now() + 48 * 3600 * 1000)
+        await prisma.auditLog.create({
+          data: {
+            userId,
+            action: 'RECIPROCATION_OBLIGATION_CREATED',
+            entity: 'SavingsVault',
+            after: {
+              depositorName: userName,
+              requiredReciprocatorName: partnerName,
+              amount,
+              partnerNote: parsed.data.partnerNote || 'Joint savings vault contribution ❤️',
+              dueDate: dueDate.toISOString(),
+              status: 'PENDING',
+            },
+          },
+        }).catch(console.error)
+
+        await prisma.notification.create({
+          data: {
+            userId,
+            title: '⚡ Reciprocal Match Triggered on Partner',
+            message: `Your deposit of $${amount.toLocaleString()} has triggered a mandatory reciprocal match for ${partnerName} under Spousal Covenant Rule 4.2.`,
+            type: 'INFO',
+            link: '/save',
+          },
+        }).catch(console.error)
+      }
+    }
 
     return NextResponse.json(
       {

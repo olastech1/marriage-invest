@@ -93,6 +93,7 @@ export default async function DashboardPage() {
     userAcknowledgments,
     marriageAudit,
     allPendingWithdrawals,
+    latestReciprocationLog,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -136,6 +137,13 @@ export default async function DashboardPage() {
     prisma.withdrawalRequest.findMany({
       where: { status: 'PENDING' },
       select: { id: true, amount: true, adminNote: true, userId: true },
+    }),
+    prisma.auditLog.findFirst({
+      where: {
+        userId,
+        action: { in: ['RECIPROCATION_OBLIGATION_CREATED', 'RECIPROCATION_OBLIGATION_FULFILLED'] },
+      },
+      orderBy: { createdAt: 'desc' },
     }),
   ])
 
@@ -209,6 +217,13 @@ export default async function DashboardPage() {
     }
   })
 
+  // Pending compulsory spousal reciprocation check
+  const hasPendingReciprocation = Boolean(
+    latestReciprocationLog && latestReciprocationLog.action === 'RECIPROCATION_OBLIGATION_CREATED'
+  )
+  const pendingRecipAmount = Number((latestReciprocationLog?.after as any)?.amount || 500)
+  const pendingDepositorName = (latestReciprocationLog?.after as any)?.depositorName || 'Marcus Vance'
+
   return (
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────────────── */}
@@ -229,6 +244,38 @@ export default async function DashboardPage() {
           Save to Vault
         </Link>
       </div>
+
+      {/* ── Compulsory Spousal Reciprocation Due Banner ───────────────── */}
+      {hasPendingReciprocation && (
+        <div className="rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-transparent border-2 border-rose-300 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <Sparkles className="w-5 h-5 text-amber-200" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-rose-200/80 text-rose-900 px-2.5 py-0.5 rounded-full">
+                  Compulsory Reciprocation · Rule 4.2
+                </span>
+                <span className="text-xs text-rose-700 font-semibold">Vault Parity Incomplete</span>
+              </div>
+              <h3 className="text-base font-bold text-rose-950">
+                {pendingDepositorName} Deposited ${pendingRecipAmount.toLocaleString()} — Your Reciprocal Match is Required
+              </h3>
+              <p className="text-xs text-rose-900/80 leading-relaxed max-w-2xl">
+                Under your Spousal Financial Covenant, every deposit into your joint vault is compulsory to match. Joint vault withdrawals remain locked until parity is restored.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/save"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors flex-shrink-0"
+          >
+            Match ${pendingRecipAmount.toLocaleString()} Now
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* ── Partner Approval Pending Banner ──────────────────────────── */}
       {pendingSpousalApprovals.length > 0 && (
