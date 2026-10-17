@@ -11,6 +11,7 @@ const withdrawalSchema = z.object({
   accountName: z.string().min(2, 'Account name is required'),
   accountNumber: z.string().min(4, 'Account number is required'),
   routingNumber: z.string().min(4, 'Routing number is required'),
+  partnerName: z.string().optional(),
 })
 
 export async function GET() {
@@ -21,8 +22,9 @@ export async function GET() {
     }
 
     const userId = session.user.id
+    const userName = session.user.name || 'Investor'
 
-    const [withdrawals, eligibleInvestments] = await Promise.all([
+    const [userWithdrawals, allPendingWithdrawals, eligibleInvestments] = await Promise.all([
       prisma.withdrawalRequest.findMany({
         where: { userId },
         include: {
@@ -30,6 +32,27 @@ export async function GET() {
             select: {
               referenceNumber: true,
               opportunity: { select: { title: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.withdrawalRequest.findMany({
+        where: {
+          status: 'PENDING',
+        },
+        include: {
+          investment: {
+            select: {
+              referenceNumber: true,
+              opportunity: { select: { title: true } },
+            },
+          },
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },
@@ -55,7 +78,59 @@ export async function GET() {
       }),
     ])
 
-    return NextResponse.json({ withdrawals, eligibleInvestments })
+    // Parse adminNote metadata on user's own withdrawals
+    const withdrawals = userWithdrawals.map((w) => {
+      let partnerApproval: any = null
+      try {
+        if (w.adminNote && w.adminNote.startsWith('{')) {
+          partnerApproval = JSON.parse(w.adminNote)
+        }
+      } catch {
+        partnerApproval = null
+      }
+      return {
+        ...w,
+        partnerApproval,
+      }
+    })
+
+    // Find pending partner approvals:
+    // Any pending withdrawal where adminNote specifies requiresPartnerApproval AND partnerApprovalStatus === 'AWAITING_PARTNER'
+    const pendingPartnerApprovals = allPendingWithdrawals
+      .map((w) => {
+        let meta: any = null
+        try {
+          if (w.adminNote && w.adminNote.startsWith('{')) {
+            meta = JSON.parse(w.adminNote)
+          }
+        } catch {
+          meta = null
+        }
+        return {
+          id: w.id,
+          amount: Number(w.amount),
+          fee: Number(w.fee),
+          netAmount: Number(w.netAmount),
+          bankName: w.bankName,
+          accountNumber: w.accountNumber,
+          createdAt: w.createdAt,
+          requesterId: w.userId,
+          requesterName: meta?.requestedByName || w.user?.name || 'Your Partner',
+          partnerName: meta?.partnerName || 'Marcus Vance',
+          opportunityTitle: w.investment?.opportunity?.title || 'Joint Marriage Reserve',
+          referenceNumber: w.investment?.referenceNumber,
+          partnerApprovalStatus: meta?.partnerApprovalStatus || 'AWAITING_PARTNER',
+          requiresPartnerApproval: meta?.requiresPartnerApproval ?? true,
+        }
+      })
+      .filter((w) => w.requiresPartnerApproval && w.partnerApprovalStatus === 'AWAITING_PARTNER')
+
+    return NextResponse.json({
+      withdrawals,
+      eligibleInvestments,
+      pendingPartnerApprovals,
+      partnerName: 'Marcus Vance',
+    })
   } catch (error) {
     console.error('[GET /api/withdrawals]', error)
     return NextResponse.json({ error: 'Failed to retrieve withdrawals' }, { status: 500 })
@@ -70,6 +145,7 @@ export async function POST(req: NextRequest) {
     }
 
     const userId = session.user.id
+    const userName = session.user.name || 'Investor'
     const body = await req.json()
     const parsed = withdrawalSchema.safeParse(body)
 
@@ -80,11 +156,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { investmentId, amount, bankName, accountName, accountNumber, routingNumber } = parsed.data
+    const { investmentId, amount, bankName, accountName, accountNumber, routingNumber, partnerName: customPartnerName } = parsed.data
 
     // Check investment belongs to user
     const investment = await prisma.investment.findUnique({
       where: { id: investmentId },
+      include: { opportunity: true },
     })
 
     if (!investment || investment.userId !== userId) {
@@ -98,23 +175,52 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const isSolo = investment.referenceNumber?.startsWith('SOLO-')
     const fee = amount * 0.02
-    const netAmount = amount - fee
+    const penalty = amount * 0.01
+    const netAmount = Math.max(0, amount - fee - penalty)
+
+    const partnerName = customPartnerName || 'Marcus Vance'
+
+    const partnerMetadata = {
+      requiresPartnerApproval: !isSolo,
+      partnerApprovalStatus: isSolo ? 'NOT_REQUIRED' : 'AWAITING_PARTNER',
+      requestedByName: userName,
+      partnerName,
+      initiatedAt: new Date().toISOString(),
+      fee,
+      penalty,
+      netAmount,
+    }
 
     const withdrawal = await prisma.withdrawalRequest.create({
       data: {
         userId,
         investmentId,
         amount: new Prisma.Decimal(amount),
-        fee: new Prisma.Decimal(fee),
+        fee: new Prisma.Decimal(fee + penalty),
         netAmount: new Prisma.Decimal(netAmount),
         status: 'PENDING',
         bankName,
         accountName,
         accountNumber,
         routingNumber,
+        adminNote: JSON.stringify(partnerMetadata),
       },
     })
+
+    // If joint account, create partner notification
+    if (!isSolo) {
+      await prisma.notification.create({
+        data: {
+          userId,
+          title: 'Partner Approval Required 🔐',
+          message: `Your withdrawal request of $${amount.toLocaleString()} is locked pending digital approval from ${partnerName}. Under our Spousal Covenant, joint funds cannot be released unilaterally.`,
+          type: 'INFO',
+          link: '/withdrawals',
+        },
+      }).catch(console.error)
+    }
 
     // Create Audit Log
     await prisma.auditLog.create({
@@ -125,14 +231,26 @@ export async function POST(req: NextRequest) {
         entityId: withdrawal.id,
         after: {
           amount,
-          fee,
+          fee: fee + penalty,
           netAmount,
           investmentId,
+          partnerApprovalRequired: !isSolo,
         },
       },
     })
 
-    return NextResponse.json({ success: true, withdrawal }, { status: 201 })
+    return NextResponse.json(
+      {
+        success: true,
+        withdrawal,
+        partnerApprovalRequired: !isSolo,
+        partnerName,
+        message: isSolo
+          ? 'Solo withdrawal submitted for review.'
+          : `Withdrawal submitted. Under our Spousal Covenant, ${partnerName} must approve before funds can be liquidated.`,
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error('[POST /api/withdrawals]', error)
     return NextResponse.json({ error: 'Internal server error processing withdrawal' }, { status: 500 })

@@ -17,6 +17,8 @@ import {
   Plus,
   RefreshCw,
   BarChart3,
+  Heart,
+  Users,
 } from 'lucide-react'
 
 const APY = 0.068
@@ -58,6 +60,9 @@ export default function SavePage() {
   const [vaultPrincipal] = useState(24750)
   const [saveAmount, setSaveAmount] = useState('500')
   const [frequency, setFrequency] = useState<'ONCE' | 'WEEKLY' | 'MONTHLY'>('MONTHLY')
+  const [beneficiary, setBeneficiary] = useState<'PARTNER' | 'JOINT'>('PARTNER')
+  const [partnerNote, setPartnerNote] = useState('For our upcoming travel & future home ❤️')
+  const partnerName = 'Marcus Vance'
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
@@ -93,7 +98,14 @@ export default function SavePage() {
       const investRes = await fetch(`/api/investments/${opp.id}/invest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: numSaveAmount, frequency }),
+        body: JSON.stringify({
+          amount: numSaveAmount,
+          frequency,
+          beneficiary,
+          partnerName,
+          partnerNote: beneficiary === 'PARTNER' ? partnerNote : undefined,
+          type: 'SAVE',
+        }),
       })
       const investData = await investRes.json()
       if (!investRes.ok) throw new Error(investData.error || 'Saving failed.')
@@ -189,6 +201,59 @@ export default function SavePage() {
                 <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700">{error}</div>
               )}
 
+              {/* Save Target & Beneficiary Selector */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Save Target & Beneficiary</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBeneficiary('PARTNER')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      beneficiary === 'PARTNER'
+                        ? 'border-[#C9A84C] bg-[#C9A84C]/10 text-[#0F1C3F] ring-1 ring-[#C9A84C]'
+                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Heart size={14} className="text-rose-500 fill-rose-500" />
+                      Save for {partnerName}
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Earmarked gift with spousal dedication</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBeneficiary('JOINT')}
+                    className={`p-3 rounded-2xl border text-left transition-all ${
+                      beneficiary === 'JOINT'
+                        ? 'border-[#0F1C3F] bg-[#0F1C3F]/5 text-[#0F1C3F] ring-1 ring-[#0F1C3F]'
+                        : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Users size={14} className="text-[#0F1C3F]" />
+                      Joint Spousal Vault
+                    </div>
+                    <p className="text-[10px] text-gray-500 mt-0.5">Shared 50/50 with dual-signature lock</p>
+                  </button>
+                </div>
+              </div>
+
+              {beneficiary === 'PARTNER' && (
+                <div className="space-y-1.5 animate-in fade-in-50 duration-200">
+                  <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <Heart size={12} className="text-rose-500" />
+                    Dedication Note for {partnerName}
+                  </label>
+                  <input
+                    type="text"
+                    value={partnerNote}
+                    onChange={(e) => setPartnerNote(e.target.value)}
+                    placeholder="e.g. For our upcoming travel & future home ❤️"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+                  />
+                </div>
+              )}
+
               {/* Amount */}
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Amount to Save (USD)</label>
@@ -257,6 +322,17 @@ export default function SavePage() {
                   <div className="flex justify-between"><span className="text-gray-600">New Monthly Earnings</span><span className="font-bold text-emerald-700">+{USD2(newMonthlyEarned)}/month</span></div>
                 </div>
               )}
+
+              {/* Dual-Signature Protection Covenant Notice */}
+              <div className="flex items-start gap-2.5 p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-xs text-amber-900">
+                <Lock size={15} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <span className="font-bold block">Mutual Dual-Signature Covenant</span>
+                  <span className="text-[11px] text-amber-800 leading-relaxed block">
+                    Neither partner can withdraw funds unilaterally. Once a withdrawal is requested, the other partner must review and digitally approve before any money is released.
+                  </span>
+                </div>
+              </div>
 
               <button
                 type="submit"

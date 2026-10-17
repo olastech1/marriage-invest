@@ -21,6 +21,7 @@ import {
   MessageSquareHeart,
   Users,
   Sparkles,
+  Lock,
 } from 'lucide-react'
 import { CoupleStreakCard } from '@/components/quests/CoupleStreakCard'
 
@@ -91,6 +92,7 @@ export default async function DashboardPage() {
     allDocuments,
     userAcknowledgments,
     marriageAudit,
+    allPendingWithdrawals,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -130,6 +132,10 @@ export default async function DashboardPage() {
     }),
     prisma.auditLog.findFirst({
       where: { userId, action: 'MARRIAGE_REGISTRATION_CREATED' },
+    }),
+    prisma.withdrawalRequest.findMany({
+      where: { status: 'PENDING' },
+      select: { id: true, amount: true, adminNote: true, userId: true },
     }),
   ])
 
@@ -192,6 +198,17 @@ export default async function DashboardPage() {
 
   const unreadCount = notifications.filter((n) => !n.read).length
 
+  // Pending spousal withdrawal approvals requiring partner signature
+  const pendingSpousalApprovals = allPendingWithdrawals.filter((w) => {
+    try {
+      if (!w.adminNote || !w.adminNote.startsWith('{')) return false
+      const meta = JSON.parse(w.adminNote)
+      return meta.requiresPartnerApproval && meta.partnerApprovalStatus === 'AWAITING_PARTNER'
+    } catch {
+      return false
+    }
+  })
+
   return (
     <div className="space-y-6">
       {/* ── Header ──────────────────────────────────────────────────── */}
@@ -212,6 +229,37 @@ export default async function DashboardPage() {
           Save to Vault
         </Link>
       </div>
+
+      {/* ── Partner Approval Pending Banner ──────────────────────────── */}
+      {pendingSpousalApprovals.length > 0 && (
+        <div className="rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-transparent border-2 border-amber-300 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+          <div className="flex items-start gap-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-md">
+              <Lock className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black uppercase tracking-widest bg-amber-200/80 text-amber-900 px-2.5 py-0.5 rounded-full">
+                  Action Required · Dual-Signature Vault Lock
+                </span>
+              </div>
+              <h3 className="text-base font-bold text-amber-950">
+                Spousal Withdrawal Awaiting Your Authorization ({pendingSpousalApprovals.length})
+              </h3>
+              <p className="text-xs text-amber-900/80 leading-relaxed max-w-2xl">
+                Your partner has requested a withdrawal from the joint savings vault. Under your Spousal Covenant, funds remain locked until you review and grant digital spousal consent.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/withdrawals"
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors flex-shrink-0"
+          >
+            Review & Sign
+            <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
 
       {/* ── Stats ───────────────────────────────────────────────────── */}
       <DashboardStatsPanel stats={stats} />

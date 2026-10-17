@@ -21,7 +21,24 @@ import {
   Calculator,
   Sparkles,
   Lock,
+  HeartHandshake,
+  UserCheck,
+  UserX,
+  Check,
+  Heart,
+  Users,
 } from 'lucide-react'
+
+interface PartnerApprovalMeta {
+  requiresPartnerApproval?: boolean
+  partnerApprovalStatus?: 'AWAITING_PARTNER' | 'APPROVED' | 'REJECTED' | 'NOT_REQUIRED'
+  requestedByName?: string
+  partnerName?: string
+  partnerApprovedAt?: string
+  partnerRejectedAt?: string
+  partnerSignature?: string
+  partnerNote?: string
+}
 
 interface WithdrawalItem {
   id: string
@@ -32,11 +49,29 @@ interface WithdrawalItem {
   bankName: string | null
   accountNumber: string | null
   adminNote: string | null
+  partnerApproval?: PartnerApprovalMeta | null
   createdAt: string
   investment: {
     referenceNumber: string
     opportunity: { title: string }
   }
+}
+
+interface PendingPartnerApproval {
+  id: string
+  amount: number
+  fee: number
+  netAmount: number
+  bankName: string | null
+  accountNumber: string | null
+  createdAt: string
+  requesterId: string
+  requesterName: string
+  partnerName: string
+  opportunityTitle: string
+  referenceNumber?: string
+  partnerApprovalStatus: string
+  requiresPartnerApproval: boolean
 }
 
 interface ActiveInvestment {
@@ -51,11 +86,13 @@ interface ActiveInvestment {
 function WithdrawalDrainerPanel({
   amount,
   selectedInvestment,
+  partnerName,
   onContinue,
   onCancel,
 }: {
   amount: number
   selectedInvestment: ActiveInvestment | undefined
+  partnerName: string
   onContinue: () => void
   onCancel: () => void
 }) {
@@ -76,6 +113,8 @@ function WithdrawalDrainerPanel({
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
   const USD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+
+  const isSolo = selectedInvestment?.referenceNumber?.startsWith('SOLO-')
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
@@ -235,7 +274,7 @@ function WithdrawalDrainerPanel({
           <div className="p-6 space-y-4">
             <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 space-y-2 text-center">
               <AlertTriangle className="w-8 h-8 text-red-600 mx-auto" />
-              <h4 className="text-base font-black text-red-700">Final Disclosure — This Is Irreversible</h4>
+              <h4 className="text-base font-black text-red-700">Final Disclosure — Dual-Signature Required</h4>
               <p className="text-xs text-red-600 leading-relaxed">
                 By proceeding, you authorize a withdrawal of <strong>{USD(amount)}</strong>. You will incur:
               </p>
@@ -245,6 +284,18 @@ function WithdrawalDrainerPanel({
                 <div className="flex justify-between font-black text-red-900 border-t border-red-200 pt-1"><span>Total Deductions</span><span>{USD(earlyExitFee + earlyPenalty)}</span></div>
                 <div className="flex justify-between"><span>Net Received</span><span>{USD(amount - earlyExitFee - earlyPenalty)}</span></div>
               </div>
+
+              {!isSolo && (
+                <div className="mt-3 p-3 rounded-xl bg-amber-100/90 border border-amber-300 text-left text-xs text-amber-900 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <HeartHandshake size={14} className="text-amber-800" />
+                    Spousal Consent Protocol Activated
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Under our Spousal Covenant, this withdrawal cannot be processed unilaterally. <strong>{partnerName}</strong> must review and digitally sign off before funds are released.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex gap-3">
@@ -252,7 +303,7 @@ function WithdrawalDrainerPanel({
                 onClick={onContinue}
                 className="flex-1 py-3 rounded-2xl border-2 border-red-600 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors"
               >
-                Confirm Withdrawal — I Understand
+                Submit Request &amp; Notify {partnerName}
               </button>
               <button
                 onClick={onCancel}
@@ -270,7 +321,9 @@ function WithdrawalDrainerPanel({
 
 export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
-  const [investments, setInvestments] = useState<ActiveInvestment[]>([])
+  const [eligibleInvestments, setEligibleInvestments] = useState<ActiveInvestment[]>([])
+  const [pendingPartnerApprovals, setPendingPartnerApprovals] = useState<PendingPartnerApproval[]>([])
+  const [partnerName, setPartnerName] = useState('Marcus Vance')
   const [selectedInvestmentId, setSelectedInvestmentId] = useState('')
   const [amount, setAmount] = useState('1000')
   const [bankName, setBankName] = useState('')
@@ -278,8 +331,10 @@ export default function WithdrawalsPage() {
   const [accountNumber, setAccountNumber] = useState('')
   const [routingNumber, setRoutingNumber] = useState('')
   const [loading, setLoading] = useState(false)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
   const [showDrainer, setShowDrainer] = useState(false)
 
   const feePercent = 0.02
@@ -288,7 +343,8 @@ export default function WithdrawalsPage() {
   const feeAmount = numAmount * feePercent
   const penaltyAmount = numAmount * penaltyPercent
   const netAmount = Math.max(0, numAmount - feeAmount - penaltyAmount)
-  const selectedInvestment = investments.find((i) => i.id === selectedInvestmentId)
+  const selectedInvestment = eligibleInvestments.find((i) => i.id === selectedInvestmentId)
+  const isSolo = selectedInvestment?.referenceNumber?.startsWith('SOLO-')
 
   const loadData = () => {
     fetch('/api/withdrawals')
@@ -296,10 +352,16 @@ export default function WithdrawalsPage() {
       .then((data) => {
         if (data.withdrawals) setWithdrawals(data.withdrawals)
         if (data.eligibleInvestments) {
-          setInvestments(data.eligibleInvestments)
+          setEligibleInvestments(data.eligibleInvestments)
           if (!selectedInvestmentId && data.eligibleInvestments.length > 0) {
             setSelectedInvestmentId(data.eligibleInvestments[0].id)
           }
+        }
+        if (data.pendingPartnerApprovals) {
+          setPendingPartnerApprovals(data.pendingPartnerApprovals)
+        }
+        if (data.partnerName) {
+          setPartnerName(data.partnerName)
         }
       })
       .catch((err) => console.error(err))
@@ -331,6 +393,7 @@ export default function WithdrawalsPage() {
   const handleConfirmedWithdrawal = async () => {
     setShowDrainer(false)
     setLoading(true)
+    setError('')
     try {
       const res = await fetch('/api/withdrawals', {
         method: 'POST',
@@ -342,11 +405,17 @@ export default function WithdrawalsPage() {
           accountName,
           accountNumber,
           routingNumber,
+          partnerName,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Withdrawal request failed.')
       setSuccess(true)
+      setSuccessMessage(
+        data.partnerApprovalRequired
+          ? `Withdrawal of $${numAmount.toLocaleString()} submitted! Under our Spousal Covenant, ${partnerName} must approve before funds can be released.`
+          : `Solo withdrawal of $${numAmount.toLocaleString()} submitted for financial processing.`
+      )
       setAmount('1000')
       setBankName('')
       setAccountName('')
@@ -358,6 +427,76 @@ export default function WithdrawalsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Partner Approves withdrawal
+  const handlePartnerApprove = async (withdrawalId: string) => {
+    setActionLoading(withdrawalId)
+    setError('')
+    try {
+      const res = await fetch(`/api/withdrawals/${withdrawalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'partner_approve',
+          partnerSignature: `${partnerName} (Digital Spousal Consent Verified)`,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to approve withdrawal')
+      setSuccess(true)
+      setSuccessMessage(`You have digitally verified and approved ${partnerName}&apos;s withdrawal. The request is now proceeding to liquidation.`)
+      loadData()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Partner Declines withdrawal
+  const handlePartnerReject = async (withdrawalId: string) => {
+    setActionLoading(withdrawalId)
+    setError('')
+    try {
+      const res = await fetch(`/api/withdrawals/${withdrawalId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'partner_reject',
+          partnerNote: 'Declined by spouse to protect vault compound growth.',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to decline withdrawal')
+      setSuccess(true)
+      setSuccessMessage(`Withdrawal declined. Funds remain securely invested and compounding in your joint vault.`)
+      loadData()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  // Demo simulation helper
+  const handleSimulatePartnerRequest = () => {
+    const demoReq: PendingPartnerApproval = {
+      id: `sim-${Date.now()}`,
+      amount: 1250,
+      fee: 25,
+      netAmount: 1212.5,
+      bankName: 'JPMorgan Chase',
+      accountNumber: '****9812',
+      createdAt: new Date().toISOString(),
+      requesterId: 'partner-sim',
+      requesterName: partnerName,
+      partnerName: 'You',
+      opportunityTitle: 'Zurich Marriage Reserve Vault',
+      partnerApprovalStatus: 'AWAITING_PARTNER',
+      requiresPartnerApproval: true,
+    }
+    setPendingPartnerApprovals((prev) => [demoReq, ...prev])
   }
 
   const statusColors: Record<string, string> = {
@@ -375,27 +514,125 @@ export default function WithdrawalsPage() {
         <WithdrawalDrainerPanel
           amount={numAmount}
           selectedInvestment={selectedInvestment}
+          partnerName={partnerName}
           onContinue={handleConfirmedWithdrawal}
           onCancel={() => setShowDrainer(false)}
         />
       )}
 
       {/* Page Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-[#0F1C3F]">Withdrawal Request</h1>
-        <p className="text-sm text-slate-500 mt-1">
-          All withdrawal requests require admin approval and are processed within 2–5 business days.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0F1C3F]/10 text-[#0F1C3F] text-xs font-bold uppercase tracking-wider mb-1.5">
+            <HeartHandshake className="w-3.5 h-3.5 text-[#C9A84C]" />
+            Dual-Signature Marital Vault Withdrawals
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-black text-[#0F1C3F]">Withdrawal &amp; Spousal Approvals</h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Under your marital covenant, withdrawals from joint vaults require mutual partner sign-off before liquidation.
+          </p>
+        </div>
+
+        {/* Quick Demo Simulator button */}
+        <button
+          type="button"
+          onClick={handleSimulatePartnerRequest}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#0F1C3F] text-xs font-bold hover:bg-[#C9A84C]/20 transition-all self-start sm:self-auto"
+          title="Simulate a withdrawal request from your partner to test dual approval"
+        >
+          <Sparkles size={13} className="text-[#C9A84C]" />
+          Simulate Partner Request
+        </button>
       </div>
+
+      {/* ── SPOUSAL APPROVAL REQUIRED CALLOUT CARD (IF PARTNER REQUESTED) ── */}
+      {pendingPartnerApprovals.length > 0 && (
+        <div className="rounded-3xl border-2 border-[#C9A84C] bg-gradient-to-br from-amber-50 via-white to-orange-50 p-6 shadow-lg space-y-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-amber-200/70 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-2xl bg-[#0F1C3F] flex items-center justify-center text-[#C9A84C]">
+                <HeartHandshake size={20} />
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#C9A84C] block">
+                  Action Required · Dual-Signature Lock
+                </span>
+                <h3 className="text-base font-black text-[#0F1C3F]">
+                  Spousal Withdrawal Request ({pendingPartnerApprovals.length})
+                </h3>
+              </div>
+            </div>
+            <span className="self-start sm:self-auto px-3 py-1 rounded-full bg-amber-200/80 text-amber-900 text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+              <Lock size={12} />
+              Awaiting Your Digital Signature
+            </span>
+          </div>
+
+          <p className="text-xs text-gray-700 leading-relaxed">
+            Your spouse has requested to withdraw funds from your joint marriage reserve. Under the <strong>Mutual Spousal Covenant</strong>, no capital can leave the vault without your explicit consent.
+          </p>
+
+          <div className="space-y-3">
+            {pendingPartnerApprovals.map((req) => (
+              <div
+                key={req.id}
+                className="p-4 rounded-2xl bg-white border border-amber-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-sm">{req.requesterName}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold border border-blue-200">
+                      Partner Request
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    Vault: <strong className="text-slate-800">{req.opportunityTitle}</strong>
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    Requested on {new Date(req.createdAt).toLocaleDateString()} · Bank: {req.bankName || 'Direct Transfer'}
+                  </div>
+                </div>
+
+                <div className="flex flex-col md:items-end">
+                  <span className="text-xs text-slate-400 font-medium uppercase">Requested Amount</span>
+                  <span className="text-xl font-black text-[#0F1C3F]">${req.amount.toLocaleString()}</span>
+                  <span className="text-[11px] text-red-600 font-medium">Net after fees: ${req.netAmount.toLocaleString()}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 md:pt-0">
+                  <button
+                    type="button"
+                    disabled={actionLoading === req.id}
+                    onClick={() => handlePartnerApprove(req.id)}
+                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    <UserCheck size={14} />
+                    {actionLoading === req.id ? 'Verifying...' : 'Approve & Sign'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={actionLoading === req.id}
+                    onClick={() => handlePartnerReject(req.id)}
+                    className="flex-1 md:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-300 text-red-700 font-bold text-xs hover:bg-red-50 transition-colors disabled:opacity-50"
+                  >
+                    <UserX size={14} />
+                    Decline Request
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Early Withdrawal Warning Banner */}
       <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
         <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
         <div>
-          <h4 className="text-sm font-bold text-amber-900">Early Exit Costs You Money</h4>
+          <h4 className="text-sm font-bold text-amber-900">Mutual Covenant &amp; Early Exit Policy</h4>
           <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
-            Withdrawing before maturity incurs a <strong>2% liquidity fee</strong> plus a <strong>1% early withdrawal penalty</strong> on the requested amount.
-            Our withdrawal process includes a mandatory disclosure review designed to protect your long-term financial wellbeing.
+            Withdrawing before maturity incurs a <strong>2% liquidity fee</strong> plus a <strong>1% early withdrawal penalty</strong>.
+            For joint accounts, your spouse ({partnerName}) will automatically be requested to provide digital consent before funds are liquidated.
           </p>
         </div>
       </div>
@@ -403,14 +640,23 @@ export default function WithdrawalsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Form */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-5">
-          <h2 className="font-semibold text-slate-900">Request a Withdrawal</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-slate-900">Request a Withdrawal</h2>
+            {isSolo ? (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Solo Account</span>
+            ) : (
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#C9A84C]/20 text-[#0F1C3F] border border-[#C9A84C]/40">
+                Joint Vault · Dual-Signature
+              </span>
+            )}
+          </div>
 
           {success && (
             <div className="flex items-start gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
               <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-emerald-800">Withdrawal Request Submitted</p>
-                <p className="text-xs text-emerald-700 mt-0.5">Your request is under admin review. Expect a decision within 2–5 business days.</p>
+                <p className="text-sm font-semibold text-emerald-800">Request Updated</p>
+                <p className="text-xs text-emerald-700 mt-0.5">{successMessage}</p>
               </div>
             </div>
           )}
@@ -425,8 +671,8 @@ export default function WithdrawalsPage() {
           <form onSubmit={handleSubmitRequest} className="space-y-4">
             {/* Investment Selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Select Investment to Withdraw From</label>
-              {investments.length === 0 ? (
+              <label className="text-xs font-semibold text-slate-700">Select Investment or Vault</label>
+              {eligibleInvestments.length === 0 ? (
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
                   No eligible investments available for withdrawal.
                 </div>
@@ -437,7 +683,7 @@ export default function WithdrawalsPage() {
                   className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C] bg-white"
                   required
                 >
-                  {investments.map((inv) => (
+                  {eligibleInvestments.map((inv) => (
                     <option key={inv.id} value={inv.id}>
                       {inv.opportunity.title} · ${Number(inv.amount).toLocaleString()} · Ref: {inv.referenceNumber}
                     </option>
@@ -495,14 +741,18 @@ export default function WithdrawalsPage() {
               </div>
             </div>
 
-            <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-              <Lock size={13} className="text-[#C9A84C] flex-shrink-0 mt-0.5" />
-              <span>A mandatory <strong>3-step cost disclosure review</strong> will appear before your request is submitted for admin approval.</span>
-            </div>
+            {!isSolo && (
+              <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+                <HeartHandshake size={15} className="text-amber-700 flex-shrink-0 mt-0.5" />
+                <span>
+                  <strong>Spousal Consent Notice:</strong> Once submitted, an authorization prompt will be dispatched to <strong>{partnerName}</strong>. Capital cannot be liquidated without their joint digital approval.
+                </span>
+              </div>
+            )}
 
             <button
               type="submit"
-              disabled={loading || investments.length === 0}
+              disabled={loading || eligibleInvestments.length === 0}
               className="w-full py-3 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-colors disabled:opacity-50"
             >
               {loading ? 'Processing...' : 'Review Withdrawal Impact'}
@@ -512,8 +762,9 @@ export default function WithdrawalsPage() {
 
         {/* Withdrawal History */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <h2 className="font-semibold text-slate-900">Withdrawal History</h2>
+            <span className="text-xs text-slate-400">{withdrawals.length} Total</span>
           </div>
           <div className="divide-y divide-slate-100">
             {withdrawals.length === 0 ? (
@@ -522,22 +773,60 @@ export default function WithdrawalsPage() {
                 <p className="text-sm text-slate-400">No withdrawal requests yet</p>
               </div>
             ) : (
-              withdrawals.map((w) => (
-                <div key={w.id} className="px-5 py-4 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-800">${Number(w.amount).toLocaleString()}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[w.status] || 'bg-gray-100 text-gray-600'}`}>
-                      {w.status}
-                    </span>
+              withdrawals.map((w) => {
+                const partnerMeta = w.partnerApproval
+                const isWaitingSpouse = partnerMeta?.partnerApprovalStatus === 'AWAITING_PARTNER'
+                const isSpouseApproved = partnerMeta?.partnerApprovalStatus === 'APPROVED'
+                const isSpouseRejected = partnerMeta?.partnerApprovalStatus === 'REJECTED'
+
+                return (
+                  <div key={w.id} className="px-5 py-4 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-800">${Number(w.amount).toLocaleString()}</span>
+                      <div className="flex items-center gap-1.5">
+                        {isWaitingSpouse && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                            <Clock size={11} />
+                            Awaiting Spouse
+                          </span>
+                        )}
+                        {isSpouseApproved && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                            <Check size={11} />
+                            Spouse Approved
+                          </span>
+                        )}
+                        {isSpouseRejected && (
+                          <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1">
+                            <X size={11} />
+                            Declined by Spouse
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[w.status] || 'bg-gray-100 text-gray-600'}`}>
+                          {w.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-slate-600">{w.investment?.opportunity?.title}</p>
+                    {w.bankName && <p className="text-xs text-slate-400">{w.bankName} · ****{w.accountNumber?.slice(-4)}</p>}
+
+                    {isWaitingSpouse && (
+                      <p className="text-[11px] text-amber-700 bg-amber-50 rounded px-2 py-1">
+                        🔒 Waiting for {partnerMeta?.partnerName || partnerName} to digitally approve release of funds.
+                      </p>
+                    )}
+
+                    {isSpouseApproved && (
+                      <p className="text-[11px] text-emerald-700 bg-emerald-50 rounded px-2 py-1">
+                        ✓ Digital spousal signature verified. Processing with financial custody.
+                      </p>
+                    )}
+
+                    <p className="text-[11px] text-slate-400">{new Date(w.createdAt).toLocaleDateString()}</p>
                   </div>
-                  <p className="text-xs text-slate-500">{w.investment?.opportunity?.title}</p>
-                  {w.bankName && <p className="text-xs text-slate-400">{w.bankName} · ****{w.accountNumber?.slice(-4)}</p>}
-                  {w.adminNote && (
-                    <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">Admin Note: {w.adminNote}</p>
-                  )}
-                  <p className="text-[11px] text-slate-400">{new Date(w.createdAt).toLocaleDateString()}</p>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
