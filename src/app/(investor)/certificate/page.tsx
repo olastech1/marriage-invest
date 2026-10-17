@@ -127,7 +127,7 @@ export default function MarriageCertificatePage() {
                 Print / PDF
               </button>
               <Link
-                href="/deposits"
+                href="/save"
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
               >
                 Start Investing

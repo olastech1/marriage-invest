@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   ArrowDownToLine,
@@ -10,6 +10,17 @@ import {
   Clock,
   ShieldCheck,
   FileText,
+  TrendingDown,
+  TrendingUp,
+  AlertTriangle,
+  Flame,
+  BarChart3,
+  ChevronDown,
+  ChevronUp,
+  X,
+  Calculator,
+  Sparkles,
+  Lock,
 } from 'lucide-react'
 
 interface WithdrawalItem {
@@ -36,6 +47,227 @@ interface ActiveInvestment {
   status: string
 }
 
+// DRAINER: Shows how much the user is forfeiting by withdrawing
+function WithdrawalDrainerPanel({
+  amount,
+  selectedInvestment,
+  onContinue,
+  onCancel,
+}: {
+  amount: number
+  selectedInvestment: ActiveInvestment | undefined
+  onContinue: () => void
+  onCancel: () => void
+}) {
+  const APY = 0.068
+  const MONTHS_REMAINING = selectedInvestment ? Math.max(1, selectedInvestment.opportunity.termMonths - 2) : 10
+  const dailyRate = APY / 365
+  const monthlyRate = APY / 12
+
+  const earningsForfeited30d = amount * monthlyRate
+  const earningsForfeitedFull = amount * (APY * (MONTHS_REMAINING / 12))
+  const earningsIn5Years = amount * Math.pow(1 + APY, 5) - amount
+  const earningsIn10Years = amount * Math.pow(1 + APY, 10) - amount
+  const earningsIn20Years = amount * Math.pow(1 + APY, 20) - amount
+  const earlyExitFee = amount * 0.02
+  const earlyPenalty = amount * 0.01 // 1% early exit
+  const totalLoss = earlyExitFee + earlyPenalty + earningsForfeited30d
+
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+
+  const USD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+      <div className="w-full max-w-xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-6">
+        {/* Warning Header */}
+        <div className="bg-gradient-to-r from-red-700 via-red-600 to-orange-600 p-6 text-white">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 fill-amber-300 text-amber-300" />
+                <span className="text-xs font-bold uppercase tracking-widest">Withdrawal Consequence Disclosure</span>
+              </div>
+              <h3 className="text-xl font-black">Wait — Here&apos;s What You&apos;re Giving Up</h3>
+              <p className="text-xs text-red-100">
+                Required disclosure before processing {USD(amount)} withdrawal
+              </p>
+            </div>
+            <button onClick={onCancel} className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Step 1: Opportunity Cost Dashboard */}
+        {step === 1 && (
+          <div className="p-6 space-y-5">
+            <div className="text-center space-y-1">
+              <h4 className="text-lg font-black text-red-700">You Are Leaving {USD(totalLoss)} On The Table</h4>
+              <p className="text-xs text-gray-500">Withdrawing {USD(amount)} today costs you far more than the number suggests.</p>
+            </div>
+
+            {/* Compound Loss Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-2xl bg-red-50 border border-red-200 text-center">
+                <TrendingDown className="w-5 h-5 text-red-600 mx-auto mb-1" />
+                <span className="text-[10px] text-red-600 font-bold uppercase block">30-Day Interest Lost</span>
+                <span className="text-xl font-black text-red-700">{USD(earningsForfeited30d)}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-orange-50 border border-orange-200 text-center">
+                <Clock className="w-5 h-5 text-orange-600 mx-auto mb-1" />
+                <span className="text-[10px] text-orange-600 font-bold uppercase block">Remaining Term Lost</span>
+                <span className="text-xl font-black text-orange-700">{USD(earningsForfeitedFull)}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center">
+                <BarChart3 className="w-5 h-5 text-slate-600 mx-auto mb-1" />
+                <span className="text-[10px] text-slate-500 font-bold uppercase block">Early Exit Fee (2%)</span>
+                <span className="text-xl font-black text-slate-700">{USD(earlyExitFee)}</span>
+              </div>
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center">
+                <Flame className="w-5 h-5 text-amber-600 mx-auto mb-1" />
+                <span className="text-[10px] text-amber-700 font-bold uppercase block">Early Penalty (1%)</span>
+                <span className="text-xl font-black text-amber-800">{USD(earlyPenalty)}</span>
+              </div>
+            </div>
+
+            {/* Compound Wealth Projection Comparison */}
+            <div className="p-4 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/15 space-y-3">
+              <h5 className="text-xs font-bold text-[#0F1C3F] uppercase tracking-wider">If You Keep Saving: Projected Compound Growth</h5>
+              {[
+                { label: '5 Years', kept: USD(amount + earningsIn5Years), lost: USD(earningsIn5Years) },
+                { label: '10 Years', kept: USD(amount + earningsIn10Years), lost: USD(earningsIn10Years) },
+                { label: '20 Years', kept: USD(amount + earningsIn20Years), lost: USD(earningsIn20Years) },
+              ].map((row) => (
+                <div key={row.label} className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-gray-600">{row.label}</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-emerald-700 font-bold">{row.kept} <span className="text-gray-400 font-normal">if kept</span></span>
+                    <span className="text-red-600 font-bold">-{row.lost} <span className="text-gray-400 font-normal">if withdrawn</span></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(2)}
+                className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors"
+              >
+                I Still Want to Withdraw
+              </button>
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors"
+              >
+                Keep My Savings ✓
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Consider Alternatives */}
+        {step === 2 && (
+          <div className="p-6 space-y-4">
+            <div className="text-center space-y-1">
+              <h4 className="text-lg font-black text-[#0F1C3F]">Before You Commit — Consider These Alternatives</h4>
+              <p className="text-xs text-gray-500">Many members solve short-term cash needs without breaking their compound growth.</p>
+            </div>
+
+            <div className="space-y-3">
+              {[
+                {
+                  title: 'Partial Withdrawal Only',
+                  desc: `Withdraw just 25% (${USD(amount * 0.25)}) and keep the rest compounding. You still get immediate cash while preserving ${USD(amount * 0.75)} in your vault.`,
+                  icon: Calculator,
+                  color: 'bg-blue-50 border-blue-200',
+                  iconColor: 'text-blue-600',
+                },
+                {
+                  title: 'Vault-Backed Emergency Advance',
+                  desc: 'Contact our support team about a short-term emergency advance against your vault balance — no compound disruption.',
+                  icon: ShieldCheck,
+                  color: 'bg-emerald-50 border-emerald-200',
+                  iconColor: 'text-emerald-600',
+                },
+                {
+                  title: 'Reduce Monthly Auto-Save Instead',
+                  desc: 'Temporarily pause or reduce your monthly automatic contributions in your Marriage Savings settings to free up cash flow.',
+                  icon: Sparkles,
+                  color: 'bg-amber-50 border-amber-200',
+                  iconColor: 'text-amber-700',
+                },
+              ].map((alt, i) => {
+                const Icon = alt.icon
+                return (
+                  <div key={i} className={`p-4 rounded-2xl border ${alt.color} flex items-start gap-3`}>
+                    <div className={`w-8 h-8 rounded-xl bg-white flex items-center justify-center flex-shrink-0 ${alt.iconColor}`}>
+                      <Icon size={16} />
+                    </div>
+                    <div>
+                      <h6 className="text-sm font-bold text-gray-900">{alt.title}</h6>
+                      <p className="text-xs text-gray-600 mt-0.5 leading-relaxed">{alt.desc}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setStep(3)}
+                className="flex-1 py-3 rounded-2xl bg-red-600 text-white font-bold text-sm hover:bg-red-700 transition-colors"
+              >
+                Proceed Anyway — Final Warning
+              </button>
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 rounded-2xl bg-emerald-600 text-white font-bold text-sm hover:bg-emerald-700 transition-colors"
+              >
+                Cancel &amp; Save
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Final Confirmation */}
+        {step === 3 && (
+          <div className="p-6 space-y-4">
+            <div className="p-4 rounded-2xl bg-red-50 border-2 border-red-300 space-y-2 text-center">
+              <AlertTriangle className="w-8 h-8 text-red-600 mx-auto" />
+              <h4 className="text-base font-black text-red-700">Final Disclosure — This Is Irreversible</h4>
+              <p className="text-xs text-red-600 leading-relaxed">
+                By proceeding, you authorize a withdrawal of <strong>{USD(amount)}</strong>. You will incur:
+              </p>
+              <div className="text-left space-y-1 text-xs text-red-800 font-medium">
+                <div className="flex justify-between"><span>Early Exit Fee (2%)</span><span>{USD(earlyExitFee)}</span></div>
+                <div className="flex justify-between"><span>Early Withdrawal Penalty (1%)</span><span>{USD(earlyPenalty)}</span></div>
+                <div className="flex justify-between font-black text-red-900 border-t border-red-200 pt-1"><span>Total Deductions</span><span>{USD(earlyExitFee + earlyPenalty)}</span></div>
+                <div className="flex justify-between"><span>Net Received</span><span>{USD(amount - earlyExitFee - earlyPenalty)}</span></div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={onContinue}
+                className="flex-1 py-3 rounded-2xl border-2 border-red-600 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors"
+              >
+                Confirm Withdrawal — I Understand
+              </button>
+              <button
+                onClick={onCancel}
+                className="flex-1 py-3 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-colors"
+              >
+                No — Keep Saving
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
   const [investments, setInvestments] = useState<ActiveInvestment[]>([])
@@ -48,11 +280,15 @@ export default function WithdrawalsPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showDrainer, setShowDrainer] = useState(false)
 
-  const feePercent = 0.02 // 2% standard liquidity/processing fee
+  const feePercent = 0.02
+  const penaltyPercent = 0.01
   const numAmount = parseFloat(amount) || 0
   const feeAmount = numAmount * feePercent
-  const netAmount = Math.max(0, numAmount - feeAmount)
+  const penaltyAmount = numAmount * penaltyPercent
+  const netAmount = Math.max(0, numAmount - feeAmount - penaltyAmount)
+  const selectedInvestment = investments.find((i) => i.id === selectedInvestmentId)
 
   const loadData = () => {
     fetch('/api/withdrawals')
@@ -73,20 +309,29 @@ export default function WithdrawalsPage() {
     loadData()
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmitRequest = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!selectedInvestmentId) {
+      setError('Please select an investment to withdraw from.')
+      return
+    }
+    if (numAmount < 100) {
+      setError('Minimum withdrawal request is $100.')
+      return
+    }
+    if (!bankName || !accountName || !accountNumber) {
+      setError('Please fill in all bank account details.')
+      return
+    }
+    // Show drainer before processing
+    setShowDrainer(true)
+  }
+
+  const handleConfirmedWithdrawal = async () => {
+    setShowDrainer(false)
     setLoading(true)
-    setSuccess(false)
-
     try {
-      if (!selectedInvestmentId) {
-        throw new Error('Please select an investment vehicle to withdraw from.')
-      }
-      if (numAmount <= 0) {
-        throw new Error('Please enter a valid withdrawal amount.')
-      }
-
       const res = await fetch('/api/withdrawals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,263 +344,203 @@ export default function WithdrawalsPage() {
           routingNumber,
         }),
       })
-
       const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Withdrawal submission failed')
-      }
-
+      if (!res.ok) throw new Error(data.error || 'Withdrawal request failed.')
       setSuccess(true)
+      setAmount('1000')
+      setBankName('')
+      setAccountName('')
+      setAccountNumber('')
+      setRoutingNumber('')
       loadData()
     } catch (err: any) {
-      setError(err.message || 'An error occurred while submitting withdrawal request.')
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
+  const statusColors: Record<string, string> = {
+    PENDING: 'bg-amber-100 text-amber-700',
+    APPROVED: 'bg-blue-100 text-blue-700',
+    PROCESSING: 'bg-indigo-100 text-indigo-700',
+    COMPLETED: 'bg-emerald-100 text-emerald-700',
+    REJECTED: 'bg-red-100 text-red-700',
+  }
+
   return (
-    <div className="space-y-8 max-w-5xl">
+    <div className="space-y-6">
+      {/* Drainer Modal */}
+      {showDrainer && (
+        <WithdrawalDrainerPanel
+          amount={numAmount}
+          selectedInvestment={selectedInvestment}
+          onContinue={handleConfirmedWithdrawal}
+          onCancel={() => setShowDrainer(false)}
+        />
+      )}
+
+      {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold text-[#0F1C3F]">Withdrawal & Payout Requests</h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Submit capital redemption or distribution withdrawals in USD subject to contractual terms and administrative review.
+        <h1 className="text-2xl font-bold text-[#0F1C3F]">Withdrawal Request</h1>
+        <p className="text-sm text-slate-500 mt-1">
+          All withdrawal requests require admin approval and are processed within 2–5 business days.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Form Column */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-8 shadow-sm">
-          <h2 className="text-base font-bold text-[#0F1C3F] mb-6">
-            Initiate USD Redemption Request
-          </h2>
+      {/* Early Withdrawal Warning Banner */}
+      <div className="rounded-2xl bg-amber-50 border border-amber-200 p-4 flex items-start gap-3">
+        <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+        <div>
+          <h4 className="text-sm font-bold text-amber-900">Early Exit Costs You Money</h4>
+          <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
+            Withdrawing before maturity incurs a <strong>2% liquidity fee</strong> plus a <strong>1% early withdrawal penalty</strong> on the requested amount.
+            Our withdrawal process includes a mandatory disclosure review designed to protect your long-term financial wellbeing.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Form */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6 space-y-5">
+          <h2 className="font-semibold text-slate-900">Request a Withdrawal</h2>
 
           {success && (
-            <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-3">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <div className="flex items-start gap-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
               <div>
-                <strong>Withdrawal Request Queued:</strong> Your request has been forwarded to the compliance and finance officers for dual review. You will receive an update once approved.
+                <p className="text-sm font-semibold text-emerald-800">Withdrawal Request Submitted</p>
+                <p className="text-xs text-emerald-700 mt-0.5">Your request is under admin review. Expect a decision within 2–5 business days.</p>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
-              <div>{error}</div>
+            <div className="flex items-start gap-3 rounded-xl bg-red-50 border border-red-200 p-3">
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Investment selector */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Select Investment Vehicle *
-              </label>
-              <select
-                value={selectedInvestmentId}
-                onChange={(e) => setSelectedInvestmentId(e.target.value)}
-                required
-                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 bg-white focus:ring-2 focus:ring-[#C9A84C] outline-none"
-              >
-                {investments.length === 0 ? (
-                  <option value="">No eligible active investments found</option>
-                ) : (
-                  investments.map((inv) => (
+          <form onSubmit={handleSubmitRequest} className="space-y-4">
+            {/* Investment Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Select Investment to Withdraw From</label>
+              {investments.length === 0 ? (
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                  No eligible investments available for withdrawal.
+                </div>
+              ) : (
+                <select
+                  value={selectedInvestmentId}
+                  onChange={(e) => setSelectedInvestmentId(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C] bg-white"
+                  required
+                >
+                  {investments.map((inv) => (
                     <option key={inv.id} value={inv.id}>
-                      {inv.referenceNumber} — {inv.opportunity.title} (${Number(inv.amount).toLocaleString()} USD)
+                      {inv.opportunity.title} · ${Number(inv.amount).toLocaleString()} · Ref: {inv.referenceNumber}
                     </option>
-                  ))
-                )}
-              </select>
+                  ))}
+                </select>
+              )}
             </div>
 
             {/* Amount */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Requested Withdrawal Amount (USD $) *
-              </label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Withdrawal Amount (USD)</label>
               <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">
-                  $
-                </span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                 <input
                   type="number"
                   min="100"
                   step="50"
-                  required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-2.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
+                  className="w-full pl-7 pr-4 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C]"
+                  required
                 />
+              </div>
+
+              {/* Live Cost Breakdown */}
+              {numAmount > 0 && (
+                <div className="p-3 rounded-xl bg-red-50 border border-red-100 text-xs space-y-1">
+                  <div className="flex justify-between text-red-700">
+                    <span>Early Exit Fee (2%)</span><span className="font-bold">–${feeAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-orange-700">
+                    <span>Early Withdrawal Penalty (1%)</span><span className="font-bold">–${penaltyAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-900 font-black border-t border-red-200 pt-1">
+                    <span>You Will Receive</span><span className="text-emerald-700">${netAmount.toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Building2 size={13} />
+                Bank Account Details
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <input type="text" placeholder="Bank Name" value={bankName} onChange={(e) => setBankName(e.target.value)}
+                  className="col-span-2 w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C]" required />
+                <input type="text" placeholder="Account Holder Name" value={accountName} onChange={(e) => setAccountName(e.target.value)}
+                  className="col-span-2 w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C]" required />
+                <input type="text" placeholder="Account Number" value={accountNumber} onChange={(e) => setAccountNumber(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C]" required />
+                <input type="text" placeholder="Routing / SWIFT (optional)" value={routingNumber} onChange={(e) => setRoutingNumber(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:border-[#C9A84C]" />
               </div>
             </div>
 
-            {/* Fee Calculation Breakdown */}
-            <div className="p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-2 text-xs">
-              <div className="flex justify-between text-gray-600">
-                <span>Gross Withdrawal Amount:</span>
-                <span className="font-semibold text-gray-900">${numAmount.toLocaleString()} USD</span>
-              </div>
-              <div className="flex justify-between text-gray-600">
-                <span>Contractual Processing Fee (2%):</span>
-                <span className="font-semibold text-gray-900">-${feeAmount.toFixed(2)} USD</span>
-              </div>
-              <div className="flex justify-between text-gray-900 font-bold pt-2 border-t border-gray-200">
-                <span>Estimated Net Payout:</span>
-                <span className="text-emerald-600 text-sm">${netAmount.toFixed(2)} USD</span>
-              </div>
-            </div>
-
-            {/* Bank details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Recipient Bank Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={bankName}
-                  onChange={(e) => setBankName(e.target.value)}
-                  placeholder="e.g. JPMorgan Chase"
-                  className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Account Holder Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                  placeholder="e.g. Amélie & Sebastian Laurent"
-                  className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Account Number / IBAN *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
-                  placeholder="e.g. 123456789"
-                  className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Routing (ABA) / SWIFT Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={routingNumber}
-                  onChange={(e) => setRoutingNumber(e.target.value)}
-                  placeholder="e.g. 021000021"
-                  className="w-full px-3.5 py-2 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"
-                />
-              </div>
+            <div className="flex items-start gap-2 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+              <Lock size={13} className="text-[#C9A84C] flex-shrink-0 mt-0.5" />
+              <span>A mandatory <strong>3-step cost disclosure review</strong> will appear before your request is submitted for admin approval.</span>
             </div>
 
             <button
               type="submit"
               disabled={loading || investments.length === 0}
-              className="w-full py-3 rounded-xl bg-[#0F1C3F] hover:bg-[#162c5e] text-white text-xs font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 rounded-2xl bg-[#0F1C3F] text-white font-bold text-sm hover:bg-[#1a2f64] transition-colors disabled:opacity-50"
             >
-              <ArrowDownToLine className="w-4 h-4 text-[#C9A84C]" />
-              {loading ? 'Submitting to Review Queue...' : 'Submit Withdrawal Request'}
+              {loading ? 'Processing...' : 'Review Withdrawal Impact'}
             </button>
           </form>
         </div>
 
-        {/* Right Info Card */}
-        <div className="bg-gray-50 rounded-2xl border border-gray-200 p-6 text-xs text-gray-600 space-y-4">
-          <div className="flex items-center gap-2 font-bold text-[#0F1C3F]">
-            <ShieldCheck className="w-5 h-5 text-[#C9A84C]" />
-            <span>Dual Administrative Workflow</span>
+        {/* Withdrawal History */}
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h2 className="font-semibold text-slate-900">Withdrawal History</h2>
           </div>
-          <p className="leading-relaxed">
-            To prevent unauthorized liquidations, every payout request is cross-checked against investor eligibility, AML thresholds, and available settled escrow balances.
-          </p>
-          <p className="leading-relaxed text-[11px] text-gray-400">
-            Standard ACH / Wire disbursement time is 2 to 4 business days post administrative approval.
-          </p>
+          <div className="divide-y divide-slate-100">
+            {withdrawals.length === 0 ? (
+              <div className="py-12 text-center">
+                <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm text-slate-400">No withdrawal requests yet</p>
+              </div>
+            ) : (
+              withdrawals.map((w) => (
+                <div key={w.id} className="px-5 py-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-slate-800">${Number(w.amount).toLocaleString()}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${statusColors[w.status] || 'bg-gray-100 text-gray-600'}`}>
+                      {w.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500">{w.investment?.opportunity?.title}</p>
+                  {w.bankName && <p className="text-xs text-slate-400">{w.bankName} · ****{w.accountNumber?.slice(-4)}</p>}
+                  {w.adminNote && (
+                    <p className="text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">Admin Note: {w.adminNote}</p>
+                  )}
+                  <p className="text-[11px] text-slate-400">{new Date(w.createdAt).toLocaleDateString()}</p>
+                </div>
+              ))
+            )}
+          </div>
         </div>
-      </div>
-
-      {/* Withdrawal History Table */}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-base font-bold text-[#0F1C3F]">Withdrawal Request History</h2>
-          <p className="text-xs text-gray-500">Track current status, administrative notes, and completed disbursements.</p>
-        </div>
-
-        {withdrawals.length === 0 ? (
-          <div className="p-8 text-center text-xs text-gray-400">
-            No withdrawal requests submitted yet.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-100">
-                <tr>
-                  <th className="py-3 px-6">Date Requested</th>
-                  <th className="py-3 px-6">Associated Vehicle</th>
-                  <th className="py-3 px-6">Gross Amount</th>
-                  <th className="py-3 px-6">Fee (USD)</th>
-                  <th className="py-3 px-6">Net Payout</th>
-                  <th className="py-3 px-6">Status</th>
-                  <th className="py-3 px-6">Admin Note</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {withdrawals.map((w) => (
-                  <tr key={w.id} className="hover:bg-gray-50/50">
-                    <td className="py-3.5 px-6 font-mono text-gray-500">
-                      {formatDate(w.createdAt)}
-                    </td>
-                    <td className="py-3.5 px-6 font-medium text-gray-900">
-                      {w.investment?.opportunity?.title || 'Investment'}
-                    </td>
-                    <td className="py-3.5 px-6 font-semibold text-gray-900">
-                      {formatCurrency(Number(w.amount))}
-                    </td>
-                    <td className="py-3.5 px-6 text-gray-500 font-mono">
-                      {formatCurrency(Number(w.fee))}
-                    </td>
-                    <td className="py-3.5 px-6 font-bold text-emerald-600">
-                      {formatCurrency(Number(w.netAmount))}
-                    </td>
-                    <td className="py-3.5 px-6">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          w.status === 'COMPLETED'
-                            ? 'bg-emerald-100 text-emerald-800'
-                            : w.status === 'APPROVED'
-                            ? 'bg-blue-100 text-blue-800'
-                            : w.status === 'REJECTED'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-amber-100 text-amber-800'
-                        }`}
-                      >
-                        {w.status}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-6 text-gray-400 text-[11px]">
-                      {w.adminNote || 'Under review'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   )

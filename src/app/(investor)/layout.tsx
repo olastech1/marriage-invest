@@ -25,6 +25,7 @@ import {
   Heart,
   Flame,
   Gift,
+  User,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 import { LiveActivityPulse } from '@/components/common/LiveActivityPulse'
@@ -33,22 +34,24 @@ import { LiveActivityPulse } from '@/components/common/LiveActivityPulse'
 // Nav items
 // ---------------------------------------------------------------------------
 const navItems = [
-  { href: '/dashboard',     label: 'Dashboard',             icon: LayoutDashboard },
-  { href: '/quests',        label: 'Daily Quests',          icon: Flame, badge: 'Streak' },
-  { href: '/registry',      label: 'Wedding Registry',      icon: Gift, badge: 'Gifts' },
-  { href: '/chat',          label: 'Mutual Chat',           icon: MessageSquareHeart, badge: 'Live' },
-  { href: '/savings',       label: 'Marriage Savings',      icon: PiggyBank },
-  { href: '/certificate',   label: 'Marriage Certificate',  icon: Award },
+  { href: '/dashboard',     label: 'Dashboard',              icon: LayoutDashboard },
+  { href: '/quests',        label: 'Daily Quests',           icon: Flame, badge: 'Streak' },
+  { href: '/registry',      label: 'Wedding Registry',       icon: Gift, badge: 'Gifts' },
+  { href: '/chat',          label: 'Mutual Chat',            icon: MessageSquareHeart, badge: 'Live' },
+  { href: '/savings',       label: 'Marriage Savings',       icon: PiggyBank },
+  { href: '/certificate',   label: 'Marriage Certificate',   icon: Award },
   { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
-  { href: '/friends',       label: 'Friends & Fanbase',     icon: Users, badge: 'New' },
-  { href: '/community',     label: 'Community Giving',      icon: Heart, badge: 'Impact' },
-  { href: '/portfolio',     label: 'Portfolio',             icon: Briefcase },
-  { href: '/transactions',  label: 'Transactions',          icon: ArrowLeftRight },
-  { href: '/deposits',      label: 'Deposits',              icon: ArrowDownToLine },
-  { href: '/withdrawals',   label: 'Withdrawals',           icon: ArrowUpFromLine },
-  { href: '/my-documents',  label: 'Documents',             icon: FileText },
-  { href: '/settings',      label: 'Settings',              icon: Settings },
+  { href: '/friends',       label: 'Friends & Fanbase',      icon: Users, badge: 'New' },
+  { href: '/community',     label: 'Community Giving',       icon: Heart, badge: 'Impact' },
+  { href: '/portfolio',     label: 'Portfolio',              icon: Briefcase },
+  { href: '/solo',          label: 'Solo Invest',            icon: User, badge: 'New' },
+  { href: '/transactions',  label: 'Transactions',           icon: ArrowLeftRight },
+  { href: '/save',          label: 'Save',                   icon: PiggyBank },
+  { href: '/withdrawals',   label: 'Withdrawals',            icon: ArrowUpFromLine },
+  { href: '/my-documents',  label: 'Documents',              icon: FileText },
+  { href: '/settings',      label: 'Settings',               icon: Settings },
 ] as const
+
 
 // ---------------------------------------------------------------------------
 // Sidebar

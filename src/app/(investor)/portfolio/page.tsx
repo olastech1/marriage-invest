@@ -67,7 +67,7 @@ export default async function PortfolioPage() {
           </p>
         </div>
         <Link
-          href="/deposits"
+          href="/save"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-xs hover:bg-[#d4b460] shadow-sm transition-all"
         >
           Explore New Opportunities →

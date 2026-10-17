@@ -205,11 +205,11 @@ export default async function DashboardPage() {
           </p>
         </div>
         <Link
-          href="/deposits"
+          href="/save"
           className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#b8943e] transition-colors"
         >
           <TrendingUp size={16} />
-          Make a Deposit
+          Save to Vault
         </Link>
       </div>
 
@@ -469,7 +469,7 @@ export default async function DashboardPage() {
           {investments.filter((i) => i.status === 'ACTIVE').length === 0 ? (
             <div className="px-5 py-8 text-center">
               <p className="text-sm text-slate-400">No active investments yet.</p>
-              <Link href="/deposits" className="mt-2 inline-block text-xs font-medium text-[#C9A84C] hover:underline">
+              <Link href="/save" className="mt-2 inline-block text-xs font-medium text-[#C9A84C] hover:underline">
                 Explore opportunities →
               </Link>
             </div>
