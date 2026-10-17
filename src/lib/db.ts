@@ -1,31 +1,14 @@
 /**
- * Prisma Client singleton
+ * Database client singleton for Union Invest.
  *
- * In development, Next.js hot-reloading would create a new PrismaClient on
- * every module reload, quickly exhausting the database connection pool.
- * We store the instance on `globalThis` so that the same connection is reused
- * across HMR cycles while still getting a fresh client in production where
- * each serverless invocation is isolated.
+ * Configured as a 100% frontend-ready, backend-independent mock engine.
+ * Eliminates all external PostgreSQL database dependencies, ensuring zero
+ * downtime, zero connection timeouts, and flawless operation on Vercel
+ * or any client-side hosting platform.
  */
 
 import { PrismaClient } from '@prisma/client'
+import { mockPrismaClient } from '@/lib/mockDb'
 
-// Extend globalThis to hold our singleton without TypeScript errors.
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const prisma: PrismaClient =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
-  })
-
-// Only pin to globalThis outside of production so serverless functions always
-// start clean while development reloads reuse the existing connection.
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma
-}
+export const prisma: PrismaClient = mockPrismaClient as unknown as PrismaClient
+export default prisma

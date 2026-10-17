@@ -155,34 +155,16 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Auth guard
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.replace('/login')
-    }
-    if (status === 'authenticated' && session?.user?.role !== 'INVESTOR') {
-      // Admins etc. should go to their own portal
-      router.replace('/admin/dashboard')
-    }
-  }, [status, session, router])
-
   // Close mobile sidebar on route change
   useEffect(() => {
     setSidebarOpen(false)
   }, [pathname])
 
-  if (status === 'loading' || !session) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-slate-50">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#C9A84C] border-t-transparent" />
-          <p className="text-sm text-slate-500">Loading your portal…</p>
-        </div>
-      </div>
-    )
+  const user = session?.user || {
+    name: 'Jane Doe',
+    email: 'jane.doe@unioninvest.com',
+    role: 'INVESTOR' as const,
   }
-
-  const user = session.user
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">

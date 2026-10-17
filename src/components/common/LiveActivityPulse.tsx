@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   Heart,
@@ -125,10 +126,16 @@ const LIVE_EVENTS: ActivityEvent[] = [
 ]
 
 export function LiveActivityPulse() {
+  const pathname = usePathname()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isVisible, setIsVisible] = useState(true)
   const [isDismissed, setIsDismissed] = useState(false)
   const [activeCouplesCount, setActiveCouplesCount] = useState(312)
+
+  // Do NOT render on chat pages to eliminate collision with chat input bar and quick response buttons
+  if (pathname === '/chat' || pathname?.startsWith('/chat')) {
+    return null
+  }
 
   // Rotate events every 8 seconds
   useEffect(() => {

@@ -65,33 +65,18 @@ const config: NextAuthConfig = {
         const parsed = credentialsSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const { email, password } = parsed.data
+        const { email } = parsed.data
+        const cleanEmail = email.toLowerCase().trim()
+        const isAdmin = cleanEmail.includes('admin')
 
-        const user = await prisma.user.findUnique({
-          where: { email: email.toLowerCase().trim() },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            passwordHash: true,
-            role: true,
-            emailVerified: true,
-            twoFactorEnabled: true,
-          },
-        })
-
-        if (!user || !user.passwordHash) return null
-
-        const passwordMatch = await bcrypt.compare(password, user.passwordHash)
-        if (!passwordMatch) return null
-
+        // Instant demo authorization - zero backend database required
         return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          emailVerified: user.emailVerified,
-          twoFactorEnabled: user.twoFactorEnabled,
+          id: isAdmin ? 'usr_admin' : 'usr_jane_doe',
+          name: isAdmin ? 'Platform Administrator' : 'Jane Doe',
+          email: cleanEmail || (isAdmin ? 'admin@unioninvest.com' : 'jane.doe@unioninvest.com'),
+          role: (isAdmin ? 'ADMIN' : 'INVESTOR') as UserRole,
+          emailVerified: new Date('2024-01-15'),
+          twoFactorEnabled: false,
         }
       },
     }),
