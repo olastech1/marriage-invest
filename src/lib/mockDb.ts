@@ -139,6 +139,29 @@ export interface MockAuditLog {
   createdAt: Date
 }
 
+export interface MockChatMessage {
+  id: string
+  threadId: string
+  senderId: string
+  senderName: string
+  text: string
+  timestamp: string
+  createdAt: Date
+  read: boolean
+  reactions?: Record<string, number>
+  type: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate'
+  proposalData?: {
+    goalName: string
+    amount: number
+    split: string
+    status: 'pending' | 'approved' | 'rejected'
+    proposedBy: string
+    approvedBy?: string
+  }
+  voiceDuration?: string
+  loveNoteTitle?: string
+}
+
 // ---------------------------------------------------------------------------
 // Seed Data
 // ---------------------------------------------------------------------------
@@ -568,6 +591,75 @@ const auditLogs: MockAuditLog[] = [
   },
 ]
 
+export const chatMessages: MockChatMessage[] = [
+  {
+    id: 'msg-1',
+    threadId: 'spouse',
+    senderId: 'usr_marcus_vance',
+    senderName: 'Marcus Vance',
+    text: 'Good morning Jane! Did you see the monthly dividend payout landed in our Joint Vault?',
+    timestamp: '9:15 AM',
+    createdAt: new Date(Date.now() - 3600 * 4 * 1000),
+    read: true,
+    reactions: { '❤️': 1, '💰': 1 },
+    type: 'text',
+  },
+  {
+    id: 'msg-2',
+    threadId: 'spouse',
+    senderId: 'usr_jane_doe',
+    senderName: 'Jane Doe',
+    text: 'Yes! $85.00 from the Zurich Prime yield fund. That compound interest is really adding up.',
+    timestamp: '9:18 AM',
+    createdAt: new Date(Date.now() - 3600 * 3.8 * 1000),
+    read: true,
+    reactions: { '🥂': 1 },
+    type: 'text',
+  },
+  {
+    id: 'msg-3',
+    threadId: 'spouse',
+    senderId: 'usr_marcus_vance',
+    senderName: 'Marcus Vance',
+    text: 'I just reviewed our Marriage Investment Certificate as well. Both our signatures look incredible with the gold embossed seal.',
+    timestamp: '9:22 AM',
+    createdAt: new Date(Date.now() - 3600 * 3.5 * 1000),
+    read: true,
+    type: 'certificate',
+  },
+  {
+    id: 'msg-4',
+    threadId: 'spouse',
+    senderId: 'usr_marcus_vance',
+    senderName: 'Marcus Vance',
+    text: 'Voice memo on our weekend savings plan',
+    timestamp: '9:30 AM',
+    createdAt: new Date(Date.now() - 3600 * 3 * 1000),
+    read: true,
+    type: 'voice_memo',
+    voiceDuration: '0:34',
+    reactions: { '❤️': 1 },
+  },
+  {
+    id: 'msg-5',
+    threadId: 'spouse',
+    senderId: 'usr_marcus_vance',
+    senderName: 'Marcus Vance',
+    text: 'Should we add another deposit to the Family Dream Home vault before the weekend rate lock?',
+    timestamp: '9:45 AM',
+    createdAt: new Date(Date.now() - 3600 * 2.5 * 1000),
+    read: true,
+    type: 'proposal',
+    proposalData: {
+      goalName: 'Family Dream Home Down Payment',
+      amount: 250,
+      split: '50/50 Split ($125 each)',
+      status: 'pending',
+      proposedBy: 'Marcus Vance',
+    },
+  },
+]
+
 // ---------------------------------------------------------------------------
 // Mock Prisma Delegate Implementations
 // ---------------------------------------------------------------------------
@@ -593,6 +685,9 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
       }
       if (args?.orderBy?.createdAt === 'desc') {
         result.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+      }
+      if (args?.orderBy?.createdAt === 'asc') {
+        result.sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
       }
       if (typeof args?.take === 'number') {
         result = result.slice(0, args.take)
@@ -666,6 +761,7 @@ export const mockPrismaClient = {
   document: makeDelegate(documents),
   documentAcknowledgment: makeDelegate(documentAcknowledgments),
   auditLog: makeDelegate(auditLogs),
+  chatMessage: makeDelegate(chatMessages),
 
   async $transaction<T>(cb: (tx: any) => Promise<T>): Promise<T> {
     return cb(mockPrismaClient)

@@ -126,7 +126,19 @@ export function FloatingChatWidget({
     setMessages((prev) => [...prev, newMsg])
     setInputText('')
 
-    // Simulate partner response after short delay
+    // Sync with server shared chat store
+    fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        threadId: 'spouse',
+        text: inputText.trim(),
+        senderId: 'usr_jane_doe',
+        senderName: 'Jane Doe',
+        type: 'text',
+      }),
+    }).catch(() => {})
+
     setTimeout(() => {
       setIsTyping(true)
     }, 800)
