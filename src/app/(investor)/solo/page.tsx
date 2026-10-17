@@ -192,17 +192,19 @@ export default function SoloInvestmentPage() {
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
-                {t.badge && (
-                  <span className="absolute top-3 right-3 text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] px-2 py-0.5 rounded-full">
-                    {t.badge}
-                  </span>
-                )}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-bold text-[#0F1C3F]">{t.label}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RISK_COLORS[t.risk]}`}>
-                      {t.risk}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {t.badge && (
+                        <span className="text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] px-2 py-0.5 rounded-full shadow-xs">
+                          {t.badge}
+                        </span>
+                      )}
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${RISK_COLORS[t.risk]}`}>
+                        {t.risk}
+                      </span>
+                    </div>
                   </div>
                   <div className="text-2xl font-black text-[#C9A84C]">{t.rate}% <span className="text-sm text-gray-400 font-normal">APY</span></div>
                   <p className="text-xs text-gray-500 leading-relaxed">{t.description}</p>

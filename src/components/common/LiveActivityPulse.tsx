@@ -161,7 +161,7 @@ export function LiveActivityPulse() {
     return (
       <button
         onClick={() => setIsDismissed(false)}
-        className="fixed bottom-4 left-4 z-40 px-3 py-1.5 rounded-full bg-[#0F1C3F]/90 text-white text-[11px] font-bold shadow-lg border border-[#C9A84C]/40 backdrop-blur-md flex items-center gap-1.5 hover:bg-[#0F1C3F] transition-all"
+        className="fixed bottom-20 left-4 sm:bottom-4 sm:left-4 z-40 px-3 py-1.5 rounded-full bg-[#0F1C3F]/90 text-white text-[11px] font-bold shadow-lg border border-[#C9A84C]/40 backdrop-blur-md flex items-center gap-1.5 hover:bg-[#0F1C3F] transition-all"
         title="Open Live Activity Pulse"
       >
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
@@ -175,7 +175,7 @@ export function LiveActivityPulse() {
   const IconComponent = currentEvent.icon
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 max-w-sm sm:max-w-md w-[calc(100vw-2rem)] sm:w-auto animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
+    <div className="fixed bottom-20 left-4 sm:bottom-4 sm:left-4 z-40 max-w-sm sm:max-w-md w-[calc(100vw-2rem)] sm:w-auto animate-in slide-in-from-bottom-4 duration-300 pointer-events-auto">
       <div className="rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/90 shadow-xl shadow-black/10 p-3.5 sm:p-4 text-slate-800 transition-all hover:shadow-2xl hover:border-[#C9A84C]/50 relative overflow-hidden group">
         {/* Subtle Top Gradient Bar */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#0F1C3F] via-[#C9A84C] to-emerald-500" />
