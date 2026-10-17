@@ -23,6 +23,10 @@ const investSchema = z.object({
   bankName: z.string().optional(),
   accountName: z.string().optional(),
   accountNumber: z.string().optional(),
+  soloTier: z.string().optional(),
+  tier: z.string().optional(),
+  frequency: z.string().optional(),
+  type: z.string().optional(),
 })
 
 type Params = { params: Promise<{ id: string }> }
@@ -59,13 +63,23 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
     const { amount } = parsed.data
     const { id: opportunityId } = await params
+    const tierKey = parsed.data.soloTier || parsed.data.tier
+    const isSolo = Boolean(tierKey || parsed.data.type === 'SOLO')
+    const isSave = Boolean(parsed.data.frequency || parsed.data.type === 'SAVE')
 
     // 3. Find opportunity
-    const opportunity = await prisma.investmentOpportunity.findFirst({
+    let opportunity = await prisma.investmentOpportunity.findFirst({
       where: {
         OR: [{ id: opportunityId }, { slug: opportunityId }],
       },
     })
+
+    // If opportunityId is generic or not found for solo/save, use the first active opportunity
+    if (!opportunity && (isSolo || isSave)) {
+      opportunity = await prisma.investmentOpportunity.findFirst({
+        where: { status: 'ACTIVE' },
+      })
+    }
 
     if (!opportunity) {
       return NextResponse.json({ error: 'Investment opportunity not found' }, { status: 404 })
@@ -79,8 +93,27 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
     }
 
     // 4. Validate amount against limits
-    const minAmount = Number(opportunity.minAmount)
-    const maxAmount = opportunity.maxAmount ? Number(opportunity.maxAmount) : null
+    let minAmount = Number(opportunity.minAmount)
+    let maxAmount = opportunity.maxAmount ? Number(opportunity.maxAmount) : null
+
+    if (isSolo) {
+      const soloTiers: Record<string, { min: number; max?: number }> = {
+        SOLO_STARTER: { min: 250, max: 10000 },
+        'solo-starter': { min: 250, max: 10000 },
+        SOLO_GROWTH: { min: 1000, max: 50000 },
+        'solo-growth': { min: 1000, max: 50000 },
+        SOLO_PREMIUM: { min: 5000, max: 500000 },
+        'solo-premium': { min: 5000, max: 500000 },
+      }
+      if (tierKey && soloTiers[tierKey]) {
+        minAmount = soloTiers[tierKey].min
+        maxAmount = soloTiers[tierKey].max ?? null
+      } else {
+        minAmount = 250
+      }
+    } else if (isSave) {
+      minAmount = 10
+    }
 
     if (amount < minAmount) {
       return NextResponse.json(
@@ -96,28 +129,45 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
       )
     }
 
-    // 5. Check target funding capacity
-    const currentFunded = Number(opportunity.fundedAmount)
-    const targetAmount = Number(opportunity.targetAmount)
+    // 5. Check target funding capacity (skip capping for solo/save personal vaults)
+    if (!isSolo && !isSave) {
+      const currentFunded = Number(opportunity.fundedAmount)
+      const targetAmount = Number(opportunity.targetAmount)
 
-    if (currentFunded + amount > targetAmount) {
-      const remaining = targetAmount - currentFunded
-      return NextResponse.json(
-        {
-          error: `This investment would exceed the funding target. Maximum remaining allocation is $${remaining.toLocaleString()}`,
-        },
-        { status: 400 },
-      )
+      if (currentFunded + amount > targetAmount) {
+        const remaining = targetAmount - currentFunded
+        return NextResponse.json(
+          {
+            error: `This investment would exceed the funding target. Maximum remaining allocation is $${remaining.toLocaleString()}`,
+          },
+          { status: 400 },
+        )
+      }
     }
 
     // 6. Calculate maturity date
+    let termMonths = opportunity.termMonths
+    if (tierKey === 'SOLO_STARTER' || tierKey === 'solo-starter') termMonths = 6
+    if (tierKey === 'SOLO_GROWTH' || tierKey === 'solo-growth') termMonths = 12
+    if (tierKey === 'SOLO_PREMIUM' || tierKey === 'solo-premium') termMonths = 24
+
     const maturityDate = new Date()
-    maturityDate.setMonth(maturityDate.getMonth() + opportunity.termMonths)
+    maturityDate.setMonth(maturityDate.getMonth() + termMonths)
 
     // 7. Generate reference numbers
     const randomHex = crypto.randomBytes(4).toString('hex').toUpperCase()
-    const investmentRef = `INV-${new Date().getFullYear()}-${randomHex}`
+    const investmentRef = isSolo
+      ? `SOLO-${new Date().getFullYear()}-${randomHex}`
+      : isSave
+      ? `SAVE-${new Date().getFullYear()}-${randomHex}`
+      : `INV-${new Date().getFullYear()}-${randomHex}`
     const transactionRef = `TXN-${new Date().getFullYear()}-${randomHex}`
+
+    const invTitle = isSolo
+      ? `Solo Portfolio — ${tierKey ? tierKey.replace(/_/g, ' ') : 'Personal Tier'}`
+      : isSave
+      ? `Marriage Savings Vault (${parsed.data.frequency || 'Contribution'})`
+      : `Investment in "${opportunity.title}"`
 
     // 8. Create Stripe PaymentIntent or mock in dev
     let clientSecret: string | null = null
@@ -132,8 +182,10 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           opportunityId: opportunity.id,
           investmentRef,
           transactionRef,
+          soloTier: tierKey || '',
+          isSolo: String(isSolo),
         },
-        description: `Investment in "${opportunity.title}" — ref ${investmentRef}`,
+        description: `${invTitle} — ref ${investmentRef}`,
       })
       clientSecret = paymentIntent.client_secret
       paymentIntentId = paymentIntent.id
@@ -165,10 +217,13 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           status: 'PENDING',
           reference: transactionRef,
           stripePaymentIntentId: paymentIntentId,
-          description: `Investment in "${opportunity.title}"`,
+          description: invTitle,
           metadata: {
             opportunityId: opportunity.id,
             opportunityTitle: opportunity.title,
+            soloTier: tierKey,
+            isSolo,
+            isSave,
             paymentIntentId,
           },
         },

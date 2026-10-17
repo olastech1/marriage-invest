@@ -104,9 +104,8 @@ export default function SoloInvestmentPage() {
     }
     setLoading(true)
     try {
-      const opp = opportunities[0]
-      if (!opp) throw new Error('No investment opportunities available. Please try again later.')
-      const res = await fetch(`/api/investments/${opp.id}/invest`, {
+      const oppId = opportunities[0]?.id || 'solo'
+      const res = await fetch(`/api/investments/${oppId}/invest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: numAmount, soloTier: selectedTier }),
