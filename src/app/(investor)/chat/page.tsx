@@ -257,7 +257,11 @@ export default function MutualChatPage() {
   const dispatchIncomingNotification = async (sender: string, text: string) => {
     playNotificationChime()
 
-    if (inAppNotifEnabled) {
+    const isCurrentActiveThread =
+      (activeChannel === 'spouse' && (sender.includes('Marcus') || sender === partnerName)) ||
+      (activeChannel === 'advisor' && (sender.includes('Beatrix') || sender === advisorName))
+
+    if (inAppNotifEnabled && !isCurrentActiveThread) {
       const toastId = 'toast-' + Date.now()
       setIncomingToast({
         id: toastId,
@@ -491,7 +495,7 @@ export default function MutualChatPage() {
     <div className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100vh-5.5rem)] flex flex-col min-w-0 max-w-7xl mx-auto">
       {/* ── TOP NOTIFICATION TOAST ── */}
       {incomingToast && (
-        <div className="fixed top-5 right-5 z-50 max-w-sm w-full bg-white rounded-2xl shadow-2xl border-2 border-[#C9A84C] p-4 flex items-start gap-3 animate-slide-up">
+        <div className="fixed top-16 right-4 sm:top-5 sm:right-5 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-full bg-white rounded-2xl shadow-2xl border-2 border-[#C9A84C] p-4 flex items-start gap-3 animate-slide-up">
           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#253970] text-[#C9A84C] flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-md">
             {incomingToast.sender[0]}
           </div>

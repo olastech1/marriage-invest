@@ -28,7 +28,6 @@ import {
   User,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
-import { LiveActivityPulse } from '@/components/common/LiveActivityPulse'
 
 // ---------------------------------------------------------------------------
 // Nav items
@@ -229,9 +228,6 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
 
           {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages) */}
           <FloatingChatWidget partnerName="Marcus Vance" />
-
-          {/* Floating Live Activity Pulse (positioned at bottom-left) */}
-          <LiveActivityPulse />
         </main>
       </div>
     </div>

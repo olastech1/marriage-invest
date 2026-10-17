@@ -72,7 +72,7 @@ export function FloatingChatWidget({
   ])
 
   // Don't render on the full chat page to avoid redundancy
-  if (pathname === '/chat') {
+  if (pathname === '/chat' || pathname?.startsWith('/chat')) {
     return null
   }
 
