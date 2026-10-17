@@ -53,15 +53,15 @@ export default function MarriageSavingsPage() {
   const partner1Name = session?.user?.name || 'Jane Doe'
   const [partner2Name, setPartner2Name] = useState('Marcus Vance')
 
-  // Initial joint goals
+  // Initial joint goals (starts fresh at $0 for new site)
   const [goals, setGoals] = useState<SavingsGoal[]>([
     {
       id: 'g1',
       title: 'Family Dream Home Down Payment',
       category: 'Real Estate',
       targetAmount: 50000,
-      partner1Saved: 11400,
-      partner2Saved: 10600,
+      partner1Saved: 0,
+      partner2Saved: 0,
       targetDate: 'Dec 2027',
       monthlyAutoSave: 600,
       apy: 6.8,
@@ -71,8 +71,8 @@ export default function MarriageSavingsPage() {
       title: 'First Baby & Education Nest Egg',
       category: 'Family Legacy',
       targetAmount: 20000,
-      partner1Saved: 4200,
-      partner2Saved: 3800,
+      partner1Saved: 0,
+      partner2Saved: 0,
       targetDate: 'Jun 2028',
       monthlyAutoSave: 400,
       apy: 6.8,
@@ -82,8 +82,8 @@ export default function MarriageSavingsPage() {
       title: '10-Year Anniversary Trip (Amalfi Coast)',
       category: 'Travel & Celebration',
       targetAmount: 10000,
-      partner1Saved: 3750,
-      partner2Saved: 3450,
+      partner1Saved: 0,
+      partner2Saved: 0,
       targetDate: 'Sep 2026',
       monthlyAutoSave: 500,
       apy: 6.8,
@@ -93,63 +93,17 @@ export default function MarriageSavingsPage() {
       title: 'Joint Emergency Liquid Reserve',
       category: 'Safety Buffer',
       targetAmount: 15000,
-      partner1Saved: 7500,
-      partner2Saved: 7500,
-      targetDate: 'Achieved 🎉',
-      monthlyAutoSave: 0,
+      partner1Saved: 0,
+      partner2Saved: 0,
+      targetDate: 'Dec 2026',
+      monthlyAutoSave: 500,
       apy: 6.8,
-      isCompleted: true,
+      isCompleted: false,
     },
   ])
 
-  // Joint activity ledger
-  const [activities, setActivities] = useState<SavingsActivity[]>([
-    {
-      id: 'a1',
-      contributor: 'Jane Doe',
-      goalTitle: 'Family Dream Home Down Payment',
-      amount: 400,
-      date: 'Today, 2:15 PM',
-      memo: 'From my Q3 consulting bonus ❤️',
-      type: 'DEPOSIT',
-    },
-    {
-      id: 'a2',
-      contributor: 'Marcus Vance',
-      goalTitle: 'Family Dream Home Down Payment',
-      amount: 400,
-      date: 'Yesterday, 6:30 PM',
-      memo: 'Matched your deposit! 🏡',
-      type: 'DEPOSIT',
-    },
-    {
-      id: 'a3',
-      contributor: 'Union Vault Yield',
-      goalTitle: 'All Goals Combined',
-      amount: 148.5,
-      date: 'Oct 01, 2026',
-      memo: '6.8% APY Monthly compounding interest',
-      type: 'YIELD',
-    },
-    {
-      id: 'a4',
-      contributor: 'Marcus Vance',
-      goalTitle: '10-Year Anniversary Trip (Amalfi Coast)',
-      amount: 250,
-      date: 'Sep 28, 2026',
-      memo: 'Flight tickets fund! ✈️',
-      type: 'DEPOSIT',
-    },
-    {
-      id: 'a5',
-      contributor: 'Jane Doe',
-      goalTitle: 'First Baby & Education Nest Egg',
-      amount: 200,
-      date: 'Sep 22, 2026',
-      memo: 'Bi-weekly auto-deposit',
-      type: 'DEPOSIT',
-    },
-  ])
+  // Joint activity ledger (clean on brand new site)
+  const [activities, setActivities] = useState<SavingsActivity[]>([])
 
   // Filter state
   const [filterContributor, setFilterContributor] = useState<'ALL' | 'PARTNER1' | 'PARTNER2' | 'YIELD'>('ALL')
@@ -708,7 +662,16 @@ export default function MarriageSavingsPage() {
         </div>
 
         <div className="divide-y divide-gray-100">
-          {filteredActivities.map((act) => (
+          {filteredActivities.length === 0 ? (
+            <div className="py-12 text-center space-y-2">
+              <PiggyBank className="w-10 h-10 text-gray-300 mx-auto" />
+              <p className="text-sm font-bold text-gray-600">No mutual contributions logged yet</p>
+              <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                Make your first joint goal deposit above to watch your live spousal ledger and 6.8% compounding interest grow!
+              </p>
+            </div>
+          ) : (
+            filteredActivities.map((act) => (
             <div key={act.id} className="py-3.5 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3 min-w-0">
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 text-xs font-bold ${
@@ -741,7 +704,7 @@ export default function MarriageSavingsPage() {
                 </span>
               </div>
             </div>
-          ))}
+          )))}
         </div>
       </div>
 

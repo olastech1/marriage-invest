@@ -60,8 +60,8 @@ export default function SavePage() {
   const { data: session } = useSession()
   const name = session?.user?.name?.split(' ')[0] || 'Investor'
 
-  // Simulated current vault state
-  const [vaultPrincipal, setVaultPrincipal] = useState(24750)
+  // Vault Principal State (starts clean at 0 on fresh site)
+  const [vaultPrincipal, setVaultPrincipal] = useState(0)
   const [saveAmount, setSaveAmount] = useState('500')
   const [frequency, setFrequency] = useState<'ONCE' | 'WEEKLY' | 'MONTHLY'>('MONTHLY')
   const [beneficiary, setBeneficiary] = useState<'PARTNER' | 'JOINT'>('PARTNER')
@@ -105,7 +105,7 @@ export default function SavePage() {
     fetch('/api/dashboard/stats')
       .then((res) => res.json())
       .then((data) => {
-        if (data && typeof data.totalInvested === 'number' && data.totalInvested > 0) {
+        if (data && typeof data.totalInvested === 'number') {
           setVaultPrincipal(data.totalInvested)
         }
       })

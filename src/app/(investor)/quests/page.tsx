@@ -19,9 +19,9 @@ import {
 } from 'lucide-react'
 
 const STREAK_MILESTONES = [
-  { days: 3, label: 'Bronze Synergy', apyBoost: '+0.05% APY', achieved: true },
-  { days: 7, label: 'Silver Covenant', apyBoost: '+0.10% APY', achieved: true },
-  { days: 14, label: 'Gold Affinity', apyBoost: '+0.15% APY', achieved: true },
+  { days: 3, label: 'Bronze Synergy', apyBoost: '+0.05% APY', achieved: false },
+  { days: 7, label: 'Silver Covenant', apyBoost: '+0.10% APY', achieved: false },
+  { days: 14, label: 'Gold Affinity', apyBoost: '+0.15% APY', achieved: false },
   { days: 30, label: 'Sovereign Synergy', apyBoost: '+0.25% APY', achieved: false },
 ]
 
@@ -70,8 +70,8 @@ export default function CoupleQuestsPage() {
             </p>
           </div>
 
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 self-start sm:self-auto">
-            Current Tier: Gold Affinity (+0.15% – +0.25%)
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] border border-[#C9A84C]/30 self-start sm:self-auto">
+            Current Tier: Day 1 (Build streak for up to +0.25% APY)
           </span>
         </div>
 

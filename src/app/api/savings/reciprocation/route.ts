@@ -51,22 +51,9 @@ export async function GET() {
         status: 'PENDING',
         isObligationOnCurrentUser: (latestLog.after as any)?.requiredReciprocatorName !== DEFAULT_PARTNER_NAME,
       }
-    } else if (!latestLog) {
-      // Default initial pending state so user immediately experiences the compulsory reciprocation feature
-      hasPending = true
-      const simulatedDepositDate = new Date(Date.now() - 6 * 3600 * 1000)
-      const simulatedDueDate = new Date(Date.now() + 42 * 3600 * 1000)
-      pendingData = {
-        id: 'recip_demo_init',
-        depositorName: DEFAULT_PARTNER_NAME,
-        requiredReciprocatorName: userName,
-        amount: 500,
-        depositedAt: simulatedDepositDate.toISOString(),
-        dueDate: simulatedDueDate.toISOString(),
-        partnerNote: 'I just saved $500 for our trip to Italy! Under our Spousal Covenant, you must match this deposit ❤️',
-        status: 'PENDING',
-        isObligationOnCurrentUser: true,
-      }
+    } else {
+      hasPending = false
+      pendingData = null
     }
 
     const pastReciprocations = historyLogs.map((log) => ({
@@ -82,7 +69,7 @@ export async function GET() {
       pastReciprocations,
       partnerName: DEFAULT_PARTNER_NAME,
       covenantRule: 'Rule 4.2: Mutual Matrimonial Savings Reciprocation Protocol',
-      covenantStreak: 6,
+      covenantStreak: latestLog ? 6 : 0,
       withdrawalsLocked: hasPending,
     })
   } catch (error) {

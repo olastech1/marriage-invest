@@ -53,14 +53,14 @@ export default function MarriageCertificatePage() {
   const [partnerName, setPartnerName] = useState('Marcus Vance')
   const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
   const [weddingDate, setWeddingDate] = useState('2024-06-15')
-  const [inviteSent, setInviteSent] = useState(true)
+  const [inviteSent, setInviteSent] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Signing state
-  const [primarySigned, setPrimarySigned] = useState(true)
-  const [primarySignDate, setPrimarySignDate] = useState('Oct 12, 2026')
-  const [partnerSigned, setPartnerSigned] = useState(true)
-  const [partnerSignDate, setPartnerSignDate] = useState('Oct 13, 2026')
+  const [primarySigned, setPrimarySigned] = useState(false)
+  const [primarySignDate, setPrimarySignDate] = useState('')
+  const [partnerSigned, setPartnerSigned] = useState(false)
+  const [partnerSignDate, setPartnerSignDate] = useState('')
 
   // Payment & Access state
   const [isPaid, setIsPaid] = useState(false)
@@ -355,11 +355,26 @@ export default function MarriageCertificatePage() {
                 {role1} (Primary)
               </span>
               <p className="text-sm font-bold text-[#0F1C3F]">{userName}</p>
-              <p className="text-xs text-gray-500">Signed: {primarySignDate}</p>
+              <p className="text-xs text-gray-500">
+                {primarySigned ? `Signed: ${primarySignDate}` : 'Pending signature'}
+              </p>
             </div>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
-              <Check className="w-3.5 h-3.5" /> Digitally Signed
-            </span>
+            {primarySigned ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold">
+                <Check className="w-3.5 h-3.5" /> Digitally Signed
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setPrimarySigned(true)
+                  setPrimarySignDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
+                }}
+                className="px-3 py-1.5 rounded-lg bg-[#0F1C3F] text-white text-xs font-bold hover:bg-[#1a2c5e]"
+              >
+                Sign Certificate
+              </button>
+            )}
           </div>
 
           {/* Partner 2 (Spouse) */}
@@ -380,7 +395,10 @@ export default function MarriageCertificatePage() {
             ) : (
               <button
                 type="button"
-                onClick={() => setPartnerSigned(true)}
+                onClick={() => {
+                  setPartnerSigned(true)
+                  setPartnerSignDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
+                }}
                 className="px-3 py-1.5 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460]"
               >
                 Attest & Sign

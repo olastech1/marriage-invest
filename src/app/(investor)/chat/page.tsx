@@ -127,28 +127,11 @@ export default function MutualChatPage() {
     {
       id: 'adv-1',
       senderName: advisorName,
-      text: 'Welcome Jane & Marcus! I am your dedicated matrimonial wealth concierge at Union Invest Zurich. I oversee your 50/50 mutual portfolio and legal survivorship docket.',
-      timestamp: 'Yesterday',
+      text: 'Welcome to Union Invest! I am your dedicated matrimonial wealth concierge at Union Invest Zurich. I oversee your 50/50 mutual portfolio and legal survivorship docket. Feel free to ask any questions about your vaults, dual-signature governance, or compound distributions.',
+      timestamp: 'Today',
       read: true,
       type: 'text',
       reactions: { '🏛️': 1 },
-    },
-    {
-      id: 'adv-2',
-      senderName: currentUserName,
-      text: 'Thank you Beatrix. Could you confirm when our 6.8% compounding interest distributions process each month?',
-      timestamp: 'Yesterday',
-      read: true,
-      type: 'text',
-    },
-    {
-      id: 'adv-3',
-      senderName: advisorName,
-      text: 'Interest distributions calculate daily and automatically credit to your liquid ledger on the 1st of each calendar month. Both spouses have equal withdrawal authorization.',
-      timestamp: 'Yesterday',
-      read: true,
-      type: 'text',
-      reactions: { '👍': 1 },
     },
   ])
 
@@ -645,6 +628,22 @@ export default function MutualChatPage() {
                 End-to-End Encrypted Matrimonial Line · Direct Two-Way Communication
               </span>
             </div>
+
+            {currentMessages.length === 0 && (
+              <div className="py-16 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/10 flex items-center justify-center mx-auto text-[#C9A84C]">
+                  {activeChannel === 'spouse' ? <Heart className="w-6 h-6 text-rose-500 fill-rose-500/20" /> : <Shield className="w-6 h-6 text-[#C9A84C]" />}
+                </div>
+                <h4 className="text-sm font-bold text-[#0F1C3F]">
+                  {activeChannel === 'spouse' ? `Start Your Matrimonial Chat with ${partnerName}` : 'Matrimonial Wealth Concierge Desk'}
+                </h4>
+                <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
+                  {activeChannel === 'spouse'
+                    ? 'Propose shared deposits, send mutual love notes, or discuss your joint financial goals in real time.'
+                    : 'Your dedicated advisor Beatrix Von Stauffen is on standby to assist with your portfolio and covenants.'}
+                </p>
+              </div>
+            )}
 
             {currentMessages.map((msg) => {
               // Determine if message belongs to current user

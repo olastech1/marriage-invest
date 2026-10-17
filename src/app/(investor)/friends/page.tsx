@@ -34,38 +34,7 @@ interface FriendsPool {
   members: { name: string; amount: number; isHost?: boolean }[]
 }
 
-const INITIAL_POOLS: FriendsPool[] = [
-  {
-    id: 'pool-1',
-    name: 'Amalfi Coast 10-Year Anniversary Celebration Syndicate',
-    targetAmount: 3000,
-    fundedAmount: 2250,
-    memberCount: 3,
-    targetCategory: 'Couples & Family Celebration Vault',
-    status: 'ACTIVE',
-    members: [
-      { name: 'Jane Doe (You)', amount: 750, isHost: true },
-      { name: 'Marcus Vance', amount: 750 },
-      { name: 'Samira Chen', amount: 750 },
-    ],
-  },
-  {
-    id: 'pool-2',
-    name: 'Zurich Friends High-Yield Syndicate',
-    targetAmount: 5000,
-    fundedAmount: 5000,
-    memberCount: 5,
-    targetCategory: 'Union Stable Income Bond',
-    status: 'FUNDED',
-    members: [
-      { name: 'Jane Doe (You)', amount: 1000, isHost: true },
-      { name: 'Elena Rostova', amount: 1000 },
-      { name: 'David Okafor', amount: 1000 },
-      { name: 'Chloe Martin', amount: 1000 },
-      { name: 'Tariq Al-Mansoor', amount: 1000 },
-    ],
-  },
-]
+const INITIAL_POOLS: FriendsPool[] = []
 
 export default function FriendsSyndicatePage() {
   const [pools, setPools] = useState<FriendsPool[]>(INITIAL_POOLS)
@@ -217,8 +186,23 @@ export default function FriendsSyndicatePage() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {pools.map((pool) => {
+        {pools.length === 0 ? (
+          <div className="p-10 text-center bg-white rounded-3xl border border-gray-200 space-y-3">
+            <Users className="w-10 h-10 text-gray-300 mx-auto" />
+            <h3 className="text-base font-bold text-[#0F1C3F]">No Active Friends Pools Yet</h3>
+            <p className="text-xs text-gray-500 max-w-md mx-auto">
+              Create your first collective syndicate to pool capital together with your spouse, friends, and family for high-yield returns.
+            </p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold hover:bg-[#1a2c5e] transition-colors"
+            >
+              + Create First Syndicate
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {pools.map((pool) => {
             const pct = Math.round((pool.fundedAmount / pool.targetAmount) * 100)
             return (
               <div
@@ -307,6 +291,7 @@ export default function FriendsSyndicatePage() {
             )
           })}
         </div>
+        )}
       </div>
 
       {/* ── FRIENDS POOL CALCULATOR ── */}

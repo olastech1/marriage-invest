@@ -16,7 +16,7 @@ import {
 } from 'lucide-react'
 
 export function CoupleStreakCard() {
-  const [streak, setStreak] = useState<number>(14)
+  const [streak, setStreak] = useState<number>(0)
   const [questIndex, setQuestIndex] = useState<number>(0)
   const currentQuest: DailyQuest = DAILY_QUESTS[questIndex % DAILY_QUESTS.length]
 

@@ -214,7 +214,7 @@ const opportunities: MockOpportunity[] = [
     minAmount: new Prisma.Decimal(50),
     maxAmount: new Prisma.Decimal(100000),
     targetAmount: new Prisma.Decimal(500000),
-    fundedAmount: new Prisma.Decimal(382500),
+    fundedAmount: new Prisma.Decimal(0),
     termMonths: 12,
     annualReturnRate: new Prisma.Decimal(6.8),
     distributionType: 'MONTHLY',
@@ -234,7 +234,7 @@ const opportunities: MockOpportunity[] = [
     minAmount: new Prisma.Decimal(100),
     maxAmount: new Prisma.Decimal(250000),
     targetAmount: new Prisma.Decimal(250000),
-    fundedAmount: new Prisma.Decimal(194000),
+    fundedAmount: new Prisma.Decimal(0),
     termMonths: 24,
     annualReturnRate: new Prisma.Decimal(8.5),
     distributionType: 'MONTHLY',
@@ -254,7 +254,7 @@ const opportunities: MockOpportunity[] = [
     minAmount: new Prisma.Decimal(250),
     maxAmount: new Prisma.Decimal(150000),
     targetAmount: new Prisma.Decimal(150000),
-    fundedAmount: new Prisma.Decimal(112000),
+    fundedAmount: new Prisma.Decimal(0),
     termMonths: 36,
     annualReturnRate: new Prisma.Decimal(7.2),
     distributionType: 'QUARTERLY',
@@ -274,7 +274,7 @@ const opportunities: MockOpportunity[] = [
     minAmount: new Prisma.Decimal(500),
     maxAmount: new Prisma.Decimal(100000),
     targetAmount: new Prisma.Decimal(100000),
-    fundedAmount: new Prisma.Decimal(87500),
+    fundedAmount: new Prisma.Decimal(0),
     termMonths: 12,
     annualReturnRate: new Prisma.Decimal(9.4),
     distributionType: 'AT_MATURITY',
@@ -287,216 +287,13 @@ const opportunities: MockOpportunity[] = [
   },
 ]
 
-const investments: MockInvestment[] = [
-  {
-    id: 'inv_1',
-    userId: 'usr_jane_doe',
-    opportunityId: 'opp_swiss',
-    referenceNumber: 'MI-2024-SWISS89',
-    amount: new Prisma.Decimal(18500),
-    status: 'ACTIVE',
-    confirmedAt: new Date('2024-02-01'),
-    maturityDate: new Date(Date.now() + 180 * 24 * 3600 * 1000),
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-02-01'),
-    opportunity: opportunities[0],
-  },
-  {
-    id: 'inv_2',
-    userId: 'usr_jane_doe',
-    opportunityId: 'opp_family',
-    referenceNumber: 'MI-2024-HOME44',
-    amount: new Prisma.Decimal(6250),
-    status: 'ACTIVE',
-    confirmedAt: new Date('2024-03-15'),
-    maturityDate: new Date(Date.now() + 420 * 24 * 3600 * 1000),
-    createdAt: new Date('2024-03-15'),
-    updatedAt: new Date('2024-03-15'),
-    opportunity: opportunities[1],
-  },
-  {
-    id: 'inv_3',
-    userId: 'usr_jane_doe',
-    opportunityId: 'opp_swiss',
-    referenceNumber: 'SOLO-2024-GRW91',
-    amount: new Prisma.Decimal(2500),
-    status: 'ACTIVE',
-    confirmedAt: new Date('2024-04-10'),
-    maturityDate: new Date(Date.now() + 210 * 24 * 3600 * 1000),
-    createdAt: new Date('2024-04-10'),
-    updatedAt: new Date('2024-04-10'),
-    opportunity: opportunities[0],
-  },
-]
+const investments: MockInvestment[] = []
 
-const transactions: MockTransaction[] = [
-  {
-    id: 'tx_1',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_1',
-    type: 'DEPOSIT',
-    amount: new Prisma.Decimal(15000),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(15000),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-DEP01',
-    description: 'Initial Joint Vault Deposit',
-    processedAt: new Date('2024-02-01'),
-    createdAt: new Date('2024-02-01'),
-    updatedAt: new Date('2024-02-01'),
-    investment: investments[0],
-  },
-  {
-    id: 'tx_2',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_1',
-    type: 'DEPOSIT',
-    amount: new Prisma.Decimal(3500),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(3500),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-DEP02',
-    description: 'Monthly Automatic Contribution',
-    processedAt: new Date('2024-03-01'),
-    createdAt: new Date('2024-03-01'),
-    updatedAt: new Date('2024-03-01'),
-    investment: investments[0],
-  },
-  {
-    id: 'tx_3',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_1',
-    type: 'DISTRIBUTION',
-    amount: new Prisma.Decimal(104.83),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(104.83),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-YLD01',
-    description: 'Swiss Vault Monthly Yield 6.8% APY',
-    processedAt: new Date('2024-03-01'),
-    createdAt: new Date('2024-03-01'),
-    updatedAt: new Date('2024-03-01'),
-    investment: investments[0],
-  },
-  {
-    id: 'tx_4',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_1',
-    type: 'DISTRIBUTION',
-    amount: new Prisma.Decimal(105.12),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(105.12),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-YLD02',
-    description: 'Swiss Vault Monthly Yield 6.8% APY',
-    processedAt: new Date('2024-04-01'),
-    createdAt: new Date('2024-04-01'),
-    updatedAt: new Date('2024-04-01'),
-    investment: investments[0],
-  },
-  {
-    id: 'tx_5',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_2',
-    type: 'DEPOSIT',
-    amount: new Prisma.Decimal(6250),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(6250),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-DEP03',
-    description: 'Family Dream Home Down Payment Fund',
-    processedAt: new Date('2024-03-15'),
-    createdAt: new Date('2024-03-15'),
-    updatedAt: new Date('2024-03-15'),
-    investment: investments[1],
-  },
-  {
-    id: 'tx_6',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_3',
-    type: 'DEPOSIT',
-    amount: new Prisma.Decimal(2500),
-    fee: new Prisma.Decimal(0),
-    netAmount: new Prisma.Decimal(2500),
-    status: 'COMPLETED',
-    reference: 'TXN-2024-DEP04',
-    description: 'Solo Growth Portfolio',
-    processedAt: new Date('2024-04-10'),
-    createdAt: new Date('2024-04-10'),
-    updatedAt: new Date('2024-04-10'),
-    investment: investments[2],
-  },
-]
+const transactions: MockTransaction[] = []
 
-const withdrawals: MockWithdrawal[] = [
-  {
-    id: 'wd_1',
-    userId: 'usr_jane_doe',
-    investmentId: 'inv_1',
-    amount: new Prisma.Decimal(1000),
-    fee: new Prisma.Decimal(30),
-    netAmount: new Prisma.Decimal(970),
-    status: 'PENDING',
-    bankName: 'JPMorgan Chase',
-    accountName: 'Jane & Marcus Doe-Vance',
-    accountNumber: '****4821',
-    routingNumber: '021000021',
-    adminNote: JSON.stringify({
-      requiresPartnerApproval: true,
-      partnerApprovalStatus: 'AWAITING_PARTNER',
-      requestedByName: 'Jane Doe',
-      partnerName: 'Marcus Vance',
-      initiatedAt: new Date(Date.now() - 3600 * 1000).toISOString(),
-    }),
-    createdAt: new Date(Date.now() - 3600 * 1000),
-    updatedAt: new Date(Date.now() - 3600 * 1000),
-    investment: investments[0],
-    user: users[0],
-  },
-]
+const withdrawals: MockWithdrawal[] = []
 
-const notifications: MockNotification[] = [
-  {
-    id: 'n_1',
-    userId: 'usr_jane_doe',
-    title: '⚡ Compulsory Reciprocation Active',
-    message: 'Marcus Vance deposited $500.00 into your Joint Vault. Under Spousal Covenant Rule 4.2, you are required to reciprocate with an equal contribution!',
-    type: 'WARNING',
-    read: false,
-    link: '/save',
-    createdAt: new Date(Date.now() - 2 * 3600 * 1000),
-  },
-  {
-    id: 'n_2',
-    userId: 'usr_jane_doe',
-    title: 'Partner Approval Requested 🔐',
-    message: 'Marcus Vance requested a withdrawal of $1,000. Under your Spousal Covenant, your digital signature is required before release.',
-    type: 'INFO',
-    read: false,
-    link: '/withdrawals',
-    createdAt: new Date(Date.now() - 4 * 3600 * 1000),
-  },
-  {
-    id: 'n_3',
-    userId: 'usr_jane_doe',
-    title: 'Monthly Yield Credited 🎉',
-    message: 'Your joint vault earned $105.12 in monthly compound distributions.',
-    type: 'SUCCESS',
-    read: true,
-    link: '/transactions',
-    createdAt: new Date(Date.now() - 24 * 3600 * 1000),
-  },
-  {
-    id: 'n_4',
-    userId: 'usr_jane_doe',
-    title: 'Matrimonial Covenant Sealed 💍',
-    message: 'Your marriage certificate and fiduciary covenant agreement are in full legal standing.',
-    type: 'SUCCESS',
-    read: true,
-    link: '/certificate',
-    createdAt: new Date('2024-01-20'),
-  },
-]
+const notifications: MockNotification[] = []
 
 const documents: MockDocument[] = [
   {
@@ -557,108 +354,11 @@ const documents: MockDocument[] = [
   },
 ]
 
-const documentAcknowledgments = [
-  { id: 'ack_1', userId: 'usr_jane_doe', documentId: 'doc_1', signedAt: new Date('2024-01-16') },
-  { id: 'ack_2', userId: 'usr_jane_doe', documentId: 'doc_2', signedAt: new Date('2024-01-18') },
-  { id: 'ack_3', userId: 'usr_jane_doe', documentId: 'doc_3', signedAt: new Date('2024-01-19') },
-  { id: 'ack_4', userId: 'usr_jane_doe', documentId: 'doc_4', signedAt: new Date('2024-02-02') },
-]
+const documentAcknowledgments: any[] = []
 
-const auditLogs: MockAuditLog[] = [
-  {
-    id: 'audit_1',
-    userId: 'usr_jane_doe',
-    action: 'MARRIAGE_REGISTRATION_CREATED',
-    entity: 'User',
-    entityId: 'usr_jane_doe',
-    after: { spouseName: 'Marcus Vance', registeredAt: '2024-01-20' },
-    createdAt: new Date('2024-01-20'),
-  },
-  {
-    id: 'audit_2',
-    userId: 'usr_jane_doe',
-    action: 'RECIPROCATION_OBLIGATION_CREATED',
-    entity: 'SavingsVault',
-    after: {
-      depositorName: 'Marcus Vance',
-      requiredReciprocatorName: 'Jane Doe',
-      amount: 500,
-      partnerNote: 'I just saved $500 for our trip to Italy! Under our Spousal Covenant, you must match this deposit ❤️',
-      dueDate: new Date(Date.now() + 41 * 3600 * 1000).toISOString(),
-      status: 'PENDING',
-    },
-    createdAt: new Date(Date.now() - 7 * 3600 * 1000),
-  },
-]
+const auditLogs: MockAuditLog[] = []
 
-export const chatMessages: MockChatMessage[] = [
-  {
-    id: 'msg-1',
-    threadId: 'spouse',
-    senderId: 'usr_marcus_vance',
-    senderName: 'Marcus Vance',
-    text: 'Good morning Jane! Did you see the monthly dividend payout landed in our Joint Vault?',
-    timestamp: '9:15 AM',
-    createdAt: new Date(Date.now() - 3600 * 4 * 1000),
-    read: true,
-    reactions: { '❤️': 1, '💰': 1 },
-    type: 'text',
-  },
-  {
-    id: 'msg-2',
-    threadId: 'spouse',
-    senderId: 'usr_jane_doe',
-    senderName: 'Jane Doe',
-    text: 'Yes! $85.00 from the Zurich Prime yield fund. That compound interest is really adding up.',
-    timestamp: '9:18 AM',
-    createdAt: new Date(Date.now() - 3600 * 3.8 * 1000),
-    read: true,
-    reactions: { '🥂': 1 },
-    type: 'text',
-  },
-  {
-    id: 'msg-3',
-    threadId: 'spouse',
-    senderId: 'usr_marcus_vance',
-    senderName: 'Marcus Vance',
-    text: 'I just reviewed our Marriage Investment Certificate as well. Both our signatures look incredible with the gold embossed seal.',
-    timestamp: '9:22 AM',
-    createdAt: new Date(Date.now() - 3600 * 3.5 * 1000),
-    read: true,
-    type: 'certificate',
-  },
-  {
-    id: 'msg-4',
-    threadId: 'spouse',
-    senderId: 'usr_marcus_vance',
-    senderName: 'Marcus Vance',
-    text: 'Voice memo on our weekend savings plan',
-    timestamp: '9:30 AM',
-    createdAt: new Date(Date.now() - 3600 * 3 * 1000),
-    read: true,
-    type: 'voice_memo',
-    voiceDuration: '0:34',
-    reactions: { '❤️': 1 },
-  },
-  {
-    id: 'msg-5',
-    threadId: 'spouse',
-    senderId: 'usr_marcus_vance',
-    senderName: 'Marcus Vance',
-    text: 'Should we add another deposit to the Family Dream Home vault before the weekend rate lock?',
-    timestamp: '9:45 AM',
-    createdAt: new Date(Date.now() - 3600 * 2.5 * 1000),
-    read: true,
-    type: 'proposal',
-    proposalData: {
-      goalName: 'Family Dream Home Down Payment',
-      amount: 250,
-      split: '50/50 Split ($125 each)',
-      status: 'pending',
-      proposedBy: 'Marcus Vance',
-    },
-  },
-]
+export const chatMessages: MockChatMessage[] = []
 
 // ---------------------------------------------------------------------------
 // Mock Prisma Delegate Implementations
@@ -743,6 +443,52 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
     async count(args?: any): Promise<number> {
       const items = await this.findMany(args)
       return items.length
+    },
+
+    async aggregate(args?: any): Promise<any> {
+      const items = await this.findMany(args)
+      let sum = 0
+      if (args?._sum) {
+        for (const key of Object.keys(args._sum)) {
+          sum = items.reduce((acc: number, item: any) => acc + Number(item[key] || 0), 0)
+        }
+      }
+      return {
+        _sum: { amount: sum },
+        _count: items.length,
+      }
+    },
+
+    async delete(args: { where: any }): Promise<any> {
+      const index = store.findIndex((item: any) => {
+        for (const [key, value] of Object.entries(args.where)) {
+          if (item[key] === value) return true
+        }
+        return false
+      })
+      if (index !== -1) {
+        const [removed] = store.splice(index, 1)
+        return removed
+      }
+      return null
+    },
+
+    async deleteMany(args?: any): Promise<{ count: number }> {
+      const before = store.length
+      if (!args?.where) {
+        store.length = 0
+        return { count: before }
+      }
+      const kept = store.filter((item: any) => {
+        for (const [key, value] of Object.entries(args.where)) {
+          if (item[key] === value) return false
+        }
+        return true
+      })
+      const count = store.length - kept.length
+      store.length = 0
+      store.push(...kept)
+      return { count }
     },
   }
 }
