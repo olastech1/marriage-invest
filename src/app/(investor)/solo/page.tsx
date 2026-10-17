@@ -42,35 +42,35 @@ const SOLO_TIERS = [
   {
     id: 'SOLO_STARTER',
     label: 'Solo Starter',
-    description: 'Perfect first personal investment. Low-risk capital preservation with modest quarterly distributions.',
+    description: 'Perfect first personal investment. Low-risk capital preservation with steady 9.5% monthly payouts.',
     minInvest: 250,
-    rate: 5.8,
+    rate: 9.5, // 9.5% / month -> $95/mo on $1,000
     termMonths: 6,
     risk: 'LOW',
-    perks: ['Quarterly APY distributions', 'Capital protection covenant', 'Solo investor dashboard tracking'],
+    perks: ['9.5% monthly interest payout', 'Capital protection covenant', 'Solo investor dashboard tracking'],
     color: 'border-emerald-300',
   },
   {
     id: 'SOLO_GROWTH',
     label: 'Solo Growth',
-    description: 'Balanced individual portfolio vehicle with monthly interest payouts and flexible re-investment.',
+    description: 'High-yield personal portfolio vehicle delivering 15.0% monthly interest payouts and flexible re-investment.',
     minInvest: 1000,
-    rate: 8.5,
+    rate: 15.0, // 15.0% / month -> Exactly $150/mo on $1,000!
     termMonths: 12,
     risk: 'MEDIUM',
-    perks: ['Monthly interest payouts', 'Re-invest toggle option', 'Detailed personal P&L report'],
+    perks: ['15.0% monthly interest (~$150/mo on $1,000)', 'Monthly automated interest payouts', 'Detailed personal P&L report'],
     color: 'border-[#C9A84C]',
     badge: 'Most Popular',
   },
   {
     id: 'SOLO_PREMIUM',
     label: 'Solo Premium',
-    description: 'High-conviction individual capital allocation with elevated returns and priority liquidity access.',
+    description: 'Maximum individual capital allocation with 22.5% monthly yield and priority liquidity access.',
     minInvest: 5000,
-    rate: 12.5,
+    rate: 22.5, // 22.5% / month -> $225/mo on $1,000 ($1,125/mo on $5,000)
     termMonths: 24,
     risk: 'HIGH',
-    perks: ['Priority withdrawal queue', 'Dedicated relationship manager', 'Quarterly earnings call access', 'Custom allocation strategy'],
+    perks: ['22.5% monthly yield (~$1,125/mo on $5,000)', 'Priority withdrawal queue', 'Dedicated relationship manager', 'Quarterly earnings call access'],
     color: 'border-[#0F1C3F]',
   },
 ]
@@ -85,8 +85,9 @@ export default function SoloInvestmentPage() {
 
   const tier = SOLO_TIERS.find((t) => t.id === selectedTier)!
   const numAmount = parseFloat(amount) || 0
-  const projectedMonthly = (numAmount * (tier.rate / 100)) / 12
-  const projectedTotal = numAmount * Math.pow(1 + tier.rate / 100, tier.termMonths / 12)
+  const projectedMonthly = numAmount * (tier.rate / 100)
+  const projectedTotalEarnings = projectedMonthly * tier.termMonths
+  const projectedTotal = numAmount + projectedTotalEarnings
 
   useEffect(() => {
     fetch('/api/investments')
@@ -154,7 +155,8 @@ export default function SoloInvestmentPage() {
             <li>✓ Individual capital only</li>
             <li>✓ No spousal approval required</li>
             <li>✓ Personal tax reporting</li>
-            <li>✓ Up to 12.5% projected APY</li>
+            <li>✓ Up to 22.5% monthly yield</li>
+            <li>✓ $1,000 earns $150/mo in Solo Growth</li>
           </ul>
         </div>
         <div className="p-4 rounded-2xl bg-[#C9A84C]/10 border border-[#C9A84C]/30 space-y-2">
@@ -205,7 +207,7 @@ export default function SoloInvestmentPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="text-2xl font-black text-[#C9A84C]">{t.rate}% <span className="text-sm text-gray-400 font-normal">APY</span></div>
+                  <div className="text-2xl font-black text-[#C9A84C]">{t.rate}% <span className="text-sm text-gray-500 font-semibold">/ month</span></div>
                   <p className="text-xs text-gray-500 leading-relaxed">{t.description}</p>
                   <div className="text-xs text-gray-400">{t.termMonths}-Month Term · Min ${t.minInvest.toLocaleString()}</div>
                   <ul className="pt-2 space-y-1">
@@ -271,11 +273,15 @@ export default function SoloInvestmentPage() {
 
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
               <h4 className="font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"><BarChart3 size={12} />Live Projection ({tier.label})</h4>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex justify-between"><span className="text-gray-500">Principal</span><span className="font-bold">${numAmount.toLocaleString()}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Annual Rate (Projected)</span><span className="font-bold text-emerald-600">{tier.rate}% APY</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Monthly Earnings (Est.)</span><span className="font-bold text-emerald-600">${projectedMonthly.toFixed(2)}</span></div>
-                <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="font-bold text-gray-700">Projected Total at Maturity</span><span className="font-black text-[#0F1C3F]">${projectedTotal.toFixed(2)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Monthly Interest Rate</span><span className="font-bold text-emerald-600">{tier.rate}% / month</span></div>
+                <div className="flex justify-between items-center p-2 rounded-xl bg-emerald-50 border border-emerald-200">
+                  <span className="text-emerald-900 font-bold text-xs">Monthly Earnings (Est.)</span>
+                  <span className="font-black text-emerald-700 text-sm">${projectedMonthly.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between"><span className="text-gray-500">Total Profit ({tier.termMonths} Months)</span><span className="font-bold text-slate-800">+${projectedTotalEarnings.toFixed(2)}</span></div>
+                <div className="flex justify-between border-t border-slate-200 pt-1.5"><span className="font-bold text-gray-700">Projected Total at Maturity</span><span className="font-black text-[#0F1C3F] text-sm">${projectedTotal.toFixed(2)}</span></div>
               </div>
             </div>
 
@@ -292,7 +298,7 @@ export default function SoloInvestmentPage() {
               {loading ? (
                 <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Submitting...</>
               ) : (
-                <><DollarSign size={15} />Invest ${numAmount.toLocaleString()} in {tier.label}</>
+                <><DollarSign size={15} />Invest ${numAmount.toLocaleString()} in {tier.label} (Earns ~${projectedMonthly.toFixed(0)}/mo)</>
               )}
             </button>
           </form>
@@ -303,7 +309,7 @@ export default function SoloInvestmentPage() {
               <h4 className="font-bold text-[#0F1C3F] text-sm">Why Invest Solo?</h4>
               {[
                 { icon: Lock, title: 'Your Capital, Your Control', desc: 'No spousal joint approval required. Invest independently on your own timeline.' },
-                { icon: TrendingUp, title: 'Higher Personal Returns', desc: `Solo Premium offers up to ${SOLO_TIERS[2].rate}% APY — higher than the joint vault.` },
+                { icon: TrendingUp, title: 'Higher Personal Returns', desc: `Solo Growth delivers 15% monthly (~$150/mo on $1,000) and Solo Premium yields up to 22.5% monthly.` },
                 { icon: ShieldCheck, title: 'Personal Tax Efficiency', desc: 'Solo investments generate separate tax documentation for individual filing.' },
                 { icon: Sparkles, title: 'Stacks With Joint Vault', desc: 'Your solo investments run in parallel with your joint marriage savings vault.' },
               ].map((item, i) => {
