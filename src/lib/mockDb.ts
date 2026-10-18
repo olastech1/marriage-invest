@@ -11,8 +11,22 @@ import { Prisma } from '@prisma/client'
 export interface MockUser {
   id: string
   name: string
+  username?: string | null
   email: string
   phone?: string | null
+  bio?: string | null
+  avatarUrl?: string | null
+  socials?: {
+    instagram?: string
+    tiktok?: string
+    twitter?: string
+    whatsapp?: string
+    linkedin?: string
+    website?: string
+  } | null
+  publicChatEnabled?: boolean
+  showPhone?: boolean
+  showEmail?: boolean
   passwordHash?: string
   role: 'INVESTOR' | 'ADMIN' | 'FINANCE' | 'COMPLIANCE' | 'SUPPORT'
   emailVerified: Date | null
@@ -192,8 +206,21 @@ const users: MockUser[] = [
   {
     id: 'usr_jane_doe',
     name: 'Jane Doe',
+    username: 'jane-doe',
     email: 'jane.doe@unionverify.com',
     phone: '+1 (555) 349-8821',
+    bio: 'Building our generational wealth together on Union Verify. Co-managing our 6.8% compounding joint spousal vault. 💍✨',
+    socials: {
+      instagram: 'janedoe_invest',
+      tiktok: 'janedoe_official',
+      twitter: 'janedoe_wealth',
+      whatsapp: '+1 (555) 349-8821',
+      linkedin: 'janedoe-wealth',
+      website: 'https://unionverify.com',
+    },
+    publicChatEnabled: true,
+    showPhone: true,
+    showEmail: true,
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
     twoFactorEnabled: false,
@@ -205,8 +232,21 @@ const users: MockUser[] = [
   {
     id: 'usr_marcus_vance',
     name: 'Marcus Vance',
+    username: 'marcus-vance',
     email: 'marcus.vance@unionverify.com',
     phone: '+1 (555) 782-9940',
+    bio: 'Husband & Joint Signatory on Union Verify. Committed to financial freedom, covenant growth, and mutual compound yield.',
+    socials: {
+      instagram: 'marcus_vance',
+      tiktok: 'marcusvance',
+      twitter: 'marcusvance',
+      whatsapp: '+1 (555) 782-9940',
+      linkedin: 'marcus-vance',
+      website: 'https://unionverify.com',
+    },
+    publicChatEnabled: true,
+    showPhone: true,
+    showEmail: true,
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
     twoFactorEnabled: false,

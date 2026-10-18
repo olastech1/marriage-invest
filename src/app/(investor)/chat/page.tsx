@@ -25,6 +25,7 @@ import {
   Bell,
   Phone,
   Mail,
+  Share2,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -608,6 +609,14 @@ export default function MutualChatPage() {
                 <Bell className="w-3.5 h-3.5 text-amber-600" />
                 <span>{isNudging ? 'Dispatching Nudge...' : 'Send Deposit Nudge'}</span>
               </button>
+              <Link
+                href={isMarcus ? '/u/marcus-vance' : '/u/jane-doe'}
+                target="_blank"
+                className="w-full py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-blue-600" />
+                <span>My Public Bio & Chat Link</span>
+              </Link>
             </div>
 
             {/* Matrimonial Covenant Snapshot Card */}

@@ -26,6 +26,7 @@ import {
   Flame,
   Gift,
   User,
+  Share2,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 
@@ -48,6 +49,7 @@ const navItems = [
   { href: '/save',          label: 'Save',                   icon: PiggyBank },
   { href: '/withdrawals',   label: 'Withdrawals',            icon: ArrowUpFromLine },
   { href: '/my-documents',  label: 'Documents',              icon: FileText },
+  { href: '/u/jane-doe',    label: 'My Public Bio & Chat',   icon: Share2, badge: 'Bio' },
   { href: '/settings',      label: 'Settings',               icon: Settings },
 ] as const
 
