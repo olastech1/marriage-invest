@@ -68,7 +68,7 @@ If you did not request this verification, please contact admin@unionverify.com.`
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
             <div style="text-align: center; margin-bottom: 24px;">
-              <span style="font-size: 24px; font-weight: bold; color: #0F1C3F;">Union <span style="color: #C9A84C;">Invest</span></span>
+              <span style="font-size: 24px; font-weight: bold; color: #0F1C3F;">Union <span style="color: #C9A84C;">Verify</span></span>
               <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; margin-top: 4px;">Fiduciary SMTP Verification</p>
             </div>
             <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">

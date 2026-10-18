@@ -50,7 +50,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <TrendingUpIcon className="w-5 h-5 text-[#C9A84C]" />
             </div>
             <span className="text-xl font-semibold tracking-wide text-white">
-              Union<span className="text-[#C9A84C]">Invest</span>
+              Union<span className="text-[#C9A84C]">Verify</span>
             </span>
           </Link>
 
@@ -100,7 +100,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <TrendingUpIcon className="w-4 h-4 text-[#C9A84C]" />
             </div>
             <span className="text-base font-semibold text-[#0F1C3F]">
-              Union<span className="text-[#C9A84C]">Invest</span>
+              Union<span className="text-[#C9A84C]">Verify</span>
             </span>
           </Link>
           <Link

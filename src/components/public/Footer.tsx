@@ -81,7 +81,7 @@ export default function Footer() {
                 <path d="M12 13L16 24L20 13H12Z" fill="#C9A84C" opacity="0.7" />
               </svg>
               <span className="text-white font-bold text-xl tracking-tight group-hover:text-[#C9A84C] transition-colors duration-200">
-                Union<span className="text-[#C9A84C]">Invest</span>
+                Union<span className="text-[#C9A84C]">Verify</span>
               </span>
             </Link>
             <p className="text-sm leading-relaxed text-gray-500 max-w-sm mb-6">

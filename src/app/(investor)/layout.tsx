@@ -77,7 +77,7 @@ function Sidebar({
       <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
         <div className="flex items-center gap-2">
           <span className="text-[#C9A84C] text-xl font-bold tracking-tight">Union</span>
-          <span className="text-white text-xl font-light tracking-tight">Invest</span>
+          <span className="text-white text-xl font-light tracking-tight">Verify</span>
         </div>
         {onClose && (
           <button
@@ -200,7 +200,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
           </button>
           <div className="flex items-center gap-1">
             <span className="text-[#0F1C3F] font-bold tracking-tight">Union</span>
-            <span className="text-[#C9A84C] font-bold tracking-tight">Invest</span>
+            <span className="text-[#C9A84C] font-bold tracking-tight">Verify</span>
           </div>
           <div className="flex items-center gap-2">
             <Link

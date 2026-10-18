@@ -780,7 +780,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
             <div className="space-y-4">
               <span className="text-xl font-bold text-white tracking-tight">
-                Union <span className="text-[#C9A84C]">Invest</span>
+                Union <span className="text-[#C9A84C]">Verify</span>
               </span>
               <p className="text-xs text-gray-400 leading-relaxed">
                 The institutional-grade marriage investment platform facilitating transparent, joint wealth creation for couples.
