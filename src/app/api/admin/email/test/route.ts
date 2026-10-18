@@ -45,8 +45,8 @@ export async function POST(req: NextRequest) {
     // 2. If test email requested and recipient provided, send a test email
     if (sendTest && toEmail) {
       const formattedDate = new Date().toUTCString()
-      const textAlternative = `Union Verify Fiduciary
-Fiduciary SMTP Verification
+      const textAlternative = `Union Verify
+SMTP Verification
 
 This notification confirms that the Union Verify mail server on ${host}:${port} is authenticated and operational.
 

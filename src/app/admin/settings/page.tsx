@@ -150,7 +150,7 @@ export default function AdminSettingsPage() {
         user: 'noreply@unionverify.com',
         pass: 'UnionVerify_Smtp2026!',
         fromEmail: 'noreply@unionverify.com',
-        fromName: 'Union Verify Fiduciary',
+        fromName: 'Union Verify System',
       })
     } else {
       setEmailSettings({

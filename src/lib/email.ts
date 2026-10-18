@@ -91,7 +91,7 @@ function getTransporter(): Transporter {
 // Shared template helpers
 // ---------------------------------------------------------------------------
 
-const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Verify Fiduciary'} <${process.env.EMAIL_FROM ?? 'invest@unionverify.com'}>`
+const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Verify'} <${process.env.EMAIL_FROM ?? 'invest@unionverify.com'}>`
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://unionverify.com'
 const BRAND_COLOR = '#0F1C3F'
 
