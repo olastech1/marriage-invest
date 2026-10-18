@@ -44,7 +44,7 @@ export function FloatingChatWidget({
     {
       id: 'm1',
       sender: 'partner',
-      text: 'Hey love! I just checked our Swiss Marriage Reserve vault. Looking fantastic! ❤️',
+      text: 'Hey love! I just checked our Joint Marriage Reserve vault. Looking fantastic! ❤️',
       time: '10:42 AM',
       type: 'text',
     },
@@ -145,7 +145,7 @@ export function FloatingChatWidget({
       const responses = [
         'Got it, darling! Loving our joint portfolio growth! 🥂',
         'Noted! I just checked the dashboard, looking great! ❤️',
-        'Sounds perfect. Swiss vault balance updated on my end too.',
+        'Sounds perfect. Joint vault balance updated on my end too.',
         '100% on board! Sending you love today! ✨',
       ]
       const chosen = responses[Math.floor(Math.random() * responses.length)]

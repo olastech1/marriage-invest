@@ -158,7 +158,7 @@ export function computeAccountRating(params: ComputeRatingParams): AccountRating
       'Statutory 50/50 survivorship covenant guarantee',
       'Unrestricted priority liquidity & zero-fee withdrawals',
       'Maximum 6.8% compounding interest on marital vault',
-      'Dedicated Swiss fiduciary covenant officer',
+      'Dedicated fiduciary covenant officer',
     ]
     color = {
       bg: 'bg-amber-50',
@@ -261,7 +261,7 @@ export function computeAccountRating(params: ComputeRatingParams): AccountRating
       label: 'Identity & Legal Verification (KYC)',
       met: kycMet,
       description: kycMet
-        ? 'Government identity and unmarried affidavit verified'
+        ? 'Government identity and marriage eligibility verified'
         : 'Complete identity verification on profile (+20 pts)',
       docType: 'KYC',
     },

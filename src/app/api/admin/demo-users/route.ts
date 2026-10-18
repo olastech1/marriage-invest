@@ -203,7 +203,7 @@ export async function POST(req: Request) {
       data: {
         userId: user.id,
         title: 'Joint Demo Portfolio Activated',
-        message: `Welcome to your Zurich Marriage Reserve with ${partnerName || 'your spouse'}. Pre-funded balance: $${depositAmount.toLocaleString()}.`,
+        message: `Welcome to your Joint Marriage Reserve with ${partnerName || 'your spouse'}. Pre-funded balance: $${depositAmount.toLocaleString()}.`,
         type: 'SUCCESS',
       },
     })

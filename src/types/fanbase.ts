@@ -151,10 +151,10 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
         'Global Arena Production, Lighting & Audio Engineering',
         'Physical Vinyl & Limited Edition Boxset Manufacturing',
         'Streaming Masters Marketing & International Sync Licensing',
-        'Direct Fan Return Escrow Reserve (Zurich Custody)',
+        'Direct Fan Return Escrow Reserve (Regulated Custody)',
       ],
       fiduciaryProtection:
-        'All syndicate capital is held in bankruptcy-remote Zurich fiduciary custody. Tour ticketing revenues and streaming sync royalties flow directly to an automated distribution waterfall managed by Union Verify Fiduciary Trustees.',
+        'All syndicate capital is held in bankruptcy-remote regulated escrow custody. Tour ticketing revenues and streaming sync royalties flow directly to an automated distribution waterfall managed by Union Verify Trustees.',
     },
     tiers: [
       {
@@ -218,7 +218,7 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
         perks: [
           'Private intimate dinner with Davido & executive management team',
           'Lifetime VIP Guest Pass to all future headlining concerts',
-          'Direct revenue share contract recorded on Swiss fiduciary register',
+          'Direct revenue share contract recorded on official fiduciary register',
           'Statutory 50/50 survivorship rights for joint spouses or named heirs',
         ],
       },
@@ -228,7 +228,7 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
       agency: 'Davido Music Worldwide / Sony Music Entertainment',
       bookingEmail: 'management@davido-syndicate.unionverify.com',
       pressEmail: 'press@davido-syndicate.unionverify.com',
-      fiduciaryCounsel: 'Zurich Fiduciary Trustees & London Entertainment Counsel',
+      fiduciaryCounsel: 'Platform Compliance & Media Counsel',
       headquarters: 'Lagos, Nigeria · London, UK · Atlanta, GA',
     },
   },
@@ -341,7 +341,7 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
       agency: 'Spaceship Entertainment / United Talent Agency',
       bookingEmail: 'management@burnaboy-syndicate.unionverify.com',
       pressEmail: 'press@burnaboy-syndicate.unionverify.com',
-      fiduciaryCounsel: 'London & Swiss Fiduciary Legal Council',
+      fiduciaryCounsel: 'Platform Compliance & Legal Counsel',
       headquarters: 'Lagos · London · Los Angeles',
     },
   },

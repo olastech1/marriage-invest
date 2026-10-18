@@ -139,8 +139,8 @@ export default function UserPublicProfilePage() {
 
   const isMarcus = slug.includes('marcus')
   const primaryName = profile.name
-  const spouseName = profile.spouse?.name || (isMarcus ? 'Jane Doe' : 'Marcus Vance')
-  const phone = profile.contact?.phone || '+1 (555) 349-8821'
+  const spouseName = profile.spouse?.name || 'Your Partner'
+  const phone = profile.contact?.phone || ''
   const email = profile.contact?.email || `${slug}@unionverify.com`
   const cleanPhone = phone.replace(/[^0-9]/g, '')
 
@@ -184,10 +184,10 @@ export default function UserPublicProfilePage() {
 
         {/* Profile Card Header */}
         <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-5">
-          {/* Fiduciary Verified Pill */}
+          {/* Verified Pill */}
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/50 text-[#C9A84C] text-[11px] font-bold uppercase tracking-wider shadow-sm">
             <ShieldCheck size={14} className="text-[#C9A84C]" />
-            <span>Fiduciary Verified Matrimonial Signatory</span>
+            <span>Verified Matrimonial Signatory</span>
           </div>
 
           {/* Couple Avatars with Interlocking Status */}
@@ -239,7 +239,7 @@ export default function UserPublicProfilePage() {
             <div className="p-2">
               <span className="text-[10px] uppercase font-bold text-gray-400 block">Seal Code</span>
               <span className="text-xs sm:text-xs font-mono font-bold text-[#C9A84C] block truncate">
-                {profile.covenantSeal || 'CH-MIC-2026'}
+                {profile.covenantSeal || 'UV-2026'}
               </span>
             </div>
           </div>
@@ -380,7 +380,7 @@ export default function UserPublicProfilePage() {
                   Inspect Marriage Certificate Bond
                 </h4>
                 <p className="text-[11px] text-gray-400">
-                  Seal {profile.covenantSeal || 'CH-MIC-2026'} · Fiduciary Registry Zurich & London
+                  Seal {profile.covenantSeal || 'UV-2026'} · Union Verify Registry
                 </p>
               </div>
             </div>
@@ -434,7 +434,7 @@ export default function UserPublicProfilePage() {
 
         <div className="text-center pt-4">
           <p className="text-[10px] text-gray-500">
-            © {new Date().getFullYear()} Union Verify Fiduciary AG · Zurich & London. All rights reserved.
+            © {new Date().getFullYear()} Union Verify. All rights reserved.
           </p>
         </div>
       </div>

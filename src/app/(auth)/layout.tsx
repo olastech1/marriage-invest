@@ -72,9 +72,9 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
             {/* Stats row */}
             <div className="mt-12 grid grid-cols-3 gap-6">
               {[
-                { value: '$240M+', label: 'Assets under custody' },
-                { value: '14,500+', label: 'Global partner portfolios' },
-                { value: '18.4%', label: 'Avg. annualized return' },
+                { value: '6.8%', label: 'APY compounding vault' },
+                { value: '50/50', label: 'Joint beneficial rights' },
+                { value: '$0', label: 'Platform fees on gifting' },
               ].map((stat) => (
                 <div key={stat.label}>
                   <p className="text-2xl font-bold text-[#C9A84C]">{stat.value}</p>
@@ -86,7 +86,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Footer line */}
           <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} Union Verify Fiduciary AG · Zurich & London
+            © {new Date().getFullYear()} Union Verify. All rights reserved.
           </p>
         </div>
       </div>

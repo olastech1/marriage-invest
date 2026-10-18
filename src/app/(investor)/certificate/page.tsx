@@ -30,8 +30,8 @@ export { MARRIAGE_TYPES, type MarriageTypeOption }
 
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
-  const userName = session?.user?.name || 'Jane Doe'
-  const userEmail = session?.user?.email || 'jane.doe@unionverify.com'
+  const userName = session?.user?.name || 'Primary Partner'
+  const userEmail = session?.user?.email || ''
 
   // Union & Marriage Type state
   const [selectedTypeId, setSelectedTypeId] = useState('OPPOSITE_SEX')
@@ -50,9 +50,9 @@ export default function MarriageCertificatePage() {
   }
 
   // Invitation state
-  const [partnerName, setPartnerName] = useState('Marcus Vance')
-  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unionverify.com')
-  const [weddingDate, setWeddingDate] = useState('2024-06-15')
+  const [partnerName, setPartnerName] = useState('')
+  const [partnerEmail, setPartnerEmail] = useState('')
+  const [weddingDate, setWeddingDate] = useState('')
   const [inviteSent, setInviteSent] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -112,7 +112,7 @@ export default function MarriageCertificatePage() {
             Official Marriage Investment Certificate
           </h1>
           <p className="text-sm text-gray-500 mt-1 max-w-2xl">
-            Invite your spouse, sign your digital covenant together, and complete your $500 legal registration filing and $500 certified certificate fee to unlock your official high-resolution certificate and start investing.
+            Invite your spouse, sign your digital covenant together, and complete your $500 registration and $500 certificate fee to unlock your official high-resolution certificate and start investing together.
           </p>
         </div>
 
@@ -500,7 +500,7 @@ export default function MarriageCertificatePage() {
 
           {/* Headers */}
           <span className="text-[11px] sm:text-xs font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-2">
-            {currentType.category} · International Matrimonial Capital Registry · Zurich & London
+            {currentType.category} · Union Verify Official Certificate Registry
           </span>
 
           <h2 className="text-2xl sm:text-4xl lg:text-5xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-4">

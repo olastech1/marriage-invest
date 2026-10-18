@@ -56,7 +56,7 @@ Details:
 - Authenticated Identity: ${user}
 - Timestamp: ${formattedDate}
 
-Union Verify Fiduciary AG · Zurich & London
+Union Verify · Digital Couples Investment Platform
 If you did not request this verification, please contact admin@unionverify.com.`
 
       const info = await transporter.sendMail({
@@ -94,7 +94,7 @@ If you did not request this verification, please contact admin@unionverify.com.`
               </tr>
             </table>
             <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af;">
-              © ${new Date().getFullYear()} Union Verify Fiduciary AG · Bahnhofstrasse 45, 8001 Zurich, Switzerland
+              © ${new Date().getFullYear()} Union Verify. All rights reserved.
             </div>
           </div>
         `,

@@ -25,22 +25,22 @@ export default function InvestorSettingsPage() {
   const [activeTab, setActiveTab] = useState<'bio' | 'profile' | 'security' | 'notifications'>('bio')
 
   const [profile, setProfile] = useState({
-    name: 'Jane Doe',
-    username: 'jane-doe',
-    phone: '+1 (555) 349-8821',
-    email: 'jane.doe@unionverify.com',
+    name: 'Investor',
+    username: 'investor',
+    phone: '',
+    email: '',
     bio: 'Building our generational wealth together on Union Verify. Co-managing our 6.8% compounding joint spousal vault. 💍✨',
-    instagram: 'janedoe_invest',
-    tiktok: 'janedoe_official',
-    twitter: 'janedoe_wealth',
-    whatsapp: '+1 (555) 349-8821',
+    instagram: '',
+    tiktok: '',
+    twitter: '',
+    whatsapp: '',
     website: 'https://unionverify.com',
     publicChatEnabled: true,
     showEmail: true,
     showPhone: true,
-    spouseName: 'Marcus Vance',
-    spouseEmail: 'marcus.vance@unionverify.com',
-    spousePhone: '+1 (555) 782-9940',
+    spouseName: '',
+    spouseEmail: '',
+    spousePhone: '',
   })
 
   const [passwords, setPasswords] = useState({
@@ -56,8 +56,8 @@ export default function InvestorSettingsPage() {
   const [showQrModal, setShowQrModal] = useState(false)
 
   const publicBioUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/u/${profile.username || 'jane-doe'}`
-    : `https://unionverify.com/u/${profile.username || 'jane-doe'}`
+    ? `${window.location.origin}/u/${profile.username || 'investor'}`
+    : `https://unionverify.com/u/${profile.username || 'investor'}`
 
   // Load live profile & spouse contact details on client mount
   useEffect(() => {
@@ -66,22 +66,22 @@ export default function InvestorSettingsPage() {
       .then((data) => {
         if (data.success && data.user) {
           setProfile({
-            name: data.user.name || 'Jane Doe',
-            username: data.user.username || 'jane-doe',
-            phone: data.user.phone || '+1 (555) 349-8821',
-            email: data.user.email || 'jane.doe@unionverify.com',
+            name: data.user.name || '',
+            username: data.user.username || '',
+            phone: data.user.phone || '',
+            email: data.user.email || '',
             bio: data.user.bio || 'Building our generational wealth together on Union Verify. Co-managing our 6.8% compounding joint spousal vault. 💍✨',
-            instagram: data.user.socials?.instagram || 'janedoe_invest',
-            tiktok: data.user.socials?.tiktok || 'janedoe_official',
-            twitter: data.user.socials?.twitter || 'janedoe_wealth',
-            whatsapp: data.user.socials?.whatsapp || data.user.phone || '+1 (555) 349-8821',
+            instagram: data.user.socials?.instagram || '',
+            tiktok: data.user.socials?.tiktok || '',
+            twitter: data.user.socials?.twitter || '',
+            whatsapp: data.user.socials?.whatsapp || data.user.phone || '',
             website: data.user.socials?.website || 'https://unionverify.com',
             publicChatEnabled: data.user.publicChatEnabled !== false,
             showEmail: data.user.showEmail !== false,
             showPhone: data.user.showPhone !== false,
-            spouseName: data.spouse?.name || 'Marcus Vance',
-            spouseEmail: data.spouse?.email || 'marcus.vance@unionverify.com',
-            spousePhone: data.spouse?.phone || '+1 (555) 782-9940',
+            spouseName: data.spouse?.name || '',
+            spouseEmail: data.spouse?.email || '',
+            spousePhone: data.spouse?.phone || '',
           })
         }
       })
@@ -320,7 +320,7 @@ export default function InvestorSettingsPage() {
               </label>
               <input
                 type="text"
-                placeholder="+1 (555) 349-8821"
+                placeholder="e.g. +1 (555) 012-3456"
                 value={profile.whatsapp}
                 onChange={(e) => setProfile({ ...profile, whatsapp: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-xs text-gray-900 focus:ring-2 focus:ring-[#C9A84C] outline-none"

@@ -416,7 +416,7 @@ export default function DemoDashboardPage() {
               <tbody className="divide-y divide-gray-100 font-medium">
                 <tr className="hover:bg-gray-50/80 transition-colors">
                   <td className="py-3 px-2 font-bold text-[#0F1C3F]">
-                    Zurich Global Infrastructure Debt Fund
+                    Global Infrastructure Debt Fund
                   </td>
                   <td className="py-3 px-2 font-mono text-gray-900">$50,000.00</td>
                   <td className="py-3 px-2 font-bold text-emerald-700">14.2% APY</td>
@@ -431,7 +431,7 @@ export default function DemoDashboardPage() {
 
                 <tr className="hover:bg-gray-50/80 transition-colors">
                   <td className="py-3 px-2 font-bold text-[#0F1C3F]">
-                    Swiss Alpine Clean Energy Yield Fund
+                    Clean Energy Sovereign Yield Fund
                   </td>
                   <td className="py-3 px-2 font-mono text-gray-900">$45,000.00</td>
                   <td className="py-3 px-2 font-bold text-emerald-700">12.8% APY</td>
@@ -446,7 +446,7 @@ export default function DemoDashboardPage() {
 
                 <tr className="hover:bg-gray-50/80 transition-colors">
                   <td className="py-3 px-2 font-bold text-[#0F1C3F]">
-                    Zurich Core Sovereign Debt Fund
+                    Core Sovereign Debt Reserve Fund
                   </td>
                   <td className="py-3 px-2 font-mono text-gray-900">$30,000.00</td>
                   <td className="py-3 px-2 font-bold text-emerald-700">9.5% APY</td>

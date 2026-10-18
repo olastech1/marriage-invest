@@ -126,7 +126,7 @@ export default function FanbaseGatewayPage() {
         {/* Fiduciary Guarantee */}
         <div className="text-xs text-gray-500 max-w-md mx-auto flex items-center justify-center gap-2">
           <Shield className="w-4 h-4 text-[#C9A84C]" />
-          <span>Zurich Escrow Protected · Bankruptcy-Remote Master Rights</span>
+          <span>Institutional Escrow Protected · Bankruptcy-Remote Master Rights</span>
         </div>
       </div>
     </div>

@@ -5,8 +5,8 @@ import { sendDepositReminderEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_SPOUSE_EMAIL = 'marcus.vance@unionverify.com'
-const DEFAULT_SPOUSE_NAME = 'Marcus Vance'
+const DEFAULT_SPOUSE_EMAIL = ''
+const DEFAULT_SPOUSE_NAME = 'Your Partner'
 
 export async function GET() {
   try {
@@ -24,7 +24,7 @@ export async function GET() {
       partner: {
         name: DEFAULT_SPOUSE_NAME,
         email: DEFAULT_SPOUSE_EMAIL,
-        phone: '+1 (555) 782-9940',
+        phone: '',
       },
     })
   } catch (error: any) {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     const userId = session?.user?.id || 'usr_jane_doe'
-    const userName = session?.user?.name || 'Jane Doe'
+    const userName = session?.user?.name || 'Investor'
     const body = await req.json()
 
     const {
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       amount = 500,
       targetPartnerName = DEFAULT_SPOUSE_NAME,
       targetEmail = DEFAULT_SPOUSE_EMAIL,
-      vaultName = 'Jane Doe & Marcus Vance Spousal Contribution',
+      vaultName = 'Mutual Spousal Contribution Vault',
       note = 'Remember our monthly deposit to accelerate our joint compounding vault! ❤️',
       frequency = 'MONTHLY',
       dayOfWeek,

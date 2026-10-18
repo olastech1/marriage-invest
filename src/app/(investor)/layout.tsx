@@ -162,8 +162,8 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
   }, [pathname])
 
   const user = session?.user || {
-    name: 'Jane Doe',
-    email: 'jane.doe@unionverify.com',
+    name: 'Investor',
+    email: '',
     role: 'INVESTOR' as const,
   }
 

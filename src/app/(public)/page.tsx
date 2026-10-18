@@ -157,10 +157,10 @@ export default async function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
             <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
               <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                $2.4M+
+                6.8%
               </span>
               <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Couples Capital Funded
+                APY Joint Vault Rate
               </span>
             </div>
 
@@ -184,10 +184,10 @@ export default async function HomePage() {
 
             <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
               <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                94%
+                $0
               </span>
               <span className="text-xs sm:text-sm font-medium text-gray-500">
-                On-Time Distributions
+                Registry Gifting Fees
               </span>
             </div>
           </div>
@@ -325,7 +325,7 @@ export default async function HomePage() {
               </div>
 
               <span className="text-[10px] font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-1">
-                International Matrimonial Capital Registry · Zurich & London
+                Union Verify · Official Certificate Registry
               </span>
 
               <h3 className="text-xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-2">
@@ -386,7 +386,7 @@ export default async function HomePage() {
               </h4>
 
               <p className="text-xs text-gray-300 leading-relaxed mb-6">
-                The $500 registration fee covers legal filing and statutory affidavit check, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Verify registry.
+                The $500 registration fee covers your application review and identity verification, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Verify registry.
               </p>
 
               <div className="space-y-3 mb-6">
@@ -427,7 +427,7 @@ export default async function HomePage() {
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 max-w-lg leading-relaxed">
-              Union Verify provides full statutory survivorship entitlement and 50/50 capital custody across all recognized international unions, filed under Zurich & London fiduciary standards.
+              Union Verify provides full 50/50 capital custody and equal joint rights across all recognized union types, with transparent digital documentation and dual-signature protection.
             </p>
           </div>
 
@@ -469,7 +469,7 @@ export default async function HomePage() {
                 Get Married Online & Solemnize Your Legal Union
               </h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
-                Never been married before? Complete your first-time matrimonial application entirely online. File your legal single-status affidavit, receive statutory officiant solemnization, and get your certified marriage certificate with 50/50 joint wealth rights.
+                Never been married before? Complete your online marriage registration together. Both partners sign digitally and receive a certified marriage certificate with full 50/50 joint wealth rights and access to the compounding savings vault.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
@@ -479,7 +479,7 @@ export default async function HomePage() {
                   </div>
                   <div>
                     <span className="block text-xs font-bold text-white">Marriage Registration Fee</span>
-                    <span className="text-[11px] text-gray-400">Affidavit check, registry docketing & officiant assignment</span>
+                    <span className="text-[11px] text-gray-400">Application review, identity check & official docketing</span>
                   </div>
                 </div>
 
@@ -740,7 +740,7 @@ export default async function HomePage() {
               },
               {
                 q: 'What are the fees for marriage registration and certificates?',
-                a: 'The $500 marriage registration fee covers formal registry filing, identity verification, background check, and international docket recording under Zurich and London Fiduciary Registry standards. The $500 certificate issuance fee validates your authenticated digital seal, removes all watermarks, unlocks high-resolution PDF downloads, and authorizes 50/50 mutual investment access. Couples can also select the $1,000 all-inclusive package at checkout.',
+                a: 'The $500 marriage registration fee covers your online application review, identity verification, background check, and official digital registry docketing. The $500 certificate issuance fee validates your authenticated digital seal, removes all watermarks, unlocks high-resolution PDF downloads, and authorizes 50/50 mutual investment access. Couples can also select the $1,000 all-inclusive package at checkout.',
               },
               {
                 q: 'Do both partners need to sign the certificate before investing?',

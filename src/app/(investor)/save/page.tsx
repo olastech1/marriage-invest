@@ -96,10 +96,10 @@ interface DepositReminderItem {
 
 export default function SavePage() {
   const { data: session } = useSession()
-  const currentUserName = session?.user?.name || 'Jane Doe'
-  const partnerName = 'Marcus Vance'
-  const partnerEmail = 'marcus.vance@unionverify.com'
-  const partnerPhone = '+1 (555) 782-9940'
+  const currentUserName = session?.user?.name || 'Investor'
+  const partnerName = 'Your Partner'
+  const partnerEmail = ''
+  const partnerPhone = ''
 
   // Vault Principal State (starts clean at 0 on fresh site)
   const [vaultPrincipal, setVaultPrincipal] = useState(0)

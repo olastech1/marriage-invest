@@ -35,10 +35,10 @@ export default function AdminSettingsPage() {
     platformName: 'Union Verify',
     tagline: 'Building Wealth Together — A Marriage Investment Platform',
     supportEmail: 'support@unionverify.com',
-    complianceEmail: 'compliance.zurich@unionverify.com',
-    supportPhone: '+41 44 214 8800',
+    complianceEmail: 'compliance@unionverify.com',
+    supportPhone: '',
     currency: 'USD ($)',
-    timezone: 'Europe/Zurich (CET / UTC+1)',
+    timezone: 'UTC',
   })
 
   const [financeSettings, setFinanceSettings] = useState({

@@ -86,7 +86,7 @@ export default function MutualChatPage() {
   const partnerName = isMarcus ? 'Jane Doe' : 'Marcus Vance'
   const partnerInitials = isMarcus ? 'JD' : 'MV'
   const userInitials = isMarcus ? 'MV' : 'JD'
-  const advisorName = 'Beatrix Von Stauffen, CFP®'
+  const advisorName = 'UV Support'
 
   // Switch Active Partner Toggle
   const handleSwitchPartner = () => {
@@ -135,7 +135,7 @@ export default function MutualChatPage() {
     {
       id: 'adv-1',
       senderName: advisorName,
-      text: 'Welcome to Union Verify! I am your dedicated matrimonial wealth concierge at Union Verify Zurich. I oversee your 50/50 mutual portfolio and legal survivorship docket. Feel free to ask any questions about your vaults, dual-signature governance, or compound distributions.',
+      text: 'Welcome to Union Verify! Our support team is here to assist with your joint portfolio and platform questions. Feel free to ask about your vaults, dual-signature governance, or compound distributions.',
       timestamp: 'Today',
       read: true,
       type: 'text',
@@ -572,7 +572,7 @@ export default function MutualChatPage() {
                 </div>
               </div>
 
-              {/* Channel 2: Zurich Wealth Concierge */}
+              {/* Channel 2: Support & Concierge */}
               <div
                 onClick={() => {
                   setActiveChannel('advisor')
@@ -594,14 +594,14 @@ export default function MutualChatPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-1">
                     <span className={`text-sm font-bold truncate ${activeChannel === 'advisor' ? 'text-white' : 'text-[#0F1C3F]'}`}>
-                      Zurich Wealth Concierge
+                      Support & Concierge
                     </span>
                     <span className={`text-[10px] font-mono ${activeChannel === 'advisor' ? 'text-[#C9A84C]' : 'text-gray-400'}`}>
                       24/7 Desk
                     </span>
                   </div>
                   <p className={`text-xs truncate mt-0.5 ${activeChannel === 'advisor' ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {advisorMessages[advisorMessages.length - 1]?.text || 'Beatrix Von Stauffen'}
+                    {advisorMessages[advisorMessages.length - 1]?.text || 'Union Verify Support'}
                   </p>
                 </div>
               </div>
@@ -624,11 +624,11 @@ export default function MutualChatPage() {
                 <div className="font-bold text-gray-900">{partnerName}</div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <Mail className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
-                  <span className="truncate">{isMarcus ? 'jane.doe@unionverify.com' : 'marcus.vance@unionverify.com'}</span>
+                  <span className="truncate">Active Spousal Signatory</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <Phone className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
-                  <span>{isMarcus ? '+1 (555) 349-8821' : '+1 (555) 782-9940'}</span>
+                  <span>Verified Mutual Ledger</span>
                 </div>
               </div>
               <button
@@ -764,12 +764,12 @@ export default function MutualChatPage() {
                   {activeChannel === 'spouse' ? <Heart className="w-6 h-6 text-rose-500 fill-rose-500/20" /> : <Shield className="w-6 h-6 text-[#C9A84C]" />}
                 </div>
                 <h4 className="text-sm font-bold text-[#0F1C3F]">
-                  {activeChannel === 'spouse' ? `Start Your Matrimonial Chat with ${partnerName}` : 'Matrimonial Wealth Concierge Desk'}
+                  {activeChannel === 'spouse' ? `Start Your Matrimonial Chat with ${partnerName}` : 'Union Verify Support Desk'}
                 </h4>
                 <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
                   {activeChannel === 'spouse'
                     ? 'Propose shared deposits, send mutual love notes, or discuss your joint financial goals in real time.'
-                    : 'Your dedicated advisor Beatrix Von Stauffen is on standby to assist with your portfolio and covenants.'}
+                    : 'Our support team is on standby to assist with your portfolio and investment questions.'}
                 </p>
               </div>
             )}
@@ -1006,14 +1006,14 @@ export default function MutualChatPage() {
                   'Love this goal ❤️',
                   'Checking our savings vault now 📊',
                   'I’ll match 50% tonight 💍',
-                  'Let’s consult our Zurich advisor 🏛️',
+                  'Let’s consult UV support 🏛️',
                 ]
               : [
                   'How does reciprocal matching work? 💰',
                   'What is needed to marry online? 💍',
                   'How do we unlock our gold certificate? 📜',
                   'Explain 6.8% compounding APY 📈',
-                  'Where is Jane Doe’s bio profile? 👤',
+                  'How do I find a member profile? 👤',
                 ]
             ).map((chip, idx) => (
               <button
@@ -1060,7 +1060,7 @@ export default function MutualChatPage() {
                 placeholder={
                   activeChannel === 'spouse'
                     ? `Message ${partnerName}… (instant mutual sync)`
-                    : 'Ask your Zurich wealth concierge…'
+                    : 'Ask Union Verify support…'
                 }
                 className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:border-transparent bg-gray-50/50"
               />

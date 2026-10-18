@@ -51,9 +51,9 @@ export default function TermsPage() {
             </p>
           </section>
 
-            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Governing Law & International Arbitration</h2>
+            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Governing Law & Dispute Resolution</h2>
             <p>
-              These Terms and all Matrimonial Investment Covenants shall be governed by and construed in accordance with Swiss civil and commercial fiduciary law and applicable international private placement regulations. Any dispute, controversy, or claim arising out of or in connection with these terms shall be settled by binding commercial arbitration administered in Zurich, Switzerland.
+              These Terms and all Matrimonial Investment Covenants shall be governed by and construed in accordance with applicable commercial laws and international digital financial transaction standards. Any dispute, controversy, or claim arising out of or in connection with these terms shall be settled through binding commercial arbitration in accordance with standard international arbitration rules.
             </p>
         </div>
       </div>

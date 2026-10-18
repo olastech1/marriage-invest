@@ -10,29 +10,29 @@ export const metadata: Metadata = {
 
 const leadership = [
   {
-    name: 'Alexander von Bern',
-    role: 'Chief Executive Officer & Co-Founder',
-    bio: 'Former Managing Director of Private Wealth at UBS Zurich, with 20+ years specializing in international family wealth syndication and matrimonial covenants.',
-    credentials: 'CFA, MBA (St. Gallen / INSEAD)',
+    name: 'Platform Founder',
+    role: 'Chief Executive Officer',
+    bio: 'Visionary fintech entrepreneur with deep roots in building community-driven digital financial platforms, focused on empowering couples through structured joint investing.',
+    credentials: 'Founder & Platform Architect',
   },
   {
-    name: 'Baroness Elena Lindqvist, LL.M',
+    name: 'Head of Compliance',
     role: 'Chief Compliance & Legal Counsel',
-    bio: 'Specialist in Swiss & European cross-border private placements, investor protections, and dual-party matrimonial trusts. 16 years advising family offices.',
-    credentials: 'LL.M (Cambridge / Zurich Law), Admitted Zurich Bar',
+    bio: 'Expert in digital financial services regulation, KYC/AML policy, and cross-border investment platform governance. Ensuring every investor transaction meets the highest legal standards.',
+    credentials: 'Financial Services Compliance Specialist',
   },
   {
-    name: 'Jean-Philippe Moreau, CFA',
-    role: 'Chief Financial & Risk Officer',
-    bio: 'Over 18 years directing private credit portfolios, sovereign underwriting models, and multi-currency cash reconciliations at Lombard Odier and Credit Suisse.',
-    credentials: 'CFA, FRM, M.Sc (Paris-Dauphine)',
+    name: 'Head of Finance',
+    role: 'Chief Financial Officer',
+    bio: 'Experienced financial operations leader overseeing platform treasury, risk management, investment structuring, and transparent distribution reporting for all joint investors.',
+    credentials: 'Platform Financial Operations',
   },
 ]
 
 const milestones = [
   { year: '2022', title: 'Platform Inception', description: 'Established as an innovative partnership vehicle bridging couple-based savings and structured investments.' },
   { year: '2023', title: 'Regulatory Compliance Framework', description: 'Implemented automated KYC/AML verification, electronic signature ledger, and independent escrow accounts.' },
-  { year: '2024', title: 'Institutional Expansion', description: 'Surpassed $2.4M in total investor capital deployed with zero contractual repayment defaults.' },
+  { year: '2024', title: 'Platform Growth', description: 'Expanded certificate issuance, joint savings vaults, and wedding registry gifting to hundreds of registered couples across multiple countries.' },
 ]
 
 export default function AboutPage() {

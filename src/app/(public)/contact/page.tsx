@@ -64,7 +64,7 @@ const CONVERSATION_STARTERS: ConversationStarter[] = [
     icon: Heart,
     badge: 'Popular',
     title: 'Get Married Online ($500)',
-    description: 'File your digital single-status affidavit, invite partner to co-sign, and solemnize union.',
+    description: 'Complete your online marriage application, invite partner to co-sign, and unlock joint investing.',
     prompt: 'We want to legally marry online and set up our joint 6.8% compounding savings vault.',
     leadsTo: 'Unlocks digital civil marriage & joint high-yield vault',
     color: 'bg-rose-50 text-rose-700',
@@ -77,7 +77,7 @@ const CONVERSATION_STARTERS: ConversationStarter[] = [
     title: 'Joint Compounding Vault',
     description: 'Understand how 50/50 dual savings, daily compounding, and Rule 4.2 spousal match work.',
     prompt: 'How does the 50/50 spousal deposit matching rule and 6.8% APY compounding work?',
-    leadsTo: 'Explains second-by-second compounding & reciprocal matching',
+    leadsTo: 'Explains daily compounding & reciprocal matching',
     color: 'bg-amber-50 text-amber-800',
     borderColor: 'border-amber-200 hover:border-[#C9A84C]',
   },
@@ -99,7 +99,7 @@ const CONVERSATION_STARTERS: ConversationStarter[] = [
     title: 'Verify Marriage Certificate',
     description: 'Validate an authenticated certificate reference number or inspect legal covenant seals.',
     prompt: 'I have a certificate docket number and want to verify its authenticity.',
-    leadsTo: 'Authenticity lookup on official Zurich fiduciary registry',
+    leadsTo: 'Authenticity lookup on official Union Verify registry',
     color: 'bg-purple-50 text-purple-800',
     borderColor: 'border-purple-200 hover:border-purple-400',
   },
@@ -107,9 +107,9 @@ const CONVERSATION_STARTERS: ConversationStarter[] = [
     id: 'member_bio',
     icon: User,
     badge: 'Social Link',
-    title: 'Message Member (Jane Doe)',
-    description: 'Connect with a verified member through their public bio link and chat directly.',
-    prompt: 'I want to send a direct message to Jane Doe through her verified bio profile.',
+    title: 'Connect with a Member',
+    description: 'Find a verified member through their public bio link and start a direct conversation.',
+    prompt: 'I want to connect with a verified member through their public bio profile.',
     leadsTo: 'Direct social chat with verified profile badge',
     color: 'bg-indigo-50 text-indigo-800',
     borderColor: 'border-indigo-200 hover:border-indigo-400',
@@ -121,8 +121,8 @@ export default function ContactPage() {
   const [messages, setMessages] = useState<ChatEntry[]>([
     {
       id: 'seed-adv',
-      senderName: 'Beatrix Von Stauffen, CFP® · Zurich Desk',
-      text: 'Welcome to Union Verify! How can our fiduciary desk assist you today? Choose one of our quick conversation starters below, or send us a message directly.',
+      senderName: 'Union Verify Support',
+      text: 'Welcome to Union Verify! How can we help you today? Choose one of our quick conversation starters below, or send us a message directly.',
       timestamp: 'Active Now',
       type: 'advisor_response',
     },
@@ -326,15 +326,15 @@ export default function ContactPage() {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#C9A84C] to-[#ecd7a2] text-[#0F1C3F] font-black flex items-center justify-center text-sm shadow-md">
-                    BV
+                    UV
                   </div>
                   <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-[#0F1C3F] rounded-full" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-white">Beatrix Von Stauffen, CFP®</h3>
+                    <h3 className="text-sm font-bold text-white">Union Verify Support</h3>
                     <span className="text-[10px] font-semibold text-[#C9A84C] bg-white/10 px-2 py-0.5 rounded-full">
-                      Zurich Fiduciary Desk
+                      Live Support Desk
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 flex items-center gap-1.5 mt-0.5">
@@ -408,7 +408,7 @@ export default function ContactPage() {
             {/* Live Message Stream */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 bg-slate-50/50">
               {messages.map((m) => {
-                const isAdvisor = m.senderId === 'advisor_zurich' || m.senderName.includes('Beatrix')
+                const isAdvisor = m.senderId === 'advisor_zurich' || m.senderId === 'advisor_support' || m.senderName.includes('Support')
                 return (
                   <div
                     key={m.id}
@@ -416,7 +416,7 @@ export default function ContactPage() {
                   >
                     <div className="flex items-center gap-1.5 mb-1 px-1">
                       <span className="text-[11px] font-bold text-slate-700">
-                        {isAdvisor ? 'Beatrix Von Stauffen (Advisor)' : m.senderName}
+                        {isAdvisor ? 'Union Verify Support' : m.senderName}
                       </span>
                       <span className="text-[10px] text-slate-400">{m.timestamp}</span>
                     </div>
@@ -451,7 +451,7 @@ export default function ContactPage() {
               {sending && (
                 <div className="flex items-center gap-2 text-xs text-slate-400 pl-2">
                   <div className="w-4 h-4 border-2 border-slate-300 border-t-[#C9A84C] rounded-full animate-spin" />
-                  <span>Beatrix is formulating your fiduciary guidance…</span>
+                  <span>Support is preparing your response…</span>
                 </div>
               )}
 
@@ -465,7 +465,7 @@ export default function ContactPage() {
                 'How does reciprocal matching work?',
                 'What is needed to marry online?',
                 'Can wedding guests gift cash?',
-                'Where is Jane Doe\'s bio profile?',
+                'How do I find a member profile?',
               ].map((chip, i) => (
                 <button
                   key={i}
@@ -513,8 +513,8 @@ export default function ContactPage() {
                   <ShieldCheck className="w-4 h-4 text-[#C9A84C]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-[#0F1C3F]">Zurich Concierge & Fiduciary AG</h3>
-                  <p className="text-[11px] text-slate-400">Licensed Swiss Matrimonial Oversight</p>
+                  <h3 className="text-sm font-bold text-[#0F1C3F]">Union Verify Support Team</h3>
+                  <p className="text-[11px] text-slate-400">Available Monday – Friday</p>
                 </div>
               </div>
 
@@ -522,36 +522,36 @@ export default function ContactPage() {
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
                   <div>
-                    <strong>Union Verify Fiduciary AG</strong><br />
-                    Bahnhofstrasse 45, 8001 Zurich, Switzerland<br />
-                    <span className="text-slate-400">UK Desk: 30 St Mary Axe, London EC3A 8EP</span>
+                    <strong>Union Verify</strong><br />
+                    Digital Couples Investment Platform<br />
+                    <span className="text-slate-400">Available to members worldwide</span>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>desk.zurich@unionverify.com</span>
+                  <span>support@unionverify.com</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>+41 44 214 8800 · +1 (888) 920-UNIV</span>
+                  <span>Available via live chat 24/7</span>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Clock className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>Mon–Fri: 08:30 – 17:30 CET / GMT</span>
+                  <span>Mon–Fri: 09:00 – 18:00 UTC</span>
                 </div>
               </div>
 
               <div className="pt-3 border-t border-slate-100">
                 <Link
-                  href="/u/jane-doe"
+                  href="/community"
                   className="w-full py-2.5 px-3 rounded-xl bg-slate-50 border border-slate-200 hover:border-[#C9A84C] text-[#0F1C3F] font-bold text-xs flex items-center justify-between transition-colors"
                 >
                   <span className="flex items-center gap-2">
                     <User size={13} className="text-[#C9A84C]" />
-                    <span>View Jane Doe\'s Bio & Social Chat</span>
+                    <span>Browse Member Community</span>
                   </span>
                   <ExternalLink size={12} />
                 </Link>
@@ -593,7 +593,7 @@ export default function ContactPage() {
                           onChange={(e) => setTicketDepartment(e.target.value)}
                           className="w-full px-3 py-2 text-xs rounded-lg border border-slate-200 bg-white text-slate-800"
                         >
-                          <option value="MARRIAGE">Marriage Registration & Affidavits</option>
+                          <option value="MARRIAGE">Marriage Registration</option>
                           <option value="SAVINGS">Compounding Savings & Reciprocation</option>
                           <option value="REGISTRY">Wedding Cash Registry</option>
                           <option value="CERTIFICATE">Certificate Verification</option>

@@ -45,7 +45,7 @@ export const MARRIAGE_TYPES: MarriageTypeOption[] = [
     sealBadgeText: 'CIVIL MARRIAGE',
     defaultRole1: 'Husband',
     defaultRole2: 'Wife',
-    description: 'Traditional civil marriage covenant under Zurich & London fiduciary protocols.',
+    description: 'Traditional civil marriage covenant under Union Verify fiduciary protocols.',
     badgeColor: 'bg-emerald-50 border-emerald-200 text-emerald-700',
   },
   {

@@ -54,7 +54,7 @@ export const SEED_REGISTRIES: CoupleRegistry[] = [
     partner1Name: 'Jane Doe',
     partner2Name: 'Marcus Vance',
     weddingDate: '2026-09-18',
-    weddingLocation: 'Amalfi Coast, Italy & Zurich',
+    weddingLocation: 'Amalfi Coast, Italy',
     greeting: 'Welcome to our wedding registry! Your presence at our celebration is the greatest gift of all. If you would like to help us celebrate with a gift, we have created dedicated milestone funds to help us build our life and family together.',
     story: 'Together since 2021, we are planting roots for our future, pooling capital, and building our life as one. Thank you for celebrating our union with us.',
     coverPhoto: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80',

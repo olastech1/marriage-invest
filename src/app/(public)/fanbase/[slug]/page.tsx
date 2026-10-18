@@ -1031,7 +1031,7 @@ export default function CelebrityFanbasePage({
                 </div>
 
                 <div className="p-3 rounded-xl bg-[#0F1C3F] text-[11px] text-gray-300 border border-white/10 leading-relaxed">
-                  🔒 Zurich Fiduciary Protection: Your capital is held in bankruptcy-remote master escrow. Quarterly distributions are credited directly in USD.
+                  🔒 Fiduciary Escrow Protection: Your capital is held in bankruptcy-remote master escrow. Quarterly distributions are credited directly in USD.
                 </div>
 
                 <div className="flex justify-end gap-3 pt-2 border-t border-white/10">

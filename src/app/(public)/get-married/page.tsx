@@ -56,7 +56,7 @@ export default function GetMarriedPage() {
   const [partner2NeverMarried, setPartner2NeverMarried] = useState(true)
 
   const [weddingDate, setWeddingDate] = useState('2026-11-20')
-  const [jurisdiction, setJurisdiction] = useState('Zurich & London Fiduciary Registry (Statutory Global)')
+  const [jurisdiction, setJurisdiction] = useState('Union Verify Global Registry (Statutory Digital Standards)')
   const [customVows, setCustomVows] = useState(
     'We pledge our lives, mutual trust, and shared wealth to one another in equal partnership, honoring our joint covenant of prosperity, survivorship, and eternal fidelity.'
   )
@@ -264,7 +264,7 @@ export default function GetMarriedPage() {
               </div>
               <h2 className="text-2xl font-bold text-[#0F1C3F]">Select Your Marriage Covenant Type</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Our Zurich & London fiduciary protocol grants equal 50/50 beneficial survivorship across all marriage types.
+                Our Union Verify fiduciary protocol grants equal 50/50 beneficial survivorship across all marriage types.
               </p>
             </div>
 
@@ -683,7 +683,7 @@ export default function GetMarriedPage() {
                 <p className="text-xs text-gray-500 mb-2">Official Legal Docket Filing</p>
                 <div className="text-2xl font-bold text-[#0F1C3F]">$500</div>
                 <p className="text-[11px] text-gray-500 mt-2">
-                  Files legal marriage affidavit & registers union in registry.
+                  Submits digital marriage registration & records union in registry.
                 </p>
               </div>
 
@@ -932,7 +932,7 @@ export default function GetMarriedPage() {
                 What is the $500 Marriage Registration Fee?
               </h4>
               <p>
-                The $500 registration fee covers legal filing of your first-time matrimonial affidavit, identity verification of both spouses, background docket check, and statutory recording under Zurich and London Fiduciary Registry standards.
+                The $500 registration fee covers your online application review, identity verification of both spouses, background docket check, and statutory recording in the official registry.
               </p>
             </div>
 

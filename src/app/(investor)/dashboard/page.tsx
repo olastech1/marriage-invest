@@ -79,8 +79,8 @@ export default async function DashboardPage() {
   const session = await auth()
   const currentUser = session?.user || {
     id: 'usr_jane_doe',
-    name: 'Jane Doe',
-    email: 'jane.doe@unionverify.com',
+    name: 'Investor',
+    email: '',
     role: 'INVESTOR',
   }
   const userId = currentUser.id
@@ -394,7 +394,7 @@ export default async function DashboardPage() {
               Get Married Online · $500
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Never been married? File single-status affidavit and solemnize your union digitally.
+              Never been married? Complete your online marriage registration and unlock joint investing.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">

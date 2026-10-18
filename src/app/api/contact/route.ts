@@ -20,9 +20,9 @@ export async function GET(req: NextRequest) {
       const defaultWelcome = {
         id: 'adv-seed-1',
         threadId: 'advisor',
-        senderId: 'advisor_zurich',
-        senderName: 'Beatrix Von Stauffen, CFP® · Zurich Desk',
-        text: 'Welcome to Union Verify! How can our fiduciary desk assist you today? Choose one of our quick conversation starters below, or send us a message directly.',
+        senderId: 'advisor_support',
+        senderName: 'Union Verify Support',
+        text: 'Welcome to Union Verify! How can we help you today? Choose one of our quick conversation starters below, or send us a message directly.',
         timestamp: 'Active Now',
         createdAt: new Date(),
         read: true,
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
             { id: 'spousal_vault', label: '💰 How Joint Savings Work (6.8% APY)', prompt: 'How does the 50/50 spousal deposit matching rule and 6.8% APY work?' },
             { id: 'wedding_registry', label: '🎁 Send Wedding Cash Gift', prompt: 'I want to contribute a wedding gift to a couple\'s cash registry fund.' },
             { id: 'verify_certificate', label: '📜 Verify Marriage Certificate', prompt: 'I have a certificate docket number and want to verify its authenticity.' },
-            { id: 'member_bio', label: '👤 Connect with Member (Jane Doe)', prompt: 'I want to send a message to Jane Doe through her verified bio profile.' },
+            { id: 'member_bio', label: '👤 Connect with Member', prompt: 'I want to connect with a verified member through their public bio profile.' },
           ],
         },
       }
@@ -110,14 +110,14 @@ export async function POST(req: NextRequest) {
     let recommendedAction: { label: string; href: string; icon: string } | null = null
 
     if (starterId === 'start_marriage' || lowerText.includes('marry') || lowerText.includes('marriage registration')) {
-      responseText = `Wonderful choice! Getting married through Union Verify is 100% digital and legal. You complete a single-status affidavit, your partner co-signs digitally, and for a one-time $500 fee your marriage is solemnized with an official Swiss-embossed certificate and an instant 6.8% APY joint savings vault.`
+      responseText = `Great choice! Getting married through Union Verify is fully digital and straightforward. Both partners complete an online application together, co-sign digitally, and for a one-time $500 registration fee you receive an official certified certificate and immediate access to a 6.8% APY joint savings vault.`
       recommendedAction = {
         label: 'Start Online Marriage Registration ($500)',
         href: '/get-married',
         icon: '💍',
       }
     } else if (starterId === 'spousal_vault' || lowerText.includes('vault') || lowerText.includes('compounding') || lowerText.includes('apy') || lowerText.includes('reciproc')) {
-      responseText = `Our Joint Spousal Vault grows every single second at 6.8% APY. Under our Spousal Covenant (Rule 4.2), whenever one spouse deposits into the vault, it is compulsory for the partner to reciprocate with an equal match within 7 days. This builds marital trust and doubles your shared wealth compounding!`
+      responseText = `Our Joint Spousal Vault grows daily at 6.8% APY. Under our Spousal Covenant (Rule 4.2), whenever one spouse deposits into the vault, it encourages the partner to reciprocate with an equal match within 7 days. This builds marital trust and doubles your shared wealth compounding!`
       recommendedAction = {
         label: 'Explore Joint Savings & Compounding Vault',
         href: '/savings',
@@ -131,21 +131,21 @@ export async function POST(req: NextRequest) {
         icon: '🎁',
       }
     } else if (starterId === 'verify_certificate' || lowerText.includes('certificate') || lowerText.includes('verify')) {
-      responseText = `Every marriage on Union Verify receives an encrypted covenant reference number (e.g. CH-MIC-2026-XXXXX). Certificates are authenticated by licensed fiduciaries and can be viewed, shared, and verified globally anytime.`
+      responseText = `Every marriage on Union Verify receives an encrypted covenant reference number (e.g. UV-2026-XXXXX). Certificates are officially recorded and can be viewed, shared, and verified globally anytime.`
       recommendedAction = {
         label: 'Open Certificate Portal',
         href: '/certificate',
         icon: '📜',
       }
-    } else if (starterId === 'member_bio' || lowerText.includes('jane') || lowerText.includes('marcus') || lowerText.includes('profile')) {
-      responseText = `You can connect directly with verified members through their public bio profile. For example, Jane Doe's public bio features her verified covenant seal, interactive direct chat, and social contact links.`
+    } else if (starterId === 'member_bio' || lowerText.includes('profile') || lowerText.includes('member')) {
+      responseText = `You can connect directly with verified members through their public bio profile, featuring verified covenant seals, interactive direct chat, and social contact links.`
       recommendedAction = {
-        label: 'Visit Jane Doe\'s Public Bio & Chat',
-        href: '/u/jane-doe',
+        label: 'Browse Member Community',
+        href: '/community',
         icon: '👤',
       }
     } else {
-      responseText = `Thank you for reaching out to Union Verify Fiduciary Desk, ${senderName}! We have logged your inquiry into our active concierge queue. Our fiduciary officers in Zurich and New York review all messages continuously.`
+      responseText = `Thank you for reaching out to Union Verify Support, ${senderName}! We have logged your inquiry into our active queue. Our support team reviews all messages continuously.`
       recommendedAction = {
         label: 'Explore Investment Opportunities',
         href: '/investments',
@@ -157,8 +157,8 @@ export async function POST(req: NextRequest) {
       data: {
         id: `msg-advisor-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         threadId: 'advisor',
-        senderId: 'advisor_zurich',
-        senderName: 'Beatrix Von Stauffen, CFP® · Zurich Desk',
+        senderId: 'advisor_support',
+        senderName: 'Union Verify Support',
         text: responseText,
         timestamp: formattedTime,
         createdAt: new Date(now.getTime() + 400),

@@ -162,11 +162,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} Union Verify. All rights reserved.
-          </p>
-          <p className="text-xs text-gray-600">
-            Registered and regulated investment platform &mdash; Licence No.&nbsp;
-            <span className="text-gray-500">UI-2024-REG-00142</span>
+            &copy; {new Date().getFullYear()} Union Verify. All rights reserved. Platform under active compliance review.
           </p>
         </div>
       </div>
