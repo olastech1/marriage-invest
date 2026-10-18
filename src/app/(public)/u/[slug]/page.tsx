@@ -505,6 +505,31 @@ export default function UserPublicProfilePage() {
                   />
                 </div>
 
+                {/* Quick Conversation Starters */}
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1.5 flex items-center justify-between">
+                    <span>Quick Starters (Tap to start)</span>
+                    <span className="text-[10px] text-[#C9A84C] font-normal">Simple & direct</span>
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {[
+                      { label: '🎁 Wedding Gift', text: `Hi ${primaryName}, I want to contribute a wedding gift to your cash registry fund! 🎁` },
+                      { label: '💰 $250 Deposit Match', text: `Hey ${primaryName}, let’s match a $250 deposit into the joint vault today! 💰` },
+                      { label: '🥂 Congratulations', text: `Congratulations on your union and marriage covenant, ${primaryName}! Wishing you lifetime joy and wealth! 🥂` },
+                      { label: '🤝 Partnership', text: `Hi ${primaryName}, reaching out regarding a partnership / collaboration inquiry.` },
+                    ].map((s, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setMessageText(s.text)}
+                        className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-[#C9A84C]/20 hover:text-[#C9A84C] text-gray-300 text-[11px] font-medium transition-colors text-left"
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-300 mb-1">
                     Message

@@ -192,13 +192,33 @@ export default function MutualChatPage() {
     }
   }, [activeUserId, currentUserName, playNotificationChime])
 
+  // -------------------------------------------------------------------------
+  // Load & Synchronize Advisor Messages from Contact API
+  // -------------------------------------------------------------------------
+  const fetchAdvisorMessages = useCallback(async () => {
+    try {
+      const res = await fetch('/api/contact')
+      const data = await res.json()
+      if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
+        setAdvisorMessages(data.messages)
+      }
+    } catch (err) {
+      console.error('Failed to sync advisor messages:', err)
+    }
+  }, [])
+
   // Initial load + Polling interval (Every 1.5 seconds)
   useEffect(() => {
     fetchSpouseMessages(true)
+    fetchAdvisorMessages()
 
     const pollInterval = setInterval(() => {
-      fetchSpouseMessages(false)
-    }, 1500)
+      if (activeChannel === 'spouse') {
+        fetchSpouseMessages(false)
+      } else {
+        fetchAdvisorMessages()
+      }
+    }, 2000)
 
     // Cross-tab real-time broadcast channel
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -215,7 +235,7 @@ export default function MutualChatPage() {
         broadcastChannelRef.current.close()
       }
     }
-  }, [fetchSpouseMessages])
+  }, [fetchSpouseMessages, fetchAdvisorMessages, activeChannel])
 
   // Auto scroll to bottom when new messages arrive
   useEffect(() => {
@@ -255,31 +275,42 @@ export default function MutualChatPage() {
         console.error('Failed to send message:', err)
       }
     } else {
-      // Advisor Channel
-      const newAdvisorMsg: ChatMessage = {
+      // Advisor Channel (Connected directly to Contact Desk)
+      const now = new Date()
+      const formattedTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(now)
+
+      const optimisticMsg: ChatMessage = {
         id: `adv-user-${Date.now()}`,
         senderName: currentUserName,
         text: messageText,
-        timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
+        timestamp: formattedTime,
         read: false,
         type: 'text',
       }
-      setAdvisorMessages((prev) => [...prev, newAdvisorMsg])
+      setAdvisorMessages((prev) => [...prev, optimisticMsg])
 
       setIsTyping(true)
-      setTimeout(() => {
-        setIsTyping(false)
-        const advisorReply: ChatMessage = {
-          id: `adv-reply-${Date.now()}`,
-          senderName: advisorName,
-          text: `Thank you for reaching out, ${currentUserName}. I have recorded this inquiry on your Zurich Matrimonial Wealth file. Under Swiss fiduciary protocol, both ${currentUserName} and ${partnerName} maintain equal governance rights.`,
-          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
-          read: true,
-          type: 'text',
+      try {
+        const res = await fetch('/api/contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: currentUserName,
+            email: session?.user?.email || 'jane.doe@unionverify.com',
+            message: messageText,
+            department: 'ADVISOR',
+          }),
+        })
+        const data = await res.json()
+        if (data.success && data.advisorMessage) {
+          setAdvisorMessages((prev) => [...prev, data.advisorMessage])
+          playNotificationChime()
         }
-        setAdvisorMessages((prev) => [...prev, advisorReply])
-        playNotificationChime()
-      }, 1200)
+      } catch (err) {
+        console.error('Advisor chat error:', err)
+      } finally {
+        setIsTyping(false)
+      }
     }
   }
 
@@ -969,13 +1000,22 @@ export default function MutualChatPage() {
             <span className="text-[10px] uppercase font-bold text-gray-400 flex-shrink-0">
               Quick:
             </span>
-            {[
-              'Approved, let’s deposit! 💰',
-              'Love this goal ❤️',
-              'Checking our savings vault now 📊',
-              'I’ll match 50% tonight 💍',
-              'Let’s consult our Zurich advisor 🏛️',
-            ].map((chip, idx) => (
+            {(activeChannel === 'spouse'
+              ? [
+                  'Approved, let’s deposit! 💰',
+                  'Love this goal ❤️',
+                  'Checking our savings vault now 📊',
+                  'I’ll match 50% tonight 💍',
+                  'Let’s consult our Zurich advisor 🏛️',
+                ]
+              : [
+                  'How does reciprocal matching work? 💰',
+                  'What is needed to marry online? 💍',
+                  'How do we unlock our gold certificate? 📜',
+                  'Explain 6.8% compounding APY 📈',
+                  'Where is Jane Doe’s bio profile? 👤',
+                ]
+            ).map((chip, idx) => (
               <button
                 key={idx}
                 onClick={() => setInputText(chip)}
