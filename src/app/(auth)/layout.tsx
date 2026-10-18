@@ -23,9 +23,9 @@ interface AuthLayoutProps {
 
 export default function AuthLayout({ children }: AuthLayoutProps) {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen w-full flex overflow-x-hidden">
       {/* ── Left panel ─────────────────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[52%] xl:w-[55%] flex-col relative overflow-hidden bg-[#0F1C3F]">
+      <div className="hidden xl:flex xl:w-[50%] flex-col relative overflow-hidden bg-[#0F1C3F]">
         {/* Decorative rings */}
         <div className="absolute -top-32 -left-32 w-[520px] h-[520px] rounded-full border border-[#C9A84C]/10" />
         <div className="absolute -top-16 -left-16 w-[380px] h-[380px] rounded-full border border-[#C9A84C]/10" />
@@ -93,8 +93,8 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
       {/* ── Right panel ────────────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col bg-white">
-        {/* Mobile-only top bar */}
-        <div className="lg:hidden flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        {/* Mobile / Tablet top bar */}
+        <div className="xl:hidden flex items-center justify-between px-6 py-4 border-b border-slate-100">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[#0F1C3F]">
               <TrendingUpIcon className="w-4 h-4 text-[#C9A84C]" />
@@ -118,7 +118,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         </div>
 
         {/* Right-panel footer */}
-        <div className="hidden lg:flex items-center justify-between px-10 py-4 border-t border-slate-100">
+        <div className="hidden xl:flex items-center justify-between px-10 py-4 border-t border-slate-100">
           <Link
             href="/"
             className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#0F1C3F] transition-colors"

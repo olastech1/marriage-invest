@@ -495,26 +495,6 @@ export default function WithdrawalsPage() {
     }
   }
 
-  // Demo simulation helper
-  const handleSimulatePartnerRequest = () => {
-    const demoReq: PendingPartnerApproval = {
-      id: `sim-${Date.now()}`,
-      amount: 1250,
-      fee: 25,
-      netAmount: 1212.5,
-      bankName: 'JPMorgan Chase',
-      accountNumber: '****9812',
-      createdAt: new Date().toISOString(),
-      requesterId: 'partner-sim',
-      requesterName: partnerName,
-      partnerName: 'You',
-      opportunityTitle: 'Zurich Marriage Reserve Vault',
-      partnerApprovalStatus: 'AWAITING_PARTNER',
-      requiresPartnerApproval: true,
-    }
-    setPendingPartnerApprovals((prev) => [demoReq, ...prev])
-  }
-
   const statusColors: Record<string, string> = {
     PENDING: 'bg-amber-100 text-amber-700',
     APPROVED: 'bg-blue-100 text-blue-700',
@@ -548,17 +528,6 @@ export default function WithdrawalsPage() {
             Under your marital covenant, withdrawals from joint vaults require mutual partner sign-off before liquidation.
           </p>
         </div>
-
-        {/* Quick Demo Simulator button */}
-        <button
-          type="button"
-          onClick={handleSimulatePartnerRequest}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#0F1C3F] text-xs font-bold hover:bg-[#C9A84C]/20 transition-all self-start sm:self-auto"
-          title="Simulate a withdrawal request from your partner to test dual approval"
-        >
-          <Sparkles size={13} className="text-[#C9A84C]" />
-          Simulate Partner Request
-        </button>
       </div>
 
       {/* ── COVENANT RECIPROCATION LOCK BANNER ── */}

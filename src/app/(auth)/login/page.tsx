@@ -21,6 +21,7 @@ import {
   Eye as EyeIcon,
   EyeOff as EyeOffIcon,
   Loader2 as LoaderCircleIcon,
+  ShieldCheck as ShieldCheckIcon,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -275,49 +276,10 @@ function LoginForm() {
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
 
-        {/* Instant Frontend Demo Access */}
-        <div className="pt-2">
-          <div className="relative flex py-2 items-center">
-            <div className="flex-grow border-t border-slate-200" />
-            <span className="flex-shrink mx-3 text-xs uppercase font-bold text-slate-400">
-              Instant Demo Access
-            </span>
-            <div className="flex-grow border-t border-slate-200" />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 mt-1">
-            <button
-              type="button"
-              onClick={async () => {
-                setIsSubmitting(true)
-                await signIn('credentials', {
-                  email: 'jane.doe@unionverify.com',
-                  password: 'password',
-                  redirect: true,
-                  callbackUrl: '/dashboard',
-                })
-              }}
-              className="py-2.5 px-3 rounded-xl border border-[#C9A84C]/50 bg-[#C9A84C]/10 hover:bg-[#C9A84C]/20 text-[#0F1C3F] font-bold text-xs transition-colors flex items-center justify-center gap-1"
-            >
-              <span>Jane Doe</span>
-              <span className="text-[10px] text-slate-500 font-normal">(Investor)</span>
-            </button>
-            <button
-              type="button"
-              onClick={async () => {
-                setIsSubmitting(true)
-                await signIn('credentials', {
-                  email: 'admin@unionverify.com',
-                  password: 'password',
-                  redirect: true,
-                  callbackUrl: '/admin/dashboard',
-                })
-              }}
-              className="py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold text-xs transition-colors flex items-center justify-center gap-1"
-            >
-              <span>Admin Portal</span>
-            </button>
-          </div>
+        {/* Security / Encryption Note */}
+        <div className="pt-3 flex items-center justify-center gap-1.5 text-xs text-slate-400">
+          <ShieldCheckIcon className="w-3.5 h-3.5 text-[#C9A84C]" />
+          <span>256-bit SSL encrypted · Regulated Fiduciary Ledger</span>
         </div>
       </form>
 
