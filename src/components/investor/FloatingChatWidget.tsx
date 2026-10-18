@@ -71,10 +71,7 @@ export function FloatingChatWidget({
     },
   ])
 
-  // Don't render on the full chat page to avoid redundancy
-  if (pathname === '/chat' || pathname?.startsWith('/chat')) {
-    return null
-  }
+  const isChatPage = pathname === '/chat' || pathname?.startsWith('/chat')
 
   // Play synthetic chime via Web Audio API
   function playChime() {
@@ -169,6 +166,11 @@ export function FloatingChatWidget({
   function handleOpenWidget() {
     setIsOpen(true)
     setUnreadCount(0)
+  }
+
+  // Don't render on the full chat page to avoid redundancy
+  if (isChatPage) {
+    return null
   }
 
   return (

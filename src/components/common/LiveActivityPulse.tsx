@@ -132,14 +132,9 @@ export function LiveActivityPulse() {
   const [isDismissed, setIsDismissed] = useState(false)
   const [activeCouplesCount, setActiveCouplesCount] = useState(312)
 
-  // ONLY render on the public landing page ('/') — never on chat, dashboard, or internal tools
-  if (pathname !== '/') {
-    return null
-  }
-
-  // Rotate events every 8 seconds
+  // Rotate events every 8 seconds (only active on home page '/')
   useEffect(() => {
-    if (isDismissed) return
+    if (isDismissed || pathname !== '/') return
 
     const interval = setInterval(() => {
       setIsVisible(false)
@@ -150,10 +145,12 @@ export function LiveActivityPulse() {
     }, 8000)
 
     return () => clearInterval(interval)
-  }, [isDismissed])
+  }, [isDismissed, pathname])
 
-  // Random gentle fluctuations in active users
+  // Random gentle fluctuations in active users (only active on home page '/')
   useEffect(() => {
+    if (pathname !== '/') return
+
     const userInterval = setInterval(() => {
       setActiveCouplesCount((prev) => {
         const delta = Math.floor(Math.random() * 5) - 2
@@ -162,7 +159,12 @@ export function LiveActivityPulse() {
     }, 15000)
 
     return () => clearInterval(userInterval)
-  }, [])
+  }, [pathname])
+
+  // ONLY render on the public landing page ('/') — never on chat, dashboard, or internal tools
+  if (pathname !== '/') {
+    return null
+  }
 
   if (isDismissed) {
     return (

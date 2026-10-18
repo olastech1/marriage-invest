@@ -39,6 +39,29 @@ export default function RootLayout({
     <html lang="en" className={inter.variable} data-scroll-behavior="smooth">
       <head>
         <link rel="icon" href="/favicon.ico" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                window.addEventListener('error', function(e) {
+                  var msg = (e && e.message) ? e.message.toLowerCase() : '';
+                  if (msg.indexOf('loading chunk') !== -1 || msg.indexOf('failed to fetch dynamically imported module') !== -1) {
+                    var key = 'chunk_reload_lock';
+                    if (!sessionStorage.getItem(key)) {
+                      sessionStorage.setItem(key, '1');
+                      window.location.reload();
+                    }
+                  }
+                });
+                window.addEventListener('load', function() {
+                  setTimeout(function() {
+                    sessionStorage.removeItem('chunk_reload_lock');
+                  }, 1000);
+                });
+              })();
+            `,
+          }}
+        />
       </head>
       <body className="font-sans antialiased bg-white text-gray-900">
         <AuthProvider>{children}</AuthProvider>
