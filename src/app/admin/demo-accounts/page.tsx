@@ -37,30 +37,30 @@ interface DemoUser {
 const PRESETS = [
   {
     name: 'Jane Doe',
-    email: 'jane.doe@unioninvest.com',
+    email: 'jane.doe@unionverify.com',
     password: 'DemoPass2025!',
     partnerName: 'Marcus Vance',
-    partnerEmail: 'marcus.vance@unioninvest.com',
+    partnerEmail: 'marcus.vance@unionverify.com',
     marriageType: 'Civil Marriage / Registered Union',
     initialDeposit: 50000,
     note: 'Executive demonstration for Joint Spousal Reserve',
   },
   {
     name: 'Alexander Roth',
-    email: 'alexander.roth@unioninvest.ch',
+    email: 'alexander.roth@unionverify.com',
     password: 'AlpineVault#99',
     partnerName: 'Elena Roth',
-    partnerEmail: 'elena.roth@unioninvest.ch',
+    partnerEmail: 'elena.roth@unionverify.com',
     marriageType: 'Civil Union / Registered Partnership',
     initialDeposit: 120000,
     note: 'High-net-worth partnership portfolio showcase',
   },
   {
     name: 'Noah Sterling',
-    email: 'noah.sterling@unioninvest.ch',
+    email: 'noah.sterling@unionverify.com',
     password: 'SterlingUnion!1',
     partnerName: 'Liam Chen',
-    partnerEmail: 'liam.chen@unioninvest.ch',
+    partnerEmail: 'liam.chen@unionverify.com',
     marriageType: 'Same-Sex Marriage (Gay/Lesbian)',
     initialDeposit: 30000,
     note: 'Early-stage couple marriage savings portfolio',
@@ -77,10 +77,10 @@ export default function AdminDemoAccountsPage() {
 
   // Form State
   const [name, setName] = useState('Jane Doe')
-  const [email, setEmail] = useState('jane.doe@unioninvest.com')
+  const [email, setEmail] = useState('jane.doe@unionverify.com')
   const [password, setPassword] = useState('DemoPass2025!')
   const [partnerName, setPartnerName] = useState('Marcus Vance')
-  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
+  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unionverify.com')
   const [marriageType, setMarriageType] = useState('Civil Marriage / Registered Union')
   const [initialDeposit, setInitialDeposit] = useState<number>(50000)
   const [note, setNote] = useState('Executive demo account for prospective couples')
@@ -299,7 +299,7 @@ export default function AdminDemoAccountsPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] bg-white"
-                  placeholder="julian.vance@unioninvest.ch"
+                  placeholder="julian.vance@unionverify.com"
                 />
               </div>
 
@@ -353,7 +353,7 @@ export default function AdminDemoAccountsPage() {
                   value={partnerEmail}
                   onChange={(e) => setPartnerEmail(e.target.value)}
                   className="w-full px-3.5 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] bg-white"
-                  placeholder="marcus.vance@unioninvest.ch"
+                  placeholder="marcus.vance@unionverify.com"
                 />
               </div>
 
@@ -457,8 +457,8 @@ export default function AdminDemoAccountsPage() {
         ) : (
           <div className="divide-y divide-gray-100">
             {demoUsers.map((user) => {
-              const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://marriage-invest.vercel.app/login'
-              const credentialsText = `Union Invest Demo Credentials:\nEmail: ${user.email}\nPassword: ${user.plainPassword || 'DemoPass2025!'}\nLogin: ${loginUrl}\nPartner: ${user.partnerName}\nInvite Link: ${user.inviteLink}`
+              const loginUrl = typeof window !== 'undefined' ? `${window.location.origin}/login` : 'https://unionverify.com/login'
+              const credentialsText = `Union Verify Demo Credentials:\nEmail: ${user.email}\nPassword: ${user.plainPassword || 'DemoPass2025!'}\nLogin: ${loginUrl}\nPartner: ${user.partnerName}\nInvite Link: ${user.inviteLink}`
               return (
                 <div key={user.id} className="p-5 hover:bg-gray-50/50 transition-colors">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

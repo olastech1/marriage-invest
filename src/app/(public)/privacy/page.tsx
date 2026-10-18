@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'Privacy & Data Protection Notice | Union Invest',
-  description: 'How Union Invest collects, uses, and safeguards personal investor data.',
+  title: 'Privacy & Data Protection Notice | Union Verify',
+  description: 'How Union Verify collects, uses, and safeguards personal investor data.',
 }
 
 export default function PrivacyPage() {
@@ -18,7 +18,7 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">1. Data Minimization Principle</h2>
             <p>
-              Union Invest collects only personal information strictly necessary for fulfilling regulatory compliance (AML/KYC), executing contractual investment agreements, administering USD payment transactions, and securing your investor portal account.
+              Union Verify collects only personal information strictly necessary for fulfilling regulatory compliance (AML/KYC), executing contractual investment agreements, administering USD payment transactions, and securing your investor portal account.
             </p>
           </section>
 

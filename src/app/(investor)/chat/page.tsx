@@ -66,7 +66,7 @@ export default function MutualChatPage() {
   // Set initial identity from session or localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('union_invest_active_partner')
+      const saved = localStorage.getItem('union_verify_active_partner')
       if (saved === 'usr_marcus_vance' || saved === 'usr_jane_doe') {
         setActiveUserId(saved)
         return
@@ -92,7 +92,7 @@ export default function MutualChatPage() {
     const nextId = isMarcus ? 'usr_jane_doe' : 'usr_marcus_vance'
     setActiveUserId(nextId)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('union_invest_active_partner', nextId)
+      localStorage.setItem('union_verify_active_partner', nextId)
     }
   }
 
@@ -134,7 +134,7 @@ export default function MutualChatPage() {
     {
       id: 'adv-1',
       senderName: advisorName,
-      text: 'Welcome to Union Invest! I am your dedicated matrimonial wealth concierge at Union Invest Zurich. I oversee your 50/50 mutual portfolio and legal survivorship docket. Feel free to ask any questions about your vaults, dual-signature governance, or compound distributions.',
+      text: 'Welcome to Union Verify! I am your dedicated matrimonial wealth concierge at Union Verify Zurich. I oversee your 50/50 mutual portfolio and legal survivorship docket. Feel free to ask any questions about your vaults, dual-signature governance, or compound distributions.',
       timestamp: 'Today',
       read: true,
       type: 'text',
@@ -201,7 +201,7 @@ export default function MutualChatPage() {
 
     // Cross-tab real-time broadcast channel
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      const channel = new BroadcastChannel('union_invest_chat')
+      const channel = new BroadcastChannel('union_verify_chat')
       broadcastChannelRef.current = channel
       channel.onmessage = () => {
         fetchSpouseMessages(false)
@@ -295,7 +295,7 @@ export default function MutualChatPage() {
           action: 'send_now',
           amount: 500,
           targetPartnerName: partnerName,
-          targetEmail: isMarcus ? 'jane.doe@unioninvest.com' : 'marcus.vance@unioninvest.com',
+          targetEmail: isMarcus ? 'jane.doe@unionverify.com' : 'marcus.vance@unionverify.com',
           vaultName: `${currentUserName} & ${partnerName} Spousal Contribution`,
           note: `Hey ${partnerName}, sending a deposit reminder to keep our joint compounding vault growing! ❤️`,
         }),
@@ -592,7 +592,7 @@ export default function MutualChatPage() {
                 <div className="font-bold text-gray-900">{partnerName}</div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <Mail className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
-                  <span className="truncate">{isMarcus ? 'jane.doe@unioninvest.com' : 'marcus.vance@unioninvest.com'}</span>
+                  <span className="truncate">{isMarcus ? 'jane.doe@unionverify.com' : 'marcus.vance@unionverify.com'}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-500">
                   <Phone className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />

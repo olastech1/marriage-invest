@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     const donorName = body.isAnonymous
       ? 'Anonymous Supporter'
       : (body.donorName || session?.user?.name || 'Valued Donor')
-    const donorEmail = body.donorEmail || session?.user?.email || 'donor@community.unioninvest.com'
+    const donorEmail = body.donorEmail || session?.user?.email || 'donor@community.unionverify.com'
 
     const receiptNumber = `REC-DON-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
     const digitalSignature = `SIG-24K-${crypto.randomBytes(12).toString('hex').toUpperCase()}`

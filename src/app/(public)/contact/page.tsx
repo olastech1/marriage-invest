@@ -55,7 +55,7 @@ export default function ContactPage() {
             Investor Support & Inquiries
           </span>
           <h1 className="text-3xl sm:text-4xl font-serif font-bold text-[#0F1C3F] mb-4">
-            Contact Union Invest
+            Contact Union Verify
           </h1>
           <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
             Whether you have questions regarding official offer documents, joint account onboarding, or USD distribution schedules, our dedicated team is here to assist.
@@ -203,14 +203,14 @@ export default function ContactPage() {
                 <div className="flex items-start gap-3">
                   <MapPin className="w-4 h-4 text-[#C9A84C] flex-shrink-0 mt-0.5" />
                   <span>
-                    <strong>Union Invest Fiduciary AG</strong><br />
+                    <strong>Union Verify Fiduciary AG</strong><br />
                     Bahnhofstrasse 45, 8001 Zurich, Switzerland<br />
                     <span className="text-gray-400">UK Fiduciary Desk: 30 St Mary Axe, City of London, EC3A 8EP</span>
                   </span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-                  <span>desk.zurich@unioninvest.com</span>
+                  <span>desk.zurich@unionverify.com</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <Phone className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />

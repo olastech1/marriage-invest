@@ -68,7 +68,7 @@ export default function CommunityDonationsPage() {
         <div className="relative max-w-5xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
             <Heart className="w-3.5 h-3.5 fill-[#C9A84C]" />
-            Union Invest Community Impact Fund · 501(c)(3) Certified
+            Union Verify Community Impact Fund · 501(c)(3) Certified
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
@@ -77,7 +77,7 @@ export default function CommunityDonationsPage() {
 
           <p className="text-sm sm:text-base text-slate-300 max-w-3xl mx-auto leading-relaxed">
             We believe generational marital wealth and community solidarity go hand in hand. 
-            Union Invest connects married couples, friends, and allies directly to audited 501(c)(3) community funds providing LGBTQ+ youth shelter, marriage legal defense, adoption grants, and elder pioneer dignity.
+            Union Verify connects married couples, friends, and allies directly to audited 501(c)(3) community funds providing LGBTQ+ youth shelter, marriage legal defense, adoption grants, and elder pioneer dignity.
           </p>
 
           {/* Quick Metrics Bar */}
@@ -281,7 +281,7 @@ export default function CommunityDonationsPage() {
               How Community Donations Are Safeguarded
             </h3>
             <p className="text-xs sm:text-sm text-gray-500">
-              Every dollar contributed through Union Invest follows rigorous anti-corruption, verified non-profit protocols.
+              Every dollar contributed through Union Verify follows rigorous anti-corruption, verified non-profit protocols.
             </p>
           </div>
 

@@ -105,7 +105,7 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
     stageName: 'Davido',
     title: 'Grammy-Nominated Global Icon & DMW Founder',
     tagline: 'Timeless World Arena Tour & Masters Royalty Syndicate',
-    bio: 'Multi-platinum recording superstar, 3x Grammy-nominee, and global arena-selling performer. Through Union Invest, Davido is opening an unlisted, exclusive private syndicate offering verified fans equity-aligned streaming master royalties and global arena tour revenues.',
+    bio: 'Multi-platinum recording superstar, 3x Grammy-nominee, and global arena-selling performer. Through Union Verify, Davido is opening an unlisted, exclusive private syndicate offering verified fans equity-aligned streaming master royalties and global arena tour revenues.',
     detailedStory:
       'Following sold-out performances at State Farm Arena Atlanta, Madison Square Garden New York, and The O2 Arena London, the Timeless Syndicate establishes an unprecedented financial bridge between an international music titan and his most dedicated supporters. Investors participate in contractual streaming revenue waterfalls and live tour merchandising.',
     genre: 'Afrobeats · Global Pop · Highlife Fusion',
@@ -154,7 +154,7 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
         'Direct Fan Return Escrow Reserve (Zurich Custody)',
       ],
       fiduciaryProtection:
-        'All syndicate capital is held in bankruptcy-remote Zurich fiduciary custody. Tour ticketing revenues and streaming sync royalties flow directly to an automated distribution waterfall managed by Union Invest Fiduciary Trustees.',
+        'All syndicate capital is held in bankruptcy-remote Zurich fiduciary custody. Tour ticketing revenues and streaming sync royalties flow directly to an automated distribution waterfall managed by Union Verify Fiduciary Trustees.',
     },
     tiers: [
       {
@@ -226,8 +226,8 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
     managementContact: {
       managerName: 'Asa Asika / DMW Executive Management',
       agency: 'Davido Music Worldwide / Sony Music Entertainment',
-      bookingEmail: 'management@davido-syndicate.unioninvest.com',
-      pressEmail: 'press@davido-syndicate.unioninvest.com',
+      bookingEmail: 'management@davido-syndicate.unionverify.com',
+      pressEmail: 'press@davido-syndicate.unionverify.com',
       fiduciaryCounsel: 'Zurich Fiduciary Trustees & London Entertainment Counsel',
       headquarters: 'Lagos, Nigeria · London, UK · Atlanta, GA',
     },
@@ -339,8 +339,8 @@ export const CELEBRITY_ARTISTS: CelebrityArtist[] = [
     managementContact: {
       managerName: 'Bose Ogulu (Mama Burna) / Spaceship Collective',
       agency: 'Spaceship Entertainment / United Talent Agency',
-      bookingEmail: 'management@burnaboy-syndicate.unioninvest.com',
-      pressEmail: 'press@burnaboy-syndicate.unioninvest.com',
+      bookingEmail: 'management@burnaboy-syndicate.unionverify.com',
+      pressEmail: 'press@burnaboy-syndicate.unionverify.com',
       fiduciaryCounsel: 'London & Swiss Fiduciary Legal Council',
       headquarters: 'Lagos · London · Los Angeles',
     },

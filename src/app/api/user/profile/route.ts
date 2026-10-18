@@ -14,7 +14,7 @@ export async function GET() {
     }) || {
       id: 'usr_jane_doe',
       name: 'Jane Doe',
-      email: 'jane.doe@unioninvest.com',
+      email: 'jane.doe@unionverify.com',
       phone: '+1 (555) 349-8821',
       role: 'INVESTOR',
       identityVerified: true,
@@ -25,7 +25,7 @@ export async function GET() {
     }) || {
       id: 'usr_marcus_vance',
       name: 'Marcus Vance',
-      email: 'marcus.vance@unioninvest.com',
+      email: 'marcus.vance@unionverify.com',
       phone: '+1 (555) 782-9940',
       role: 'INVESTOR',
       identityVerified: true,

@@ -5,20 +5,20 @@ import { LiveActivityPulse } from '@/components/common/LiveActivityPulse';
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Union Invest',
-    default: 'Union Invest — Building Wealth Together',
+    template: '%s | Union Verify',
+    default: 'Union Verify — Building Wealth Together',
   },
   description:
-    'Union Invest is a marriage investment platform helping couples build long-term financial wealth through structured, transparent investment opportunities.',
+    'Union Verify is a marriage investment platform helping couples build long-term financial wealth through structured, transparent investment opportunities.',
   keywords: [
     'marriage investment',
     'couples investing',
-    'union invest',
+    'union verify',
     'joint investment platform',
     'financial planning couples',
   ],
   openGraph: {
-    siteName: 'Union Invest',
+    siteName: 'Union Verify',
     type: 'website',
   },
 };

@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Union Invest — Marriage Investment Platform',
+  title: 'Union Verify — Marriage Investment Platform',
   description:
     'The premier Marriage Investment Platform. One partner registers, invites their spouse, signs the digital Marriage Certificate, and unlocks shared high-yield USD investments.',
 }
@@ -386,7 +386,7 @@ export default async function HomePage() {
               </h4>
 
               <p className="text-xs text-gray-300 leading-relaxed mb-6">
-                The $500 registration fee covers legal filing and statutory affidavit check, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Invest registry.
+                The $500 registration fee covers legal filing and statutory affidavit check, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Verify registry.
               </p>
 
               <div className="space-y-3 mb-6">
@@ -427,7 +427,7 @@ export default async function HomePage() {
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 max-w-lg leading-relaxed">
-              Union Invest provides full statutory survivorship entitlement and 50/50 capital custody across all recognized international unions, filed under Zurich & London fiduciary standards.
+              Union Verify provides full statutory survivorship entitlement and 50/50 capital custody across all recognized international unions, filed under Zurich & London fiduciary standards.
             </p>
           </div>
 
@@ -642,7 +642,7 @@ export default async function HomePage() {
                 <span className="text-[#C9A84C]">Both Spouses Contribute. 100% Shared.</span>
               </h2>
               <p className="text-sm text-gray-300 leading-relaxed max-w-xl">
-                Whether you’re saving for a home down payment, family education fund, or an anniversary dream vacation, Union Invest lets both spouses deposit separately or split 50/50 while earning daily compounding 6.8% APY.
+                Whether you’re saving for a home down payment, family education fund, or an anniversary dream vacation, Union Verify lets both spouses deposit separately or split 50/50 while earning daily compounding 6.8% APY.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -747,7 +747,7 @@ export default async function HomePage() {
                 a: 'Yes. To protect both spouses and maintain complete legal transparency, both digital signatures are required along with certificate payment before capital can be deposited into active marriage investment funds.',
               },
               {
-                q: 'What currency does Union Invest operate in?',
+                q: 'What currency does Union Verify operate in?',
                 a: 'All platform transactions, investments, distributions, and certificate registry fees are denominated strictly in United States Dollars (USD $).',
               },
               {
@@ -848,13 +848,13 @@ export default async function HomePage() {
                 Fiduciary Compliance
               </h4>
               <p className="text-xs text-gray-400 leading-relaxed">
-                Union Invest operates in compliance with relevant US financial registry and joint asset ownership guidelines. Capital at risk.
+                Union Verify operates in compliance with relevant US financial registry and joint asset ownership guidelines. Capital at risk.
               </p>
             </div>
           </div>
 
           <div className="pt-8 border-t border-white/10 text-center text-xs text-gray-500">
-            © {new Date().getFullYear()} Union Invest. All rights reserved. Marriage Investment Platform.
+            © {new Date().getFullYear()} Union Verify. All rights reserved. Marriage Investment Platform.
           </div>
         </div>
       </footer>

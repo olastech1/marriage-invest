@@ -11,13 +11,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      host = process.env.SMTP_HOST || 'mail.unioninvest.com',
+      host = process.env.SMTP_HOST || 'mail.unionverify.com',
       port = Number(process.env.SMTP_PORT || 587),
-      user = process.env.SMTP_USER || 'invest@unioninvest.com',
+      user = process.env.SMTP_USER || 'invest@unionverify.com',
       pass = process.env.SMTP_PASS || 'UnionM@il_98Fid!2026',
       secure = false,
-      fromEmail = 'invest@unioninvest.com',
-      fromName = 'Union Invest Notifications',
+      fromEmail = 'invest@unionverify.com',
+      fromName = 'Union Verify Notifications',
       toEmail,
       sendTest = false,
     } = body
@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
     // 2. If test email requested and recipient provided, send a test email
     if (sendTest && toEmail) {
       const formattedDate = new Date().toUTCString()
-      const textAlternative = `Union Invest Fiduciary
+      const textAlternative = `Union Verify Fiduciary
 Fiduciary SMTP Verification
 
-This notification confirms that the Union Invest mail server on ${host}:${port} is authenticated and operational.
+This notification confirms that the Union Verify mail server on ${host}:${port} is authenticated and operational.
 
 Details:
 - SMTP Host: ${host}
@@ -56,14 +56,14 @@ Details:
 - Authenticated Identity: ${user}
 - Timestamp: ${formattedDate}
 
-Union Invest Fiduciary AG · Zurich & London
-If you did not request this verification, please contact admin@unioninvest.com.`
+Union Verify Fiduciary AG · Zurich & London
+If you did not request this verification, please contact admin@unionverify.com.`
 
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to: toEmail,
         replyTo: fromEmail,
-        subject: 'Union Invest — Account Communication Verification',
+        subject: 'Union Verify — Account Communication Verification',
         text: textAlternative,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
@@ -94,12 +94,12 @@ If you did not request this verification, please contact admin@unioninvest.com.`
               </tr>
             </table>
             <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af;">
-              © ${new Date().getFullYear()} Union Invest Fiduciary AG · Bahnhofstrasse 45, 8001 Zurich, Switzerland
+              © ${new Date().getFullYear()} Union Verify Fiduciary AG · Bahnhofstrasse 45, 8001 Zurich, Switzerland
             </div>
           </div>
         `,
         headers: {
-          'List-Unsubscribe': `<mailto:admin@unioninvest.com?subject=unsubscribe>`,
+          'List-Unsubscribe': `<mailto:admin@unionverify.com?subject=unsubscribe>`,
           'X-Entity-Ref-ID': `UI-${Date.now()}`,
         },
       })

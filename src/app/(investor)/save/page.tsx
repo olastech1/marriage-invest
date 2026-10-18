@@ -98,7 +98,7 @@ export default function SavePage() {
   const { data: session } = useSession()
   const currentUserName = session?.user?.name || 'Jane Doe'
   const partnerName = 'Marcus Vance'
-  const partnerEmail = 'marcus.vance@unioninvest.com'
+  const partnerEmail = 'marcus.vance@unionverify.com'
   const partnerPhone = '+1 (555) 782-9940'
 
   // Vault Principal State (starts clean at 0 on fresh site)
@@ -344,7 +344,7 @@ export default function SavePage() {
           action: 'create_reminder',
           amount: Number(reminderAmount) || 500,
           targetPartnerName: reminderTarget === 'PARTNER' ? partnerName : currentUserName,
-          targetEmail: reminderTarget === 'PARTNER' ? partnerEmail : (session?.user?.email || 'jane.doe@unioninvest.com'),
+          targetEmail: reminderTarget === 'PARTNER' ? partnerEmail : (session?.user?.email || 'jane.doe@unionverify.com'),
           vaultName: `${currentUserName} & ${partnerName} Spousal Contribution`,
           frequency: reminderFrequency,
           note: reminderNote,

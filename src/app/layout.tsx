@@ -10,14 +10,14 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Union Invest — Marriage Investment Platform',
-    template: '%s | Union Invest',
+    default: 'Union Verify — Marriage Investment Platform',
+    template: '%s | Union Verify',
   },
   description:
     'A secure, transparent marriage investment platform. Explore opportunities, manage your portfolio, and track your investments with confidence.',
-  keywords: ['investment', 'marriage investment', 'portfolio', 'USD investment', 'Union Invest'],
+  keywords: ['investment', 'marriage investment', 'portfolio', 'USD investment', 'Union Verify'],
   openGraph: {
-    title: 'Union Invest — Marriage Investment Platform',
+    title: 'Union Verify — Marriage Investment Platform',
     description: 'A secure, transparent marriage investment platform.',
     type: 'website',
     locale: 'en_US',

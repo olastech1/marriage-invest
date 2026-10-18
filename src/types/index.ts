@@ -1,5 +1,5 @@
 /**
- * Centralised TypeScript type definitions for the Marriage Investment platform (Union Invest).
+ * Centralised TypeScript type definitions for the Marriage Investment platform (Union Verify).
  */
 
 import type {

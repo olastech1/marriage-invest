@@ -40,7 +40,7 @@ export default function PublicRegistryHubPage() {
         <div className="relative max-w-5xl mx-auto text-center space-y-5">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
             <Gift className="w-3.5 h-3.5" />
-            Union Invest Cash Wedding Registry · 6.8% APY
+            Union Verify Cash Wedding Registry · 6.8% APY
           </div>
 
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white leading-tight">
@@ -203,7 +203,7 @@ export default function PublicRegistryHubPage() {
               Why Couples Are Choosing High-Yield Cash Registries
             </h3>
             <p className="text-xs sm:text-sm text-gray-500">
-              83% of newly married couples report receiving duplicate or unwanted kitchen gifts. Union Invest turns wedding generosity into permanent financial freedom.
+              83% of newly married couples report receiving duplicate or unwanted kitchen gifts. Union Verify turns wedding generosity into permanent financial freedom.
             </p>
           </div>
 

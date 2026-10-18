@@ -18,9 +18,9 @@ export default function InvestorSettingsPage() {
   const [profile, setProfile] = useState({
     name: 'Jane Doe',
     phone: '+1 (555) 349-8821',
-    email: 'jane.doe@unioninvest.com',
+    email: 'jane.doe@unionverify.com',
     spouseName: 'Marcus Vance',
-    spouseEmail: 'marcus.vance@unioninvest.com',
+    spouseEmail: 'marcus.vance@unionverify.com',
     spousePhone: '+1 (555) 782-9940',
   })
 
@@ -43,9 +43,9 @@ export default function InvestorSettingsPage() {
           setProfile({
             name: data.user.name || 'Jane Doe',
             phone: data.user.phone || '+1 (555) 349-8821',
-            email: data.user.email || 'jane.doe@unioninvest.com',
+            email: data.user.email || 'jane.doe@unionverify.com',
             spouseName: data.spouse?.name || 'Marcus Vance',
-            spouseEmail: data.spouse?.email || 'marcus.vance@unioninvest.com',
+            spouseEmail: data.spouse?.email || 'marcus.vance@unionverify.com',
             spousePhone: data.spouse?.phone || '+1 (555) 782-9940',
           })
         }

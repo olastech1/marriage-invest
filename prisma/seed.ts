@@ -25,7 +25,7 @@ async function main() {
   const adminPassword = await bcrypt.hash('Admin@123!', 12)
   const admin = await prisma.user.create({
     data: {
-      email: 'admin@unioninvest.com',
+      email: 'admin@unionverify.com',
       name: 'Platform Administrator',
       passwordHash: adminPassword,
       emailVerified: new Date(),
@@ -40,7 +40,7 @@ async function main() {
   const financePassword = await bcrypt.hash('Finance@123!', 12)
   await prisma.user.create({
     data: {
-      email: 'finance@unioninvest.com',
+      email: 'finance@unionverify.com',
       name: 'Finance Officer',
       passwordHash: financePassword,
       emailVerified: new Date(),
@@ -52,7 +52,7 @@ async function main() {
   const investorPassword = await bcrypt.hash('Investor@123!', 12)
   const investor = await prisma.user.create({
     data: {
-      email: 'amelie.laurent@unioninvest.com',
+      email: 'amelie.laurent@unionverify.com',
       name: 'Amélie Laurent',
       phone: '+41 44 214 8820',
       passwordHash: investorPassword,
@@ -177,7 +177,7 @@ async function main() {
   await prisma.document.create({
     data: {
       name: 'Investor Terms and Conditions',
-      description: 'General terms and conditions governing investor accounts on the Union Invest platform.',
+      description: 'General terms and conditions governing investor accounts on the Union Verify platform.',
       type: DocumentType.NOTICE,
       version: '2.1',
       fileUrl: '/documents/terms-and-conditions.pdf',
@@ -190,7 +190,7 @@ async function main() {
   await prisma.document.create({
     data: {
       name: 'Privacy Policy',
-      description: 'How Union Invest collects, uses, and protects your personal information.',
+      description: 'How Union Verify collects, uses, and protects your personal information.',
       type: DocumentType.NOTICE,
       version: '1.5',
       fileUrl: '/documents/privacy-policy.pdf',
@@ -274,9 +274,9 @@ async function main() {
   await prisma.notification.create({
     data: {
       userId: investor.id,
-      title: 'Welcome to Union Invest',
+      title: 'Welcome to Union Verify',
       message:
-        'Thank you for joining Union Invest. Please review our offer documents before making any investment decisions.',
+        'Thank you for joining Union Verify. Please review our offer documents before making any investment decisions.',
       type: 'INFO',
       link: '/documents',
     },
@@ -310,9 +310,9 @@ async function main() {
   console.log('🎉 Seeding complete!')
   console.log('')
   console.log('Default credentials:')
-  console.log('  Admin:    admin@unioninvest.com / Admin@123!')
-  console.log('  Finance:  finance@unioninvest.com / Finance@123!')
-  console.log('  Investor: amelie.laurent@unioninvest.com / Investor@123!')
+  console.log('  Admin:    admin@unionverify.com / Admin@123!')
+  console.log('  Finance:  finance@unionverify.com / Finance@123!')
+  console.log('  Investor: amelie.laurent@unionverify.com / Investor@123!')
   console.log('            (also investor@example.com / Investor@123!)')
 }
 

@@ -1,5 +1,5 @@
 /**
- * Database client singleton for Union Invest.
+ * Database client singleton for Union Verify.
  *
  * Configured as a 100% frontend-ready, backend-independent mock engine.
  * Eliminates all external PostgreSQL database dependencies, ensuring zero

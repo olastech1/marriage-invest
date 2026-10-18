@@ -148,11 +148,11 @@ export default function Footer() {
         <div className="mt-12 p-5 rounded-xl border border-white/5 bg-white/[0.02]">
           <p className="text-xs text-gray-600 leading-relaxed">
             <span className="text-gray-500 font-medium">Risk Disclaimer: </span>
-            Investments in Union Invest involve risk, including the possible
+            Investments in Union Verify involve risk, including the possible
             loss of principal. Past performance is not indicative of future
             results, and returns are not guaranteed. All investment decisions
             should be made in consultation with a qualified financial adviser.
-            Union Invest does not provide personalised investment, tax, or legal
+            Union Verify does not provide personalised investment, tax, or legal
             advice. Please read all offering documents carefully before
             investing. Investment products are not insured by any government
             deposit protection scheme.
@@ -162,7 +162,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">
-            &copy; {new Date().getFullYear()} Union Invest. All rights reserved.
+            &copy; {new Date().getFullYear()} Union Verify. All rights reserved.
           </p>
           <p className="text-xs text-gray-600">
             Registered and regulated investment platform &mdash; Licence No.&nbsp;

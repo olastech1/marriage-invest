@@ -54,7 +54,7 @@ function JoinContent() {
           You&apos;ve Been Invited by {inviterName}
         </h1>
         <p className="text-xs sm:text-sm text-gray-500 mt-2 leading-relaxed">
-          {inviterName} has initiated your official <strong>{unionType}</strong> account on Union Invest. Complete your registration as <strong>{partnerRole}</strong> to review and digitally execute your joint investment certificate.
+          {inviterName} has initiated your official <strong>{unionType}</strong> account on Union Verify. Complete your registration as <strong>{partnerRole}</strong> to review and digitally execute your joint investment certificate.
         </p>
       </div>
 

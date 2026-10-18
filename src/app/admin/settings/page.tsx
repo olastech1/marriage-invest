@@ -32,10 +32,10 @@ export default function AdminSettingsPage() {
 
   // Form states
   const [generalSettings, setGeneralSettings] = useState({
-    platformName: 'Union Invest',
+    platformName: 'Union Verify',
     tagline: 'Building Wealth Together — A Marriage Investment Platform',
-    supportEmail: 'support@unioninvest.com',
-    complianceEmail: 'compliance.zurich@unioninvest.com',
+    supportEmail: 'support@unionverify.com',
+    complianceEmail: 'compliance.zurich@unionverify.com',
     supportPhone: '+41 44 214 8800',
     currency: 'USD ($)',
     timezone: 'Europe/Zurich (CET / UTC+1)',
@@ -60,14 +60,14 @@ export default function AdminSettingsPage() {
 
   // SMTP Email Settings
   const [emailSettings, setEmailSettings] = useState({
-    host: 'mail.unioninvest.com',
+    host: 'mail.unionverify.com',
     port: '587',
     encryption: 'STARTTLS',
-    user: 'invest@unioninvest.com',
+    user: 'invest@unionverify.com',
     pass: 'UnionM@il_98Fid!2026',
-    fromEmail: 'invest@unioninvest.com',
-    fromName: 'Union Invest Notifications',
-    testRecipient: 'admin@unioninvest.com',
+    fromEmail: 'invest@unionverify.com',
+    fromName: 'Union Verify Notifications',
+    testRecipient: 'admin@unionverify.com',
   })
 
   const [showPassword, setShowPassword] = useState(false)
@@ -133,40 +133,40 @@ export default function AdminSettingsPage() {
     if (type === 'invest') {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.unioninvest.com',
+        host: 'mail.unionverify.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'invest@unioninvest.com',
+        user: 'invest@unionverify.com',
         pass: 'UnionM@il_98Fid!2026',
-        fromEmail: 'invest@unioninvest.com',
-        fromName: 'Union Invest Notifications',
+        fromEmail: 'invest@unionverify.com',
+        fromName: 'Union Verify Notifications',
       })
     } else if (type === 'noreply') {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.unioninvest.com',
+        host: 'mail.unionverify.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'noreply@unioninvest.com',
-        pass: 'UnionInvest_Smtp2026!',
-        fromEmail: 'noreply@unioninvest.com',
-        fromName: 'Union Invest Fiduciary',
+        user: 'noreply@unionverify.com',
+        pass: 'UnionVerify_Smtp2026!',
+        fromEmail: 'noreply@unionverify.com',
+        fromName: 'Union Verify Fiduciary',
       })
     } else {
       setEmailSettings({
         ...emailSettings,
-        host: 'mail.unioninvest.com',
+        host: 'mail.unionverify.com',
         port: '587',
         encryption: 'STARTTLS',
-        user: 'admin@unioninvest.com',
-        pass: 'UnionInvest_Smtp2026!',
-        fromEmail: 'admin@unioninvest.com',
-        fromName: 'Union Invest Administration',
+        user: 'admin@unionverify.com',
+        pass: 'UnionVerify_Smtp2026!',
+        fromEmail: 'admin@unionverify.com',
+        fromName: 'Union Verify Administration',
       })
     }
     setEmailStatus({
       type: 'success',
-      message: `VPS Mailcow preset (${type}@unioninvest.com) loaded. Click "Verify SMTP Connection" to test.`,
+      message: `VPS Mailcow preset (${type}@unionverify.com) loaded. Click "Verify SMTP Connection" to test.`,
     })
   }
 
@@ -506,7 +506,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   SMTP Mail Server on VPS (144.91.68.190)
                 </h3>
                 <p className="text-xs text-gray-300">
-                  Host: <code className="text-[#C9A84C]">mail.unioninvest.com</code> · Port: <code className="text-[#C9A84C]">587</code> (STARTTLS) or <code className="text-[#C9A84C]">465</code> (SSL)
+                  Host: <code className="text-[#C9A84C]">mail.unionverify.com</code> · Port: <code className="text-[#C9A84C]">587</code> (STARTTLS) or <code className="text-[#C9A84C]">465</code> (SSL)
                 </p>
               </div>
 
@@ -516,21 +516,21 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   onClick={() => handleApplyVpsPreset('invest')}
                   className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm"
                 >
-                  invest@unioninvest.com (Official Dispatch)
+                  invest@unionverify.com (Official Dispatch)
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplyVpsPreset('noreply')}
                   className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  noreply@unioninvest.com
+                  noreply@unionverify.com
                 </button>
                 <button
                   type="button"
                   onClick={() => handleApplyVpsPreset('admin')}
                   className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
                 >
-                  admin@unioninvest.com
+                  admin@unionverify.com
                 </button>
               </div>
             </div>
@@ -554,7 +554,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   type="text"
                   value={emailSettings.host}
                   onChange={(e) => setEmailSettings({ ...emailSettings, host: e.target.value })}
-                  placeholder="e.g. mail.unioninvest.com"
+                  placeholder="e.g. mail.unionverify.com"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                 />
               </div>
@@ -597,7 +597,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   type="text"
                   value={emailSettings.user}
                   onChange={(e) => setEmailSettings({ ...emailSettings, user: e.target.value })}
-                  placeholder="noreply@unioninvest.com"
+                  placeholder="noreply@unionverify.com"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                 />
               </div>
@@ -661,7 +661,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   type="email"
                   value={emailSettings.testRecipient}
                   onChange={(e) => setEmailSettings({ ...emailSettings, testRecipient: e.target.value })}
-                  placeholder="Recipient (e.g. admin@unioninvest.com)"
+                  placeholder="Recipient (e.g. admin@unionverify.com)"
                   className="w-full sm:w-80 px-4 py-2 rounded-lg border border-gray-300 text-xs focus:ring-2 focus:ring-[#C9A84C] outline-none"
                 />
                 <button
@@ -841,7 +841,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`}
                   </span>
                 </div>
                 <div className="text-xs text-gray-600 font-mono bg-white p-2.5 rounded border border-gray-200 truncate">
-                  mail.unioninvest.com:587 (TLS)
+                  mail.unionverify.com:587 (TLS)
                 </div>
                 <button
                   type="button"

@@ -34,7 +34,7 @@ export async function GET() {
         status: isPending ? 'PENDING_MATCH' : 'APPROVED',
         statusLabel: isPending ? 'Pending Partner Match' : 'Approved & Compounding',
         canRemind: isPending || isFromPartner,
-        partnerEmail: 'marcus.vance@unioninvest.com',
+        partnerEmail: 'marcus.vance@unionverify.com',
         partnerName: 'Marcus Vance',
         createdAt: tx.createdAt,
         metadata: tx.metadata || {},

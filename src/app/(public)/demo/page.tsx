@@ -36,10 +36,10 @@ export default function DemoDashboardPage() {
 
   // Spouse Invitation & Status State
   const [partnerName, setPartnerName] = useState('Marcus Vance')
-  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
+  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unionverify.com')
   const [selectedTypeId, setSelectedTypeId] = useState('OPPOSITE_SEX')
   const [invitationMessage, setInvitationMessage] = useState(
-    'Jane has invited you to connect as equal co-spouse on Union Invest to co-sign your Marriage Certificate and manage joint 6.8% APY savings vaults.'
+    'Jane has invited you to connect as equal co-spouse on Union Verify to co-sign your Marriage Certificate and manage joint 6.8% APY savings vaults.'
   )
 
   const [inviteStatus, setInviteStatus] = useState<'pending' | 'sent' | 'accepted'>('accepted')
@@ -79,7 +79,7 @@ export default function DemoDashboardPage() {
   }
 
   const handleCopyInviteLink = () => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://marriage-invest.vercel.app'
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://unionverify.com'
     const link = `${origin}/join?partner=${encodeURIComponent(currentSpouseName)}&email=${encodeURIComponent(partnerEmail)}&type=${encodeURIComponent(currentType.label)}&role=${encodeURIComponent(currentType.defaultRole2)}`
     navigator.clipboard.writeText(link)
     setCopiedLink(true)
@@ -547,7 +547,7 @@ export default function DemoDashboardPage() {
                   Live Registration Link Preview:
                 </span>
                 <span className="font-mono text-[11px] text-gray-700 break-all select-all">
-                  https://marriage-invest.vercel.app/join?partner={encodeURIComponent(currentSpouseName)}&email={encodeURIComponent(partnerEmail)}
+                  https://unionverify.com/join?partner={encodeURIComponent(currentSpouseName)}&email={encodeURIComponent(partnerEmail)}
                 </span>
               </div>
 

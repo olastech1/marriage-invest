@@ -1,7 +1,7 @@
 /**
  * In-Memory Frontend Mock Database Engine
  *
- * Provides a 100% self-contained database layer for Union Invest.
+ * Provides a 100% self-contained database layer for Union Verify.
  * Eliminates all external database server dependencies (no PostgreSQL required),
  * preventing connection timeouts, firewall blocks, or serverless deployment crashes.
  */
@@ -192,7 +192,7 @@ const users: MockUser[] = [
   {
     id: 'usr_jane_doe',
     name: 'Jane Doe',
-    email: 'jane.doe@unioninvest.com',
+    email: 'jane.doe@unionverify.com',
     phone: '+1 (555) 349-8821',
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
@@ -205,7 +205,7 @@ const users: MockUser[] = [
   {
     id: 'usr_marcus_vance',
     name: 'Marcus Vance',
-    email: 'marcus.vance@unioninvest.com',
+    email: 'marcus.vance@unionverify.com',
     phone: '+1 (555) 782-9940',
     role: 'INVESTOR',
     emailVerified: new Date('2024-01-15'),
@@ -218,7 +218,7 @@ const users: MockUser[] = [
   {
     id: 'usr_admin',
     name: 'Platform Administrator',
-    email: 'admin@unioninvest.com',
+    email: 'admin@unionverify.com',
     phone: '+1 (800) 555-0199',
     role: 'ADMIN',
     emailVerified: new Date('2024-01-01'),
@@ -343,7 +343,7 @@ const notifications: MockNotification[] = []
 const documents: MockDocument[] = [
   {
     id: 'doc_1',
-    name: 'Union Invest Master Platform Offering Memorandum',
+    name: 'Union Verify Master Platform Offering Memorandum',
     description: 'Comprehensive regulatory disclosure, terms of issuance, and fiduciary governance guidelines.',
     type: 'OFFER_DOCUMENT',
     version: '2.4',

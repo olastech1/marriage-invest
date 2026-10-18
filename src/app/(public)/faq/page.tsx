@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { HelpCircle, ChevronRight, MessageSquare } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Frequently Asked Questions | Union Invest',
+  title: 'Frequently Asked Questions | Union Verify',
   description:
     'Comprehensive answers regarding our marriage investment platform, USD operations, distributions, KYC onboarding, security, and withdrawals.',
 }
@@ -13,16 +13,16 @@ const categories = [
     category: '1. Platform & Business Model',
     items: [
       {
-        q: 'What is Union Invest?',
-        a: 'Union Invest is a secure, institutional investment platform designed specifically for married couples. It allows partners to pool financial resources into structured, USD-denominated investment vehicles with transparent distribution schedules and shared governance.',
+        q: 'What is Union Verify?',
+        a: 'Union Verify is a secure, institutional investment platform designed specifically for married couples. It allows partners to pool financial resources into structured, USD-denominated investment vehicles with transparent distribution schedules and shared governance.',
       },
       {
         q: 'Why invest as a married couple rather than individually?',
-        a: 'Couples frequently manage life milestones together—from home ownership to generational wealth. Union Invest provides joint account ownership, dual-approval controls for withdrawals, synchronized tax statements, and consolidated portfolio tracking.',
+        a: 'Couples frequently manage life milestones together—from home ownership to generational wealth. Union Verify provides joint account ownership, dual-approval controls for withdrawals, synchronized tax statements, and consolidated portfolio tracking.',
       },
       {
-        q: 'Is Union Invest a bank or an investment platform?',
-        a: 'Union Invest operates as an investment syndication and private placement platform. We are not a commercial depository bank. Funds committed are allocated into real asset-backed and structured yield vehicles pursuant to official offer documents.',
+        q: 'Is Union Verify a bank or an investment platform?',
+        a: 'Union Verify operates as an investment syndication and private placement platform. We are not a commercial depository bank. Funds committed are allocated into real asset-backed and structured yield vehicles pursuant to official offer documents.',
       },
     ],
   },

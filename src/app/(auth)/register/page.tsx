@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Registration page for Union Invest.
+ * Registration page for Union Verify.
  *
  * Features:
  * - Full name, email, phone, password, confirm-password fields
@@ -234,7 +234,7 @@ export default function RegisterPage() {
       <div className="mb-7">
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Create your account</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          Join thousands of couples growing wealth with Union Invest.
+          Join thousands of couples growing wealth with Union Verify.
         </p>
       </div>
 
@@ -437,7 +437,7 @@ export default function RegisterPage() {
               className="mt-0.5 h-4 w-4 rounded border-slate-300 text-[#0F1C3F] accent-[#0F1C3F] cursor-pointer disabled:cursor-not-allowed"
             />
             <label htmlFor="agreeTerms" className="text-sm text-slate-600 cursor-pointer leading-snug">
-              I agree to Union Invest&apos;s{' '}
+              I agree to Union Verify&apos;s{' '}
               <Link
                 href="/terms"
                 target="_blank"

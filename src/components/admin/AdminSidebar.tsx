@@ -125,7 +125,7 @@ export default function AdminSidebar({ role, mobileOpen = false, onCloseMobile }
           </div>
           <div className="flex flex-col">
             <span className="font-bold text-sm tracking-wide text-white leading-tight">
-              Union Invest
+              Union Verify
             </span>
             <span className="text-[10px] text-gray-400 uppercase tracking-wider">
               Admin Suite

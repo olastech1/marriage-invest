@@ -1,7 +1,7 @@
 /**
  * Auth group layout – split-screen design.
  *
- * Left  → Navy panel with Union Invest logo + tagline (hidden on mobile)
+ * Left  → Navy panel with Union Verify logo + tagline (hidden on mobile)
  * Right → White card area that renders the child page (login / register / etc.)
  */
 
@@ -11,8 +11,8 @@ import { ArrowLeftIcon, TrendingUpIcon } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Union Invest',
-    default: 'Union Invest',
+    template: '%s | Union Verify',
+    default: 'Union Verify',
   },
   description: 'The smart way to invest in your future together.',
 }
@@ -65,7 +65,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <span className="text-[#C9A84C]">shared future.</span>
             </h1>
             <p className="mt-6 text-slate-400 text-lg leading-relaxed max-w-sm">
-              Union Invest helps couples build wealth together — with joint
+              Union Verify helps couples build wealth together — with joint
               portfolios, transparent returns, and goals that matter.
             </p>
 
@@ -86,7 +86,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
 
           {/* Footer line */}
           <p className="text-slate-600 text-xs">
-            © {new Date().getFullYear()} Union Invest Fiduciary AG · Zurich & London
+            © {new Date().getFullYear()} Union Verify Fiduciary AG · Zurich & London
           </p>
         </div>
       </div>
@@ -129,7 +129,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
           <p className="text-xs text-slate-400">
             Need help?{' '}
             <a
-              href="mailto:support@unioninvest.com"
+              href="mailto:support@unionverify.com"
               className="text-[#0F1C3F] hover:underline font-medium"
             >
               Contact support

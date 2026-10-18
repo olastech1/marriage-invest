@@ -188,7 +188,7 @@ export default function Navbar() {
           />
           <div className="fixed top-0 right-0 bottom-0 w-80 max-w-[85vw] bg-[#0F1C3F] shadow-2xl z-10 flex flex-col p-6 animate-slide-up">
             <div className="flex items-center justify-between pb-6 border-b border-white/10">
-              <span className="text-white font-bold text-lg">Union Invest</span>
+              <span className="text-white font-bold text-lg">Union Verify</span>
               <button
                 onClick={() => setDrawerOpen(false)}
                 className="p-2 text-gray-400 hover:text-white"

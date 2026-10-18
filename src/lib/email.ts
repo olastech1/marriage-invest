@@ -64,11 +64,11 @@ function getTransporter(): Transporter {
     })
   } else {
     // Generic SMTP transport
-    const smtpUser = process.env.SMTP_USER ?? 'invest@unioninvest.com'
+    const smtpUser = process.env.SMTP_USER ?? 'invest@unionverify.com'
     const smtpPass = process.env.SMTP_PASS ?? 'UnionM@il_98Fid!2026'
 
     _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST ?? 'mail.unioninvest.com',
+      host: process.env.SMTP_HOST ?? 'mail.unionverify.com',
       port: Number(process.env.SMTP_PORT ?? 587),
       secure: Number(process.env.SMTP_PORT ?? 587) === 465,
       auth:
@@ -91,8 +91,8 @@ function getTransporter(): Transporter {
 // Shared template helpers
 // ---------------------------------------------------------------------------
 
-const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Invest Fiduciary'} <${process.env.EMAIL_FROM ?? 'invest@unioninvest.com'}>`
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://marriage-invest.vercel.app'
+const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Verify Fiduciary'} <${process.env.EMAIL_FROM ?? 'invest@unionverify.com'}>`
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://unionverify.com'
 const BRAND_COLOR = '#0F1C3F'
 
 function baseTemplate(body: string, preheader = ''): string {
@@ -102,7 +102,7 @@ function baseTemplate(body: string, preheader = ''): string {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Marriage Invest</title>
+  <title>Union Verify</title>
   <style>
     body { margin: 0; padding: 0; background: #f4f4f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
     .wrapper { max-width: 600px; margin: 0 auto; padding: 32px 16px; }
@@ -132,14 +132,14 @@ function baseTemplate(body: string, preheader = ''): string {
   <div class="wrapper">
     <div class="card">
       <div class="header">
-        <h1>💍 Marriage Invest</h1>
+        <h1>💍 Union Verify</h1>
         <p>Secure your future together</p>
       </div>
       <div class="body">
         ${body}
       </div>
       <div class="footer">
-        <p>© ${new Date().getFullYear()} Marriage Invest. All rights reserved.</p>
+        <p>© ${new Date().getFullYear()} Union Verify. All rights reserved.</p>
         <p>
           <a href="${APP_URL}/privacy">Privacy Policy</a> &middot;
           <a href="${APP_URL}/terms">Terms of Service</a> &middot;
@@ -216,7 +216,7 @@ export async function sendVerificationEmail(
   const html = baseTemplate(
     /* html */ `
     <h2>Verify your email address</h2>
-    <p>Thanks for signing up with Marriage Invest! Please verify your email address by clicking the button below. This link expires in <strong>24 hours</strong>.</p>
+    <p>Thanks for signing up with Union Verify! Please verify your email address by clicking the button below. This link expires in <strong>24 hours</strong>.</p>
     <p style="text-align:center;margin:28px 0;">
       <a href="${url}" class="btn">Verify Email Address</a>
     </p>
@@ -232,7 +232,7 @@ export async function sendVerificationEmail(
 
   return sendEmail({
     to: email,
-    subject: 'Verify your Marriage Invest email address',
+    subject: 'Verify your Union Verify email address',
     html,
   })
 }
@@ -251,7 +251,7 @@ export async function sendWelcomeEmail(
   const html = baseTemplate(
     /* html */ `
     <h2>Welcome aboard, ${name}! 🎉</h2>
-    <p>Your Marriage Invest account is now active. We're thrilled to have you join a community building a secure financial future together.</p>
+    <p>Your Union Verify account is now active. We're thrilled to have you join a community building a secure financial future together.</p>
     <p>Here's how to get started:</p>
     <ol style="padding-left:20px;line-height:2;">
       <li>Browse available <a href="${APP_URL}/plans" style="color:${BRAND_COLOR};">investment plans</a></li>
@@ -266,12 +266,12 @@ export async function sendWelcomeEmail(
       Questions? Reply to this email or visit our <a href="${APP_URL}/faq" style="color:${BRAND_COLOR};">FAQ</a>.
     </p>
     `,
-    `Welcome to Marriage Invest, ${name}! Your account is ready.`,
+    `Welcome to Union Verify, ${name}! Your account is ready.`,
   )
 
   return sendEmail({
     to: email,
-    subject: `Welcome to Marriage Invest, ${name}!`,
+    subject: `Welcome to Union Verify, ${name}!`,
     html,
   })
 }
@@ -292,7 +292,7 @@ export async function sendPasswordResetEmail(
   const html = baseTemplate(
     /* html */ `
     <h2>Reset your password</h2>
-    <p>We received a request to reset the password for your Marriage Invest account associated with <strong>${email}</strong>.</p>
+    <p>We received a request to reset the password for your Union Verify account associated with <strong>${email}</strong>.</p>
     <p>Click the button below to choose a new password. This link is valid for <strong>1 hour</strong>.</p>
     <p style="text-align:center;margin:28px 0;">
       <a href="${url}" class="btn">Reset Password</a>
@@ -304,12 +304,12 @@ export async function sendPasswordResetEmail(
       If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
     </p>
     `,
-    'Reset your Marriage Invest account password.',
+    'Reset your Union Verify account password.',
   )
 
   return sendEmail({
     to: email,
-    subject: 'Reset your Marriage Invest password',
+    subject: 'Reset your Union Verify password',
     html,
   })
 }

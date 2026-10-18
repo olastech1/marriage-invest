@@ -170,7 +170,7 @@ export const COMMUNITY_CAUSES: CommunityCause[] = [
         quote:
           'After 4 years of heartbreak and depleted savings, the grant made our final IVF transfer possible. Our twin girls just turned one.',
         author: 'Marcus & David',
-        role: 'Union Invest Couple',
+        role: 'Union Verify Couple',
       },
     ],
   },

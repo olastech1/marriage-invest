@@ -27,14 +27,14 @@ export async function GET(req: NextRequest) {
       currentUser: {
         id: session?.user?.id || 'usr_jane_doe',
         name: session?.user?.name || 'Jane Doe',
-        email: user?.email || 'jane.doe@unioninvest.com',
+        email: user?.email || 'jane.doe@unionverify.com',
         phone: (user as any)?.phone || '+1 (555) 349-8821',
       },
       partners: {
         partner1: {
           id: 'usr_jane_doe',
           name: 'Jane Doe',
-          email: 'jane.doe@unioninvest.com',
+          email: 'jane.doe@unionverify.com',
           phone: '+1 (555) 349-8821',
           status: 'Online',
           covenantId: 'CH-MIC-2026-98420',
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
         partner2: {
           id: 'usr_marcus_vance',
           name: 'Marcus Vance',
-          email: spouse?.email || 'marcus.vance@unioninvest.com',
+          email: spouse?.email || 'marcus.vance@unionverify.com',
           phone: (spouse as any)?.phone || '+1 (555) 782-9940',
           status: 'Online',
           covenantId: 'CH-MIC-2026-98420',

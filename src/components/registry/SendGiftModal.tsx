@@ -80,7 +80,7 @@ export default function SendGiftModal({
           fundId: selectedFundId,
           amount: effectiveAmount,
           donorName: isAnonymous ? 'A Gracious Guest' : donorName,
-          donorEmail: donorEmail || 'guest@wedding.unioninvest.com',
+          donorEmail: donorEmail || 'guest@wedding.unionverify.com',
           message: message || `Wishing ${registry.partner1Name} & ${registry.partner2Name} a lifetime of boundless love, happiness, and prosperity!`,
           isAnonymous,
           giftCardDesign: cardDesign,

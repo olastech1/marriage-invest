@@ -31,7 +31,7 @@ export { MARRIAGE_TYPES, type MarriageTypeOption }
 export default function MarriageCertificatePage() {
   const { data: session } = useSession()
   const userName = session?.user?.name || 'Jane Doe'
-  const userEmail = session?.user?.email || 'jane.doe@unioninvest.com'
+  const userEmail = session?.user?.email || 'jane.doe@unionverify.com'
 
   // Union & Marriage Type state
   const [selectedTypeId, setSelectedTypeId] = useState('OPPOSITE_SEX')
@@ -51,7 +51,7 @@ export default function MarriageCertificatePage() {
 
   // Invitation state
   const [partnerName, setPartnerName] = useState('Marcus Vance')
-  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unioninvest.com')
+  const [partnerEmail, setPartnerEmail] = useState('marcus.vance@unionverify.com')
   const [weddingDate, setWeddingDate] = useState('2024-06-15')
   const [inviteSent, setInviteSent] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -570,7 +570,7 @@ export default function MarriageCertificatePage() {
                       {currentType.sealBadgeText}
                     </span>
                     <span className="text-[6.5px] font-bold text-[#0F1C3F]/80">
-                      UNION INVEST
+                      UNION VERIFY
                     </span>
                   </>
                 ) : (

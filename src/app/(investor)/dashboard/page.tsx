@@ -80,7 +80,7 @@ export default async function DashboardPage() {
   const currentUser = session?.user || {
     id: 'usr_jane_doe',
     name: 'Jane Doe',
-    email: 'jane.doe@unioninvest.com',
+    email: 'jane.doe@unionverify.com',
     role: 'INVESTOR',
   }
   const userId = currentUser.id

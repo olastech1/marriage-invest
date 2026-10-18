@@ -3,9 +3,9 @@ import Link from 'next/link'
 import { Shield, Target, Users, Landmark, Award, CheckCircle } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'About Us | Union Invest',
+  title: 'About Us | Union Verify',
   description:
-    'Learn about Union Invest, our mission, executive leadership, governance structure, and institutional approach to marriage investments.',
+    'Learn about Union Verify, our mission, executive leadership, governance structure, and institutional approach to marriage investments.',
 }
 
 const leadership = [
@@ -49,7 +49,7 @@ export default function AboutPage() {
             Architecting Financial Security for <span className="text-[#C9A84C]">Lifelong Unions</span>
           </h1>
           <p className="max-w-3xl mx-auto text-lg sm:text-xl text-gray-300 leading-relaxed font-light">
-            Union Invest was founded on a singular premise: marital financial stability is the cornerstone of household longevity. We deliver institutional-grade investment structures tailored for couples building generational prosperity.
+            Union Verify was founded on a singular premise: marital financial stability is the cornerstone of household longevity. We deliver institutional-grade investment structures tailored for couples building generational prosperity.
           </p>
         </div>
       </section>
@@ -66,7 +66,7 @@ export default function AboutPage() {
               Traditional financial systems treat individuals in silos, ignoring that marital partnerships share liabilities, ambitions, and intergenerational dreams.
             </p>
             <p className="text-gray-600 leading-relaxed mb-6">
-              Union Invest bridges this divide by providing curated USD investment vehicles featuring verifiable asset backing, transparent distribution terms, and rigorous legal disclosure.
+              Union Verify bridges this divide by providing curated USD investment vehicles featuring verifiable asset backing, transparent distribution terms, and rigorous legal disclosure.
             </p>
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
               <div className="flex items-start gap-3">
@@ -179,7 +179,7 @@ export default function AboutPage() {
       <section className="bg-gray-100 py-12 border-t border-gray-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-xs text-gray-500 leading-relaxed">
-            <strong>Substantiation Notice:</strong> Union Invest operates in compliance with commercial registry and financial disclosure standards. All corporate filings, executive accreditations, and annual audit summaries are available upon verified investor request. Offers are subject to eligibility confirmation in approved legal jurisdictions.
+            <strong>Substantiation Notice:</strong> Union Verify operates in compliance with commercial registry and financial disclosure standards. All corporate filings, executive accreditations, and annual audit summaries are available upon verified investor request. Offers are subject to eligibility confirmation in approved legal jurisdictions.
           </p>
           <div className="mt-6 flex justify-center gap-6 text-xs text-gray-600 font-medium">
             <Link href="/documents" className="text-[#0F1C3F] hover:underline">Official Offer Documents</Link>

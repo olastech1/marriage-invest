@@ -41,7 +41,7 @@ export default function AdminHeader({ user, role, onMenuClick }: Props) {
             <span className="text-[#C9A84C] font-bold text-xs">UI</span>
           </div>
           <span className="hidden sm:inline text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Union Invest
+            Union Verify
           </span>
           <span className="hidden sm:inline text-gray-300">/</span>
           <span className="text-xs sm:text-sm font-bold text-[#0F1C3F]">Admin Portal</span>

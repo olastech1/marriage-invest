@@ -44,7 +44,7 @@ export default function AdminShell({ user, role, children }: AdminShellProps) {
         </main>
 
         <footer className="py-4 px-4 sm:px-8 border-t border-gray-200 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} Union Invest · Admin Portal · All rights reserved
+          © {new Date().getFullYear()} Union Verify · Admin Portal · All rights reserved
         </footer>
       </div>
     </div>

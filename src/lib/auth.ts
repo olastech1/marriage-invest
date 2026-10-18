@@ -1,5 +1,5 @@
 /**
- * NextAuth v5 configuration for Union Invest.
+ * NextAuth v5 configuration for Union Verify.
  *
  * Strategy : JWT
  * Provider : Credentials (email + password)
@@ -73,7 +73,7 @@ const config: NextAuthConfig = {
         return {
           id: isAdmin ? 'usr_admin' : 'usr_jane_doe',
           name: isAdmin ? 'Platform Administrator' : 'Jane Doe',
-          email: cleanEmail || (isAdmin ? 'admin@unioninvest.com' : 'jane.doe@unioninvest.com'),
+          email: cleanEmail || (isAdmin ? 'admin@unionverify.com' : 'jane.doe@unionverify.com'),
           role: (isAdmin ? 'ADMIN' : 'INVESTOR') as UserRole,
           emailVerified: new Date('2024-01-15'),
           twoFactorEnabled: false,

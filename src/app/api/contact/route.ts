@@ -29,10 +29,10 @@ export async function POST(req: NextRequest) {
     console.info(`[Contact Desk] Received inquiry from ${name} <${email}> regarding ${department}: ${subject}`)
 
     // Send email to admin / compliance desk
-    const adminEmail = process.env.ADMIN_EMAIL || 'compliance@unioninvest.com'
+    const adminEmail = process.env.ADMIN_EMAIL || 'compliance@unionverify.com'
     await sendEmail({
       to: adminEmail,
-      subject: `[Union Invest Desk] ${department}: ${subject}`,
+      subject: `[Union Verify Desk] ${department}: ${subject}`,
       html: `
         <div style="font-family: sans-serif; line-height: 1.6; color: #1f2937;">
           <h2 style="color: #0F1C3F;">New Investor Inquiry Received</h2>

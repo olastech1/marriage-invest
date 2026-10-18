@@ -23,9 +23,9 @@ import type { OpportunityStatus } from '@prisma/client'
 // ---------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Investment Opportunities | Union Invest',
+  title: 'Investment Opportunities | Union Verify',
   description:
-    'Browse active marriage investment opportunities offering projected returns. Union Invest connects investors with curated, structured opportunities.',
+    'Browse active marriage investment opportunities offering projected returns. Union Verify connects investors with curated, structured opportunities.',
 }
 
 // ---------------------------------------------------------------------------
@@ -277,13 +277,13 @@ function LegalFooter() {
     >
       <h2 className="text-sm font-semibold text-gray-700">Investment Risk Disclosure</h2>
       <p>
-        All investments made through the Union Invest platform are subject to investment risk,
+        All investments made through the Union Verify platform are subject to investment risk,
         including the possible loss of the principal amount invested. The projected annual return
         rates displayed on this page are estimates based on the business plan of each opportunity
         and historical comparable transactions. They are <strong>not guaranteed</strong>.
       </p>
       <p>
-        Union Invest is not a registered broker-dealer, investment adviser, or financial planner.
+        Union Verify is not a registered broker-dealer, investment adviser, or financial planner.
         Nothing on this website constitutes an offer to sell, a solicitation of an offer to buy,
         or a recommendation of any security or any other product or service. Investment offerings
         are made only to persons who qualify as accredited investors under applicable federal and
@@ -295,7 +295,7 @@ function LegalFooter() {
         documents, which you should read carefully before investing.
       </p>
       <p>
-        Union Invest does not provide legal, tax, or investment advice. You should consult with a
+        Union Verify does not provide legal, tax, or investment advice. You should consult with a
         licensed professional for advice concerning your specific situation.
       </p>
     </section>
@@ -332,7 +332,7 @@ export default async function InvestmentsPage({ searchParams }: PageProps) {
         <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <p className="text-sm font-semibold uppercase tracking-widest text-[#C9A84C]">
-              Union Invest Platform
+              Union Verify Platform
             </p>
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Investment Opportunities

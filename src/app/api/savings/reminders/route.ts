@@ -5,7 +5,7 @@ import { sendDepositReminderEmail } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_SPOUSE_EMAIL = 'marcus.vance@unioninvest.com'
+const DEFAULT_SPOUSE_EMAIL = 'marcus.vance@unionverify.com'
 const DEFAULT_SPOUSE_NAME = 'Marcus Vance'
 
 export async function GET() {
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
             id: `sys-remind-${Date.now()}`,
             threadId: 'spouse',
             senderId: 'system_concierge',
-            senderName: 'Union Invest Concierge',
+            senderName: 'Union Verify Concierge',
             text: `🔔 SYSTEM DEPOSIT REMINDER: ${userName} has sent an official deposit reminder to ${targetPartnerName} for $${numAmount.toLocaleString()} into the ${vaultName}.`,
             timestamp: formattedTime,
             createdAt: now,

@@ -82,7 +82,7 @@ export default function DonationModal({ cause, onClose, userSession }: DonationM
           causeId: cause.id,
           amount: effectiveAmount,
           donorName: isAnonymous ? 'Anonymous' : donorName,
-          donorEmail: donorEmail || 'donor@community.unioninvest.com',
+          donorEmail: donorEmail || 'donor@community.unionverify.com',
           isAnonymous,
           isRecurring,
           dedicationType,
@@ -171,7 +171,7 @@ export default function DonationModal({ cause, onClose, userSession }: DonationM
                 <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                   <span className="font-bold text-[#0F1C3F] flex items-center gap-1">
                     <ShieldCheck size={14} className="text-[#C9A84C]" />
-                    UNION INVEST PHILANTHROPY COVENANT
+                    UNION VERIFY PHILANTHROPY COVENANT
                   </span>
                   <span className="text-[10px] text-gray-400">OFFICIAL 501(c)(3) RECEIPT</span>
                 </div>

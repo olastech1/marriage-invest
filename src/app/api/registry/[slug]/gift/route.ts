@@ -29,7 +29,7 @@ export async function POST(
       id: giftId,
       fundId,
       donorName: isAnonymous ? 'A Gracious Guest' : (donorName || 'Wedding Guest'),
-      donorEmail: donorEmail || 'guest@unioninvest.com',
+      donorEmail: donorEmail || 'guest@unionverify.com',
       amount: Number(amount),
       message: message || 'Wishing you both a lifetime of happiness, wealth, and profound joy!',
       createdAt: new Date().toISOString(),

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Login page for Union Invest.
+ * Login page for Union Verify.
  *
  * Features:
  * - Zod-based client-side validation
@@ -126,7 +126,7 @@ function LoginForm() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Welcome back</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          Sign in to your Union Invest account to continue.
+          Sign in to your Union Verify account to continue.
         </p>
       </div>
 
@@ -291,7 +291,7 @@ function LoginForm() {
               onClick={async () => {
                 setIsSubmitting(true)
                 await signIn('credentials', {
-                  email: 'jane.doe@unioninvest.com',
+                  email: 'jane.doe@unionverify.com',
                   password: 'password',
                   redirect: true,
                   callbackUrl: '/dashboard',
@@ -307,7 +307,7 @@ function LoginForm() {
               onClick={async () => {
                 setIsSubmitting(true)
                 await signIn('credentials', {
-                  email: 'admin@unioninvest.com',
+                  email: 'admin@unionverify.com',
                   password: 'password',
                   redirect: true,
                   callbackUrl: '/admin/dashboard',

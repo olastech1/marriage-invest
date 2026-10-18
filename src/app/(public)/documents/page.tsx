@@ -13,9 +13,9 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Official Offer Documents & Compliance Disclosures | Union Invest',
+  title: 'Official Offer Documents & Compliance Disclosures | Union Verify',
   description:
-    'Review official investment offer documents, version histories, and legal prospectuses for all Union Invest marriage investment opportunities.',
+    'Review official investment offer documents, version histories, and legal prospectuses for all Union Verify marriage investment opportunities.',
 }
 
 export const revalidate = 60
@@ -125,7 +125,7 @@ export default async function OfferDocumentsPage() {
             Official Investment Offer Documents
           </h1>
           <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
-            Every investment opportunity on Union Invest is governed by an audited Offer Document detailing full contractual obligations, fee structures, risk disclosures, and distribution arrangements.
+            Every investment opportunity on Union Verify is governed by an audited Offer Document detailing full contractual obligations, fee structures, risk disclosures, and distribution arrangements.
           </p>
         </div>
 

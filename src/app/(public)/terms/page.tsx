@@ -2,8 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Union Invest',
-  description: 'Legal terms and conditions governing the use of the Union Invest platform.',
+  title: 'Terms of Service | Union Verify',
+  description: 'Legal terms and conditions governing the use of the Union Verify platform.',
 }
 
 export default function TermsPage() {
@@ -19,21 +19,21 @@ export default function TermsPage() {
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">1. Acceptance of Terms</h2>
             <p>
-              By accessing, browsing, registering an account on, or submitting capital to Union Invest (&quot;the Platform&quot;, &quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, our Privacy Policy, and any applicable fund Offer Documents.
+              By accessing, browsing, registering an account on, or submitting capital to Union Verify (&quot;the Platform&quot;, &quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, our Privacy Policy, and any applicable fund Offer Documents.
             </p>
           </section>
 
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">2. Nature of Platform & Financial Risks</h2>
             <p>
-              Union Invest is an investment syndication and private asset platform. We are not a commercial banking institution, and capital deposited is not insured by FDIC, FSCS, or equivalent governmental deposit insurance schemes. All investment opportunities carry inherent risk, including the possible loss of principal. Projected return rates (e.g., 8.5% p.a.) represent underwritten financial projections and do not constitute a performance guarantee.
+              Union Verify is an investment syndication and private asset platform. We are not a commercial banking institution, and capital deposited is not insured by FDIC, FSCS, or equivalent governmental deposit insurance schemes. All investment opportunities carry inherent risk, including the possible loss of principal. Projected return rates (e.g., 8.5% p.a.) represent underwritten financial projections and do not constitute a performance guarantee.
             </p>
           </section>
 
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">3. Joint Account Structure & Authority</h2>
             <p>
-              Accounts registered on Union Invest are established as joint couple accounts. Both registered partners warrant that they possess legal capacity to enter binding agreements. Any withdrawal request, capital redeployment, or formal amendment initiated by one partner may require mutual confirmation per platform safety rules.
+              Accounts registered on Union Verify are established as joint couple accounts. Both registered partners warrant that they possess legal capacity to enter binding agreements. Any withdrawal request, capital redeployment, or formal amendment initiated by one partner may require mutual confirmation per platform safety rules.
             </p>
           </section>
 
