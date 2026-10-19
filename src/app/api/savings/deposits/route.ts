@@ -122,8 +122,49 @@ export async function POST(req: NextRequest) {
       },
     }).catch(console.error)
 
-    // 3. Create persistent UNATTENDED disturbing notification for the partner!
-    // Stays on their dashboard until attended to!
+    // 3. Create synchronized couple chat message for this deposit!
+    const formattedTime = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true,
+    }).format(new Date())
+
+    try {
+      await (prisma as any).chatMessage.create({
+        data: {
+          id: `msg-dep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          threadId: 'spouse',
+          senderId: currentUserId,
+          senderName: currentUserName,
+          text: `💰 Just deposited $${numAmount.toLocaleString()} into our ${vaultTitle}!${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% instant cash match! Total added: $${totalAdded.toLocaleString()})` : ''} Note: "${note || 'For our shared goals ❤️'}"`,
+          timestamp: formattedTime,
+          createdAt: new Date(),
+          read: false,
+          type: 'deposit_alert',
+          proposalData: {
+            goalName: vaultTitle,
+            amount: numAmount,
+            split: '50/50 Equal Match',
+            status: isReciprocalMatch ? 'approved' : 'pending',
+            proposedBy: currentUserName,
+          },
+          depositData: {
+            amount: numAmount,
+            bonusMatch: bonusAmount,
+            vaultTitle,
+            depositorName: currentUserName,
+            reference,
+            isReciprocalMatch,
+          },
+          reactions: { '💰': 1, '🔥': 1, '❤️': 1 },
+        },
+      })
+    } catch (chatErr) {
+      console.warn('Failed to inject chat message for deposit:', chatErr)
+    }
+
+    // 4. Create persistent UNATTENDED disturbing notification for the partner!
+    // Stays on their dashboard until attended to! Links to chat with direct match context.
     await prisma.notification.create({
       data: {
         userId: currentUserId, // visible in current session dashboard
@@ -131,22 +172,23 @@ export async function POST(req: NextRequest) {
         message: `${currentUserName} contributed $${numAmount.toLocaleString()} to your Joint Vault${bonusAmount > 0 ? ` (+ earned an instant $${bonusAmount.toLocaleString()} 10% cash match!)` : ''}. Note: "${note || 'For our shared goals ❤️'}". Covenant Rule 4.2 requires equal partner attendance & match.`,
         type: 'ALERT',
         read: false,
-        link: `/save?match=${numAmount}`,
+        link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
         category: 'PARTNER_DEPOSIT',
         requiresAction: true,
         attended: false,
         amount: numAmount,
         partnerName: currentUserName,
-        actionLabel: `Match Deposit ($${numAmount.toLocaleString()})`,
+        actionLabel: `Match in Chat ($${numAmount.toLocaleString()})`,
         metadata: {
           transactionId: transaction.id,
           reference,
           bonusMatch: bonusAmount,
+          chatThread: 'spouse',
         },
       } as any,
     })
 
-    // 4. Also create celebratory notification for the depositor if 10% bonus was earned
+    // 5. Also create celebratory notification for the depositor if 10% bonus was earned
     if (bonusAmount > 0) {
       await prisma.notification.create({
         data: {
@@ -155,7 +197,7 @@ export async function POST(req: NextRequest) {
           message: `Congratulations! Your deposit of $${numAmount.toLocaleString()} earned an instant $${bonusAmount.toLocaleString()} 10% match. Total credited: $${totalAdded.toLocaleString()}.`,
           type: 'SUCCESS',
           read: false,
-          link: '/save',
+          link: '/chat?thread=spouse',
           category: 'BONUS_MATCH',
           requiresAction: false,
           attended: true,

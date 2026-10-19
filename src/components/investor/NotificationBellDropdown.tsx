@@ -12,6 +12,7 @@ import {
   ArrowRight,
   Clock,
   Check,
+  MessageSquareHeart,
 } from 'lucide-react'
 
 export default function NotificationBellDropdown() {
@@ -142,16 +143,27 @@ export default function NotificationBellDropdown() {
                       <h4 className="text-xs font-bold text-slate-900">{item.title}</h4>
                       <p className="text-[11px] text-slate-600 line-clamp-2 mt-0.5">{item.message}</p>
                     </div>
-                    <div className="flex items-center justify-between pt-1">
-                      {item.link ? (
+                    <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        {item.link ? (
+                          <Link
+                            href={item.link}
+                            onClick={() => setIsOpen(false)}
+                            className="text-[11px] font-bold text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
+                          >
+                            {item.actionLabel || 'Attend Now'} <ArrowRight size={11} />
+                          </Link>
+                        ) : null}
                         <Link
-                          href={item.link}
+                          href="/chat?thread=spouse"
                           onClick={() => setIsOpen(false)}
-                          className="text-[11px] font-bold text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
+                          className="text-[10px] font-bold text-slate-500 hover:text-[#0F1C3F] flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200"
+                          title="Discuss this action with your partner in chat"
                         >
-                          {item.actionLabel || 'Attend Now'} <ArrowRight size={11} />
+                          <MessageSquareHeart size={11} className="text-[#C9A84C]" />
+                          Chat
                         </Link>
-                      ) : <span />}
+                      </div>
                       <button
                         onClick={() => handleAttend(item.id)}
                         disabled={loading}
@@ -166,13 +178,21 @@ export default function NotificationBellDropdown() {
             </div>
 
             {/* Footer */}
-            <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+            <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+              <Link
+                href="/chat?thread=spouse"
+                onClick={() => setIsOpen(false)}
+                className="text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
+              >
+                <MessageSquareHeart size={13} className="text-[#C9A84C]" />
+                Couple Chat
+              </Link>
               <Link
                 href="/dashboard"
                 onClick={() => setIsOpen(false)}
-                className="text-xs font-bold text-[#0F1C3F] hover:underline"
+                className="text-slate-600 hover:text-[#0F1C3F] hover:underline"
               >
-                Go to Dashboard Action Center →
+                Dashboard Action Center →
               </Link>
             </div>
           </div>

@@ -193,7 +193,7 @@ export interface MockChatMessage {
   createdAt: Date
   read: boolean
   reactions?: Record<string, number>
-  type: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate'
+  type: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert'
   proposalData?: {
     goalName: string
     amount: number
@@ -201,6 +201,14 @@ export interface MockChatMessage {
     status: 'pending' | 'approved' | 'rejected'
     proposedBy: string
     approvedBy?: string
+  }
+  depositData?: {
+    amount: number
+    bonusMatch?: number
+    vaultTitle?: string
+    depositorName?: string
+    reference?: string
+    isReciprocalMatch?: boolean
   }
   voiceDuration?: string
   loveNoteTitle?: string

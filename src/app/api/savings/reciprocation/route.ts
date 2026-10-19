@@ -112,18 +112,63 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // 2. Create notification for user
+      // 2. Create synchronized couple chat message for partner deposit
+      const formattedTime = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }).format(new Date())
+
+      try {
+        await (prisma as any).chatMessage.create({
+          data: {
+            id: `msg-recip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            threadId: 'spouse',
+            senderId: 'usr_marcus_vance',
+            senderName: DEFAULT_PARTNER_NAME,
+            text: `💍 I just saved $${depositAmount.toLocaleString()} to our Joint Vault! Under Spousal Covenant Rule 4.2, your reciprocal match is now due ❤️ Note: "${note}"`,
+            timestamp: formattedTime,
+            createdAt: new Date(),
+            read: false,
+            type: 'deposit_alert',
+            proposalData: {
+              goalName: 'Joint Marriage Savings Vault',
+              amount: depositAmount,
+              split: '50/50 Equal Match',
+              status: 'pending',
+              proposedBy: DEFAULT_PARTNER_NAME,
+            },
+            depositData: {
+              amount: depositAmount,
+              vaultTitle: 'Joint Marriage Savings Vault',
+              depositorName: DEFAULT_PARTNER_NAME,
+              isReciprocalMatch: false,
+            },
+            reactions: { '💍': 1, '🔥': 1 },
+          },
+        })
+      } catch (chatErr) {
+        console.warn('Failed to inject chat message for reciprocation:', chatErr)
+      }
+
+      // 3. Create notification for user linking to chat
       await prisma.notification.create({
         data: {
           userId,
           title: '⚡ Compulsory Reciprocation Triggered',
           message: `${DEFAULT_PARTNER_NAME} deposited $${depositAmount.toLocaleString()} into your Joint Vault. Under Spousal Covenant Rule 4.2, you are required to reciprocate with an equal contribution!`,
           type: 'WARNING',
-          link: '/save',
-        },
+          link: `/chat?thread=spouse&action=match&amount=${depositAmount}`,
+          category: 'PARTNER_DEPOSIT',
+          requiresAction: true,
+          attended: false,
+          amount: depositAmount,
+          partnerName: DEFAULT_PARTNER_NAME,
+          actionLabel: `Match in Chat ($${depositAmount.toLocaleString()})`,
+        } as any,
       })
 
-      // 3. Create transaction record for partner's deposit
+      // 4. Create transaction record for partner's deposit
       try {
         await prisma.transaction.create({
           data: {
@@ -181,14 +226,54 @@ export async function POST(req: NextRequest) {
         },
       })
 
-      // 2. Create celebratory notification
+      // 2. Synchronized couple chat message for fulfillment
+      const formattedTime = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }).format(new Date())
+
+      try {
+        await (prisma as any).chatMessage.create({
+          data: {
+            id: `msg-match-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            threadId: 'spouse',
+            senderId: userId,
+            senderName: userName,
+            text: `✓ Matched ${DEFAULT_PARTNER_NAME}'s deposit with $${matchAmount.toLocaleString()}! Both spouses are in 100% financial harmony. Vault withdrawals unlocked. 🎉🥂`,
+            timestamp: formattedTime,
+            createdAt: new Date(),
+            read: false,
+            type: 'deposit_alert',
+            proposalData: {
+              goalName: 'Joint Marriage Savings Vault',
+              amount: matchAmount,
+              split: '50/50 Equal Match',
+              status: 'approved',
+              proposedBy: userName,
+              approvedBy: DEFAULT_PARTNER_NAME,
+            },
+            depositData: {
+              amount: matchAmount,
+              vaultTitle: 'Joint Marriage Savings Vault',
+              depositorName: userName,
+              isReciprocalMatch: true,
+            },
+            reactions: { '🥂': 2, '❤️': 2, '🎉': 2 },
+          },
+        })
+      } catch (chatErr) {
+        console.warn('Failed to inject chat message for reciprocation fulfillment:', chatErr)
+      }
+
+      // 3. Create celebratory notification
       await prisma.notification.create({
         data: {
           userId,
           title: '✓ Spousal Covenant Reciprocated!',
           message: `You successfully matched ${DEFAULT_PARTNER_NAME}'s deposit with $${matchAmount.toLocaleString()}! Both spouses are in 100% financial harmony. Vault withdrawals unlocked.`,
           type: 'SUCCESS',
-          link: '/save',
+          link: '/chat?thread=spouse',
         },
       })
 

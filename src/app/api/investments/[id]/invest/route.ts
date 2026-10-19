@@ -238,6 +238,12 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
       const partnerName = parsed.data.partnerName || 'Marcus Vance'
       const userName = session?.user?.name || 'Investor'
 
+      const formattedTime = new Intl.DateTimeFormat('en-US', {
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: true,
+      }).format(new Date())
+
       if (parsed.data.isReciprocalMatch) {
         // Fulfill the outstanding reciprocation obligation
         await prisma.auditLog.create({
@@ -254,13 +260,47 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           },
         }).catch(console.error)
 
+        // Couple chat message
+        try {
+          await (prisma as any).chatMessage.create({
+            data: {
+              id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              threadId: 'spouse',
+              senderId: userId,
+              senderName: userName,
+              text: `🎉 Spousal Covenant Reciprocated! I matched ${partnerName}'s deposit with $${amount.toLocaleString()} into our vault. Both spouses are in 100% financial parity! 🥂`,
+              timestamp: formattedTime,
+              createdAt: new Date(),
+              read: false,
+              type: 'deposit_alert',
+              proposalData: {
+                goalName: invTitle,
+                amount: amount,
+                split: '50/50 Equal Match',
+                status: 'approved',
+                proposedBy: userName,
+                approvedBy: partnerName,
+              },
+              depositData: {
+                amount: amount,
+                vaultTitle: invTitle,
+                depositorName: userName,
+                isReciprocalMatch: true,
+              },
+              reactions: { '🥂': 2, '❤️': 2, '🎉': 2 },
+            },
+          })
+        } catch (chatErr) {
+          console.warn('Failed to inject chat message for reciprocation match:', chatErr)
+        }
+
         await prisma.notification.create({
           data: {
             userId,
             title: '✓ Spousal Covenant Reciprocated!',
             message: `You successfully matched ${partnerName}'s deposit with $${amount.toLocaleString()}! Both spouses are in full financial parity. Vault withdrawals unlocked.`,
             type: 'SUCCESS',
-            link: '/save',
+            link: '/chat?thread=spouse',
           },
         }).catch(console.error)
       } else {
@@ -282,13 +322,46 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           },
         }).catch(console.error)
 
+        // Couple chat message
+        try {
+          await (prisma as any).chatMessage.create({
+            data: {
+              id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              threadId: 'spouse',
+              senderId: userId,
+              senderName: userName,
+              text: `📈 New deposit of $${amount.toLocaleString()} added to ${invTitle}! Under Covenant Rule 4.2, ${partnerName}'s matching deposit is now active. Let's keep our compounding growth going.`,
+              timestamp: formattedTime,
+              createdAt: new Date(),
+              read: false,
+              type: 'deposit_alert',
+              proposalData: {
+                goalName: invTitle,
+                amount: amount,
+                split: '50/50',
+                status: 'pending',
+                proposedBy: userName,
+              },
+              depositData: {
+                amount: amount,
+                vaultTitle: invTitle,
+                depositorName: userName,
+                isReciprocalMatch: false,
+              },
+              reactions: { '💰': 1, '🔥': 1 },
+            },
+          })
+        } catch (chatErr) {
+          console.warn('Failed to inject chat message for investment:', chatErr)
+        }
+
         await prisma.notification.create({
           data: {
             userId,
             title: '⚡ Reciprocal Match Triggered on Partner',
             message: `Your deposit of $${amount.toLocaleString()} has triggered a mandatory reciprocal match for ${partnerName} under Spousal Covenant Rule 4.2.`,
             type: 'INFO',
-            link: '/save',
+            link: `/chat?thread=spouse&action=match&amount=${amount}`,
           },
         }).catch(console.error)
       }

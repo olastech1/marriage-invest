@@ -71,8 +71,48 @@ export async function POST(req: NextRequest) {
             },
           })
 
-          // Persistent partner notification
+          // Couple chat message
           const userName = metadata.userName || 'Investor'
+          const formattedTime = new Intl.DateTimeFormat('en-US', {
+            hour: 'numeric',
+            minute: 'numeric',
+            hour12: true,
+          }).format(new Date())
+
+          try {
+            await (prisma as any).chatMessage.create({
+              data: {
+                id: `msg-stripe-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                threadId: 'spouse',
+                senderId: userId,
+                senderName: userName,
+                text: `💳 Stripe Card Deposit of $${numAmount.toLocaleString()} completed! Compounding live in our Joint Vault.${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% cash match! Total added: $${totalAdded.toLocaleString()})` : ''}`,
+                timestamp: formattedTime,
+                createdAt: new Date(),
+                read: false,
+                type: 'deposit_alert',
+                proposalData: {
+                  goalName: 'Joint Marriage Savings Vault',
+                  amount: numAmount,
+                  split: '50/50',
+                  status: 'pending',
+                  proposedBy: userName,
+                },
+                depositData: {
+                  amount: numAmount,
+                  bonusMatch: bonusAmount,
+                  vaultTitle: 'Joint Marriage Savings Vault (Stripe)',
+                  depositorName: userName,
+                  reference,
+                },
+                reactions: { '💳': 1, '🔥': 1, '🎉': 1 },
+              },
+            })
+          } catch (chatErr) {
+            console.warn('Failed to inject chat message for stripe deposit:', chatErr)
+          }
+
+          // Persistent partner notification linking to chat
           await prisma.notification.create({
             data: {
               userId,
@@ -80,13 +120,13 @@ export async function POST(req: NextRequest) {
               message: `${userName} completed a $${numAmount.toLocaleString()} deposit via Stripe card${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% bonus match!)` : ''}. Covenant Rule 4.2 requires equal partner attendance & match.`,
               type: 'ALERT',
               read: false,
-              link: `/save?match=${numAmount}`,
+              link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
               category: 'PARTNER_DEPOSIT',
               requiresAction: true,
               attended: false,
               amount: numAmount,
               partnerName: userName,
-              actionLabel: `Match Deposit ($${numAmount.toLocaleString()})`,
+              actionLabel: `Match in Chat ($${numAmount.toLocaleString()})`,
             } as any,
           }).catch(console.error)
 
@@ -99,7 +139,7 @@ export async function POST(req: NextRequest) {
                 message: `Your Stripe deposit of $${numAmount.toLocaleString()} earned an instant $${bonusAmount.toLocaleString()} match! Total credited: $${totalAdded.toLocaleString()}.`,
                 type: 'SUCCESS',
                 read: false,
-                link: '/save',
+                link: '/chat?thread=spouse',
                 category: 'BONUS_MATCH',
                 requiresAction: false,
                 attended: true,

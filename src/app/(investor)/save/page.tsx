@@ -734,12 +734,21 @@ function SavePageContent() {
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
               <h4 className="font-black text-emerald-800 text-base">Savings Added Successfully!</h4>
               <p className="text-xs text-emerald-700 max-w-md mx-auto leading-relaxed">{successMessage}</p>
-              <button
-                onClick={() => setSuccess(false)}
-                className="px-5 py-2.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors shadow-sm cursor-pointer"
-              >
-                Add More Savings
-              </button>
+              <div className="flex items-center justify-center gap-2 pt-2 flex-wrap">
+                <Link
+                  href="/chat?thread=spouse"
+                  className="px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs hover:bg-[#1a2f64] transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  <Users size={14} className="text-[#C9A84C]" />
+                  Discuss in Couple Chat ↗
+                </Link>
+                <button
+                  onClick={() => setSuccess(false)}
+                  className="px-5 py-2.5 rounded-xl border border-emerald-300 text-emerald-800 font-bold text-xs hover:bg-emerald-100 transition-colors shadow-xs cursor-pointer"
+                >
+                  Add More Savings
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSave} className="space-y-4">

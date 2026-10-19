@@ -43,7 +43,7 @@ export interface ChatMessage {
   timestamp: string
   read: boolean
   reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert'
   proposalData?: {
     goalName: string
     amount: number
@@ -51,6 +51,14 @@ export interface ChatMessage {
     status: 'pending' | 'approved' | 'rejected'
     proposedBy?: string
     approvedBy?: string
+  }
+  depositData?: {
+    amount: number
+    bonusMatch?: number
+    vaultTitle?: string
+    depositorName?: string
+    reference?: string
+    isReciprocalMatch?: boolean
   }
   voiceDuration?: string
   loveNoteTitle?: string
@@ -100,6 +108,27 @@ export default function MutualChatPage() {
   // Channels & Active Thread
   const [activeChannel, setActiveChannel] = useState<ChannelType>('spouse')
   const [mobileTab, setMobileTab] = useState<'channels' | 'chat'>('chat')
+
+  // Notification & Match banner from URL query params (e.g. from notification bell)
+  const [matchedDepositAlert, setMatchedDepositAlert] = useState<{ amount: number; action: string } | null>(null)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const threadParam = params.get('thread')
+      if (threadParam === 'advisor' || threadParam === 'spouse') {
+        setActiveChannel(threadParam as ChannelType)
+      }
+      const actionParam = params.get('action')
+      const amountParam = params.get('amount')
+      if (actionParam === 'match' && amountParam) {
+        setMatchedDepositAlert({
+          amount: parseFloat(amountParam) || 500,
+          action: 'match',
+        })
+      }
+    }
+  }, [])
 
   // Notification settings
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -838,6 +867,49 @@ export default function MutualChatPage() {
               </div>
             )}
 
+            {/* Notification-Linked Reciprocal Match Callout */}
+            {matchedDepositAlert && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-700 to-amber-600 text-white shadow-lg space-y-2 animate-in fade-in-50 slide-in-from-top-2 duration-200 border-2 border-rose-300">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-200 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
+                    Spousal Covenant Action Center · Rule 4.2
+                  </span>
+                  <button
+                    onClick={() => setMatchedDepositAlert(null)}
+                    className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="text-xs space-y-1">
+                  <p className="font-bold text-white text-sm">
+                    ⚡ Partner Reciprocal Match Requested: ${matchedDepositAlert.amount.toLocaleString()}
+                  </p>
+                  <p className="text-rose-100 text-[11px]">
+                    Your spouse made a deposit to your Joint Marriage Savings Vault. Under your covenant, matching this deposit preserves 50/50 beneficial parity.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Link
+                    href={`/save?match=${matchedDepositAlert.amount}`}
+                    className="flex-1 py-2 px-3 rounded-xl bg-white text-rose-900 font-black text-xs hover:bg-rose-50 transition-colors shadow-sm flex items-center justify-center gap-1.5"
+                  >
+                    <span>Match Deposit in Vault (${matchedDepositAlert.amount.toLocaleString()}) ↗</span>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setInputText(`I saw your $${matchedDepositAlert.amount.toLocaleString()} deposit! Reviewing and matching right now ❤️🥂`)
+                      setMatchedDepositAlert(null)
+                    }}
+                    className="px-3 py-2 rounded-xl bg-rose-900/50 hover:bg-rose-900/70 border border-white/20 text-white font-bold text-xs transition-colors"
+                  >
+                    Quick Reply
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Encryption Notice */}
             <div className="text-center my-1">
               <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-2xs">
@@ -979,6 +1051,57 @@ export default function MutualChatPage() {
                             Approved by Both Partners · Vault Updated
                           </div>
                         )}
+                      </div>
+                    )}
+
+                    {/* SPOUSAL VAULT DEPOSIT ALERT CARD */}
+                    {msg.type === 'deposit_alert' && (
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F] via-[#162752] to-[#0F1C3F] text-white border-2 border-[#C9A84C] shadow-xl text-xs space-y-3 min-w-[280px] sm:min-w-[340px]">
+                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-[#C9A84C] flex items-center gap-1.5">
+                            <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
+                            Spousal Vault Deposit Alert
+                          </span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {msg.proposalData?.status === 'approved' ? '✓ Parity Maintained' : 'Rule 4.2 Active'}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
+                          {msg.text}
+                        </p>
+
+                        <div className="p-3 rounded-xl bg-white/10 border border-white/15 flex items-center justify-between">
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Deposit Amount</span>
+                            <span className="text-lg font-black text-[#C9A84C]">
+                              ${Number(msg.depositData?.amount || msg.proposalData?.amount || 500).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Compounding Growth</span>
+                            <span className="text-xs font-bold text-emerald-400">6.8% APY Compounding</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 pt-1">
+                          {msg.proposalData?.status === 'pending' && !isMe ? (
+                            <Link
+                              href={`/save?match=${msg.depositData?.amount || msg.proposalData?.amount || 500}`}
+                              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#C9A84C] to-[#d4b460] hover:brightness-105 text-[#0F1C3F] font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Match Deposit (${Number(msg.depositData?.amount || msg.proposalData?.amount || 500).toLocaleString()}) ↗</span>
+                            </Link>
+                          ) : (
+                            <Link
+                              href="/save"
+                              className="flex-1 py-2.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/20 flex items-center justify-center gap-1.5 cursor-pointer text-center"
+                            >
+                              <span>View Compounding Vault ↗</span>
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     )}
 

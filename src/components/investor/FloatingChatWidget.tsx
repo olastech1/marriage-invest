@@ -24,7 +24,8 @@ interface FloatingMessage {
   sender: 'user' | 'partner'
   text: string
   time: string
-  type?: 'text' | 'proposal' | 'love_note'
+  type?: 'text' | 'proposal' | 'love_note' | 'deposit_alert' | 'system_reminder' | 'reminder'
+  amount?: number
 }
 
 export function FloatingChatWidget({
@@ -40,36 +41,63 @@ export function FloatingChatWidget({
   const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const [messages, setMessages] = useState<FloatingMessage[]>([
-    {
-      id: 'm1',
-      sender: 'partner',
-      text: 'Hey love! I just checked our Joint Marriage Reserve vault. Looking fantastic! ❤️',
-      time: '10:42 AM',
-      type: 'text',
-    },
-    {
-      id: 'm2',
-      sender: 'user',
-      text: 'Agreed! Shall we match $250 for the Amalfi Coast trip today?',
-      time: '10:44 AM',
-      type: 'text',
-    },
-    {
-      id: 'm3',
-      sender: 'partner',
-      text: 'Absolutely! I am ready to approve whenever you propose it.',
-      time: '10:45 AM',
-      type: 'text',
-    },
-    {
-      id: 'm4',
-      sender: 'partner',
-      text: 'I just saved $500 to our Joint Vault! Under our Spousal Covenant (Rule 4.2), your matching reciprocal deposit is now due ❤️',
-      time: '11:02 AM',
-      type: 'proposal',
-    },
-  ])
+  const [messages, setMessages] = useState<FloatingMessage[]>([])
+  const prevCountRef = useRef(0)
+
+  // Live synchronization with /api/chat?thread=spouse
+  const fetchLiveMessages = async () => {
+    try {
+      const res = await fetch('/api/chat?thread=spouse')
+      const data = await res.json()
+      if (data.success && Array.isArray(data.messages)) {
+        const activePartnerId = typeof window !== 'undefined'
+          ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
+          : 'usr_jane_doe'
+
+        const formatted: FloatingMessage[] = data.messages.map((m: any) => ({
+          id: m.id,
+          sender: m.senderId === activePartnerId ? 'user' : 'partner',
+          text: m.text,
+          time: m.timestamp || new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          type: m.type,
+          amount: m.depositData?.amount || m.proposalData?.amount,
+        }))
+
+        if (formatted.length > prevCountRef.current && prevCountRef.current > 0) {
+          const latest = formatted[formatted.length - 1]
+          if (latest && latest.sender === 'partner') {
+            playChime()
+            if (!isOpen) {
+              setUnreadCount((c) => c + 1)
+            }
+          }
+        }
+        prevCountRef.current = formatted.length
+        setMessages(formatted)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch floating chat messages:', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchLiveMessages()
+    const timer = setInterval(fetchLiveMessages, 3500)
+
+    // BroadcastChannel sync for instant updates across tabs/actions
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('union_verify_chat')
+      bc.onmessage = () => {
+        fetchLiveMessages()
+      }
+    }
+
+    return () => {
+      clearInterval(timer)
+      if (bc) bc.close()
+    }
+  }, [isOpen])
 
   const isChatPage = pathname === '/chat' || pathname?.startsWith('/chat')
 
@@ -264,15 +292,17 @@ export function FloatingChatWidget({
                     }`}
                   >
                     <p>{m.text}</p>
-                    {m.type === 'proposal' && (
-                      <div className="mt-2 pt-2 border-t border-amber-100 flex items-center justify-between gap-2">
-                        <span className="text-[10px] font-bold text-amber-800">Rule 4.2 Obligation</span>
+                    {(m.type === 'proposal' || m.type === 'deposit_alert' || m.type === 'system_reminder') && (
+                      <div className="mt-2 pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold text-[#C9A84C]">
+                          {m.type === 'deposit_alert' ? 'Compounding Vault' : 'Rule 4.2 Obligation'}
+                        </span>
                         <Link
-                          href="/save"
+                          href={m.amount ? `/save?match=${m.amount}` : '/save'}
                           onClick={() => setIsOpen(false)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30"
                         >
-                          Match Deposit →
+                          {m.amount ? `Match $${m.amount.toLocaleString()} →` : 'View Vault →'}
                         </Link>
                       </div>
                     )}

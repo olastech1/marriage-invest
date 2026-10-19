@@ -78,6 +78,49 @@ export async function POST(
             },
           },
         })
+
+        // Inject couple chat message celebrating the wedding gift
+        const formattedTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date())
+        await (prisma as any).chatMessage.create({
+          data: {
+            id: `msg-gift-${Date.now()}`,
+            threadId: 'spouse',
+            senderId: 'system_wedding_registry',
+            senderName: 'Union Verify Registry',
+            text: `🎁 New Wedding Gift Received! ${newGift.donorName} contributed $${Number(amount).toLocaleString()} to your registry! "${newGift.message}"`,
+            timestamp: formattedTime,
+            createdAt: new Date(),
+            read: false,
+            type: 'deposit_alert',
+            proposalData: {
+              goalName: `Wedding Registry (${coupleTitle})`,
+              amount: Number(amount),
+              split: '100% Gifted',
+              status: 'approved',
+              proposedBy: newGift.donorName,
+            },
+            depositData: {
+              amount: Number(amount),
+              vaultTitle: `Wedding Registry Gift from ${newGift.donorName}`,
+              depositorName: newGift.donorName,
+            },
+            reactions: { '🎁': 2, '❤️': 2, '🥂': 2 },
+          },
+        }).catch(console.warn)
+
+        // Notification for couple
+        await prisma.notification.create({
+          data: {
+            userId: actorUserId,
+            title: `🎁 Wedding Gift Received: $${Number(amount).toLocaleString()}`,
+            message: `${newGift.donorName} sent $${Number(amount).toLocaleString()} with note: "${newGift.message}"`,
+            type: 'SUCCESS',
+            link: '/chat?thread=spouse',
+            category: 'PARTNER_DEPOSIT',
+            requiresAction: false,
+            attended: true,
+          } as any,
+        }).catch(console.warn)
       }
     } catch (dbErr) {
       console.error('Non-critical DB logging error for wedding gift:', dbErr)

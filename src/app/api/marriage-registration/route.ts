@@ -121,9 +121,29 @@ export async function POST(req: Request) {
         title: 'Marriage Solemnization Docketed',
         message: `Docket ${docketNumber} for ${partner1Name} & ${partner2Name} officially registered. Invitation dispatched to ${cleanEmail2}.`,
         type: 'SUCCESS',
-        link: '/certificate',
+        link: '/chat?thread=spouse',
       },
     }).catch(() => null)
+
+    // Inject Official Certificate Notice into Couple Chat
+    try {
+      await (prisma as any).chatMessage.create({
+        data: {
+          id: `msg-cert-${Date.now()}`,
+          threadId: 'spouse',
+          senderId: userId,
+          senderName: partner1Name,
+          text: `💍 Official Marriage Registration Solemnized! Docket ${docketNumber} for ${partner1Name} & ${partner2Name} is officially recorded on the mutual matrimonial ledger. Certificate active!`,
+          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
+          createdAt: new Date(),
+          read: false,
+          type: 'certificate',
+          reactions: { '💍': 2, '🥂': 2, '❤️': 2 },
+        },
+      })
+    } catch (e) {
+      console.warn('Failed to post certificate to chat:', e)
+    }
 
     // Audit log
     await prisma.auditLog.create({

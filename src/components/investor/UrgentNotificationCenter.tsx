@@ -20,6 +20,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Zap,
+  MessageSquareHeart,
 } from 'lucide-react'
 
 interface NotificationItem {
@@ -165,7 +166,15 @@ export default function UrgentNotificationCenter({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          <Link
+            href="/chat?thread=spouse"
+            className="rounded-lg bg-[#C9A84C]/20 border border-[#C9A84C]/40 px-3 py-1.5 text-xs font-bold text-[#C9A84C] hover:bg-[#C9A84C]/30 transition-colors flex items-center gap-1.5"
+            title="Open real-time couple chat"
+          >
+            <MessageSquareHeart size={13} />
+            Couple Chat
+          </Link>
           <button
             onClick={() => setActiveTab(activeTab === 'URGENT' ? 'ALL' : 'URGENT')}
             className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/20 hover:text-white transition-colors"
@@ -359,20 +368,28 @@ export default function UrgentNotificationCenter({
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2 pt-4 border-t border-slate-200/60 mt-3">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-4 border-t border-slate-200/60 mt-3">
                       {notif.link ? (
                         <Link
                           href={notif.link}
-                          className="flex-1 rounded-xl bg-[#0F1C3F] px-3.5 py-2.5 text-center text-xs font-bold text-white hover:bg-[#1a2f64] transition-colors flex items-center justify-center gap-1.5"
+                          className="flex-1 rounded-xl bg-[#0F1C3F] px-3 py-2 text-center text-xs font-bold text-white hover:bg-[#1a2f64] transition-colors flex items-center justify-center gap-1.5"
                         >
                           {notif.actionLabel || 'Attend Now'}
                           <ArrowRight size={13} />
                         </Link>
                       ) : null}
+                      <Link
+                        href="/chat?thread=spouse"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:text-[#0F1C3F] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 flex-shrink-0"
+                        title="Discuss this action with your spouse in couple chat"
+                      >
+                        <MessageSquareHeart size={13} className="text-[#C9A84C]" />
+                        Chat
+                      </Link>
                       <button
                         onClick={() => handleAttend(notif.id)}
                         disabled={isAttending}
-                        className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center gap-1 flex-shrink-0"
+                        className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors flex items-center justify-center gap-1 flex-shrink-0"
                       >
                         {isAttending ? (
                           <RefreshCw size={13} className="animate-spin text-slate-400" />
@@ -435,15 +452,25 @@ export default function UrgentNotificationCenter({
                   </p>
                 </div>
 
-                {!n.attended && (
-                  <button
-                    onClick={() => handleAttend(n.id)}
-                    disabled={attendingIds[n.id]}
-                    className="flex-shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <Link
+                    href="/chat?thread=spouse"
+                    className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F1C3F] transition-colors flex items-center gap-1"
+                    title="Discuss in couple chat"
                   >
-                    Attend
-                  </button>
-                )}
+                    <MessageSquareHeart size={12} className="text-[#C9A84C]" />
+                    Chat
+                  </Link>
+                  {!n.attended && (
+                    <button
+                      onClick={() => handleAttend(n.id)}
+                      disabled={attendingIds[n.id]}
+                      className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200 transition-colors"
+                    >
+                      Attend
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

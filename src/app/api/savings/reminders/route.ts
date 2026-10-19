@@ -83,13 +83,13 @@ export async function POST(req: NextRequest) {
             title: `⏰ Deposit Reminder from ${userName}`,
             message: `${userName} scheduled a reminder to deposit $${numAmount.toLocaleString()} into your joint ${vaultName}. Keep your covenant strong!`,
             type: 'ALERT',
-            link: `/save?amount=${numAmount}&target=joint`,
+            link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
             category: 'PARTNER_CHANGE',
             requiresAction: true,
             attended: false,
             amount: numAmount,
             partnerName: userName,
-            actionLabel: `Deposit $${numAmount.toLocaleString()}`,
+            actionLabel: `View in Chat & Deposit ($${numAmount.toLocaleString()})`,
           } as any,
         })
       } catch (e) {
