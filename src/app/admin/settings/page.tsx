@@ -24,11 +24,31 @@ import {
 } from 'lucide-react'
 
 export default function AdminSettingsPage() {
-  const [activeTab, setActiveTab] = useState<'general' | 'finance' | 'security' | 'email' | 'system'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'finance' | 'payments' | 'security' | 'email' | 'system'>('general')
   const [saving, setSaving] = useState(false)
   const [statusMsg, setStatusMsg] = useState('')
   const [testingDb, setTestingDb] = useState(false)
   const [dbStatus, setDbStatus] = useState<string | null>(null)
+
+  // Stripe Payment Settings
+  const [paymentSettings, setPaymentSettings] = useState({
+    secretKey: '',
+    publishableKey: '',
+    webhookSecret: '',
+    mode: 'SANDBOX',
+    isPlaceholder: true,
+    isLive: false,
+    webhookUrl: 'https://unionverify.com/api/webhooks/stripe',
+    rawSecretKeyPresent: false,
+    rawWebhookSecretPresent: false,
+  })
+  const [showStripeSecret, setShowStripeSecret] = useState(false)
+  const [showWebhookSecret, setShowWebhookSecret] = useState(false)
+  const [testingPayment, setTestingPayment] = useState(false)
+  const [paymentStatus, setPaymentStatus] = useState<{ type: 'success' | 'error'; message: string; details?: string } | null>(null)
+  const [copiedWebhook, setCopiedWebhook] = useState(false)
+  const [copiedPaymentEnv, setCopiedPaymentEnv] = useState(false)
+  const [savingPayment, setSavingPayment] = useState(false)
 
   // Form states
   const [generalSettings, setGeneralSettings] = useState({
@@ -237,6 +257,120 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
     }
   }
 
+  const loadPaymentSettings = () => {
+    fetch('/api/admin/payments')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.success) {
+          setPaymentSettings({
+            secretKey: data.secretKey || '',
+            publishableKey: data.publishableKey || '',
+            webhookSecret: data.webhookSecret || '',
+            mode: data.mode || 'SANDBOX',
+            isPlaceholder: data.isPlaceholder ?? true,
+            isLive: data.isLive ?? false,
+            webhookUrl: data.webhookUrl || 'https://unionverify.com/api/webhooks/stripe',
+            rawSecretKeyPresent: data.rawSecretKeyPresent ?? false,
+            rawWebhookSecretPresent: data.rawWebhookSecretPresent ?? false,
+          })
+        }
+      })
+      .catch((err) => console.error('Failed to load payment settings:', err))
+  }
+
+  useEffect(() => {
+    loadPaymentSettings()
+  }, [])
+
+  const handleTestPayment = async () => {
+    setTestingPayment(true)
+    setPaymentStatus(null)
+    try {
+      const res = await fetch('/api/admin/payments/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secretKey: paymentSettings.secretKey,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setPaymentStatus({
+          type: 'success',
+          message: data.message,
+          details: data.details,
+        })
+        loadPaymentSettings()
+      } else {
+        setPaymentStatus({
+          type: 'error',
+          message: data.error || 'Stripe API authentication failed.',
+          details: data.code ? `Stripe Code: ${data.code}` : undefined,
+        })
+      }
+    } catch (err: any) {
+      setPaymentStatus({
+        type: 'error',
+        message: err.message || 'Network error while contacting Stripe API.',
+      })
+    } finally {
+      setTestingPayment(false)
+    }
+  }
+
+  const handleSavePayment = async () => {
+    setSavingPayment(true)
+    setPaymentStatus(null)
+    try {
+      const res = await fetch('/api/admin/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          secretKey: paymentSettings.secretKey,
+          publishableKey: paymentSettings.publishableKey,
+          webhookSecret: paymentSettings.webhookSecret,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setPaymentStatus({
+          type: 'success',
+          message: '✓ Stripe API keys and Webhook secret saved to environment successfully!',
+        })
+        loadPaymentSettings()
+      } else {
+        setPaymentStatus({
+          type: 'error',
+          message: data.error || 'Failed to save Stripe keys.',
+        })
+      }
+    } catch (err: any) {
+      setPaymentStatus({
+        type: 'error',
+        message: err.message || 'Network error saving payment settings.',
+      })
+    } finally {
+      setSavingPayment(false)
+    }
+  }
+
+  const handleCopyPaymentEnv = () => {
+    const envText = `STRIPE_SECRET_KEY="${paymentSettings.secretKey}"
+STRIPE_PUBLISHABLE_KEY="${paymentSettings.publishableKey}"
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${paymentSettings.publishableKey}"
+STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
+
+    navigator.clipboard.writeText(envText)
+    setCopiedPaymentEnv(true)
+    setTimeout(() => setCopiedPaymentEnv(false), 3000)
+  }
+
+  const handleCopyWebhook = () => {
+    navigator.clipboard.writeText(paymentSettings.webhookUrl)
+    setCopiedWebhook(true)
+    setTimeout(() => setCopiedWebhook(false), 3000)
+  }
+
   return (
     <div className="space-y-6 max-w-6xl pb-12">
       {/* Header */}
@@ -292,6 +426,26 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
         >
           <Sliders className="w-4 h-4" />
           Financial Rules & Limits
+        </button>
+        <button
+          onClick={() => setActiveTab('payments')}
+          className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold border-b-2 whitespace-nowrap transition-colors ${
+            activeTab === 'payments'
+              ? 'border-[#C9A84C] text-[#0F1C3F]'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          Payments & Stripe
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+            paymentSettings.isLive
+              ? 'bg-emerald-100 text-emerald-800'
+              : paymentSettings.isPlaceholder
+              ? 'bg-blue-100 text-blue-800'
+              : 'bg-purple-100 text-purple-800'
+          }`}>
+            {paymentSettings.isLive ? 'LIVE' : paymentSettings.isPlaceholder ? 'SANDBOX' : 'TEST'}
+          </span>
         </button>
         <button
           onClick={() => setActiveTab('security')}
@@ -492,6 +646,289 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
                   className="w-full pr-8 pl-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900"
                 />
                 <span className="absolute right-3.5 top-2.5 text-gray-400 font-medium">%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab: Payments & Stripe */}
+      {activeTab === 'payments' && (
+        <div className="space-y-6">
+          {/* Stripe Banner */}
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F1C3F] via-[#162752] to-[#0F1C3F] text-white border border-[#C9A84C]/30 shadow-md">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/10 border border-white/20">
+                  <span className={`w-2 h-2 rounded-full ${
+                    paymentSettings.isLive
+                      ? 'bg-emerald-400 animate-pulse'
+                      : paymentSettings.isPlaceholder
+                      ? 'bg-blue-400'
+                      : 'bg-purple-400'
+                  }`} />
+                  {paymentSettings.isLive
+                    ? 'Stripe Live Production Gateway'
+                    : paymentSettings.isPlaceholder
+                    ? 'Stripe Sandbox Simulation Active'
+                    : 'Stripe Test Mode Gateway'}
+                </div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-[#C9A84C]" />
+                  Stripe Payment Processing & Checkout Pipeline
+                </h3>
+                <p className="text-xs text-gray-300">
+                  Accept Credit / Debit Cards, Apple Pay, Google Pay, and Bank Transfers in <code className="text-[#C9A84C]">USD ($)</code>.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <a
+                  href="https://dashboard.stripe.com/apikeys"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3.5 py-2 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors flex items-center gap-1.5 border border-white/10"
+                >
+                  <Lock size={12} />
+                  Stripe Dashboard Keys ↗
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyPaymentEnv}
+                  className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  {copiedPaymentEnv ? <Check size={13} /> : <Copy size={13} />}
+                  {copiedPaymentEnv ? 'Copied Env Vars!' : 'Copy Vercel Env Vars'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Payment Credentials Form */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+            <div className="border-b border-gray-100 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Stripe API Keys & Webhook Credentials</h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  Configure your Stripe API keys used for creating payment sessions and processing joint marriage deposits.
+                </p>
+              </div>
+              <span className={`text-xs font-bold px-3 py-1 rounded-full self-start ${
+                paymentSettings.isLive
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : paymentSettings.isPlaceholder
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-purple-100 text-purple-800'
+              }`}>
+                Mode: {paymentSettings.mode}
+              </span>
+            </div>
+
+            <div className="space-y-5">
+              {/* Secret Key */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Stripe Secret Key (STRIPE_SECRET_KEY)
+                  </label>
+                  <span className="text-[11px] text-gray-400 font-mono">Starts with sk_test_ or sk_live_</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showStripeSecret ? 'text' : 'password'}
+                    value={paymentSettings.secretKey}
+                    onChange={(e) => setPaymentSettings({ ...paymentSettings, secretKey: e.target.value })}
+                    placeholder="sk_test_51... or sk_live_51..."
+                    className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowStripeSecret(!showStripeSecret)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showStripeSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Private server-side key. Never exposed to the client or browser.
+                </p>
+              </div>
+
+              {/* Publishable Key */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Stripe Publishable Key (STRIPE_PUBLISHABLE_KEY)
+                  </label>
+                  <span className="text-[11px] text-gray-400 font-mono">Starts with pk_test_ or pk_live_</span>
+                </div>
+                <input
+                  type="text"
+                  value={paymentSettings.publishableKey}
+                  onChange={(e) => setPaymentSettings({ ...paymentSettings, publishableKey: e.target.value })}
+                  placeholder="pk_test_51... or pk_live_51..."
+                  className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
+                />
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Public browser-facing key for Stripe Elements and client checkout forms.
+                </p>
+              </div>
+
+              {/* Webhook Signing Secret */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-700">
+                    Stripe Webhook Signing Secret (STRIPE_WEBHOOK_SECRET)
+                  </label>
+                  <span className="text-[11px] text-gray-400 font-mono">Starts with whsec_</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type={showWebhookSecret ? 'text' : 'password'}
+                    value={paymentSettings.webhookSecret}
+                    onChange={(e) => setPaymentSettings({ ...paymentSettings, webhookSecret: e.target.value })}
+                    placeholder="whsec_..."
+                    className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowWebhookSecret(!showWebhookSecret)}
+                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    {showWebhookSecret ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <p className="text-[11px] text-gray-500 mt-1">
+                  Secret used by <code className="text-slate-800">/api/webhooks/stripe</code> to verify webhook signatures.
+                </p>
+              </div>
+            </div>
+
+            {/* Webhook Endpoint Box */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <Server size={13} className="text-[#0F1C3F]" />
+                  Your Stripe Webhook Endpoint URL
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyWebhook}
+                  className="text-xs font-semibold text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedWebhook ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                  {copiedWebhook ? 'Copied!' : 'Copy URL'}
+                </button>
+              </div>
+              <div className="p-2.5 rounded-lg bg-white border border-slate-300 font-mono text-xs text-slate-800 break-all select-all">
+                {paymentSettings.webhookUrl}
+              </div>
+              <div className="text-[11px] text-slate-600 space-y-1">
+                <p className="font-semibold text-slate-800">Events to select in Stripe Webhook Settings:</p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {[
+                    'checkout.session.completed',
+                    'payment_intent.succeeded',
+                    'payment_intent.payment_failed',
+                    'charge.refunded',
+                  ].map((evt) => (
+                    <span key={evt} className="px-2 py-0.5 rounded bg-slate-200 text-slate-800 text-[10px] font-mono">
+                      {evt}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Status alerts */}
+            {paymentStatus && (
+              <div className={`p-4 rounded-xl text-xs space-y-1 ${
+                paymentStatus.type === 'success'
+                  ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <div className="flex items-center gap-2 font-bold">
+                  {paymentStatus.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                  )}
+                  <span>{paymentStatus.message}</span>
+                </div>
+                {paymentStatus.details && (
+                  <p className="text-[11px] opacity-90 pl-6">{paymentStatus.details}</p>
+                )}
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-gray-100">
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleTestPayment}
+                  disabled={testingPayment}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-lg bg-[#0F1C3F] text-white text-xs font-bold hover:bg-[#1a2c5e] transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                >
+                  {testingPayment ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#C9A84C]" />
+                  ) : (
+                    <CheckCircle2 size={13} className="text-[#C9A84C]" />
+                  )}
+                  {testingPayment ? 'Testing Connection...' : 'Test Stripe API Connection'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleSavePayment}
+                  disabled={savingPayment}
+                  className="w-full sm:w-auto px-4 py-2.5 rounded-lg border border-gray-300 hover:border-[#C9A84C] text-gray-800 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  {savingPayment ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Save size={13} />
+                  )}
+                  {savingPayment ? 'Saving...' : 'Save Payment Credentials'}
+                </button>
+              </div>
+
+              <div className="text-[11px] text-gray-500">
+                Currency: <strong className="text-gray-800">USD ($)</strong> · 256-Bit SSL Encryption
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Setup Guide Checklist */}
+          <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-[#0F1C3F] flex items-center gap-2">
+              <Shield className="w-4 h-4 text-[#C9A84C]" />
+              Quick 60-Second Stripe Setup Checklist
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 space-y-1">
+                <span className="font-bold text-[#0F1C3F] block">1. Get API Keys</span>
+                <p className="text-gray-600 text-[11px]">
+                  Go to <a href="https://dashboard.stripe.com/apikeys" target="_blank" rel="noreferrer" className="text-blue-600 underline">Stripe API Keys</a> and copy your Secret & Publishable keys.
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 space-y-1">
+                <span className="font-bold text-[#0F1C3F] block">2. Add Webhook</span>
+                <p className="text-gray-600 text-[11px]">
+                  In <a href="https://dashboard.stripe.com/webhooks" target="_blank" rel="noreferrer" className="text-blue-600 underline">Stripe Webhooks</a>, click <strong>Add endpoint</strong> and paste your webhook URL.
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 space-y-1">
+                <span className="font-bold text-[#0F1C3F] block">3. Copy Signing Secret</span>
+                <p className="text-gray-600 text-[11px]">
+                  Reveal the Signing Secret (<code className="text-slate-800">whsec_...</code>) and paste it into the field above.
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50 border border-gray-200 space-y-1">
+                <span className="font-bold text-[#0F1C3F] block">4. Click Verify</span>
+                <p className="text-gray-600 text-[11px]">
+                  Click <strong>Save</strong> and <strong>Test Stripe Connection</strong> to verify live payment status!
+                </p>
               </div>
             </div>
           </div>
@@ -815,13 +1252,38 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`}
                       <p className="text-xs text-gray-500">Payment Gateway</p>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                    SANDBOX MODE
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    paymentSettings.isLive
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : paymentSettings.isPlaceholder
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-purple-100 text-purple-800'
+                  }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      paymentSettings.isLive
+                        ? 'bg-emerald-500'
+                        : paymentSettings.isPlaceholder
+                        ? 'bg-blue-500'
+                        : 'bg-purple-500'
+                    }`}></span>
+                    {paymentSettings.mode}
                   </span>
                 </div>
-                <div className="text-xs text-gray-600 bg-white p-2.5 rounded border border-gray-200">
-                  Ready for Test Cards & Webhooks (/api/webhooks/stripe)
+                <div className="flex items-center justify-between text-xs text-gray-600 bg-white p-2.5 rounded border border-gray-200">
+                  <span>
+                    {paymentSettings.isLive
+                      ? 'Live Card & Apple Pay Processing'
+                      : paymentSettings.isPlaceholder
+                      ? 'Sandbox Mode Active (/api/webhooks/stripe)'
+                      : 'Test Mode Active (/api/webhooks/stripe)'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('payments')}
+                    className="text-[#0F1C3F] font-bold hover:text-[#C9A84C] cursor-pointer"
+                  >
+                    Configure →
+                  </button>
                 </div>
               </div>
 
