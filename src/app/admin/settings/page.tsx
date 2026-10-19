@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Building2,
   Shield,
@@ -60,15 +60,35 @@ export default function AdminSettingsPage() {
 
   // SMTP Email Settings
   const [emailSettings, setEmailSettings] = useState({
-    host: 'mail.unionverify.com',
-    port: '587',
-    encryption: 'STARTTLS',
-    user: 'invest@unionverify.com',
-    pass: 'UnionM@il_98Fid!2026',
-    fromEmail: 'invest@unionverify.com',
+    host: 'email-smtp.us-east-1.amazonaws.com',
+    port: '465',
+    encryption: 'SSL/TLS',
+    user: 'AKIAVHXIDBLGLO4ATDEA',
+    pass: 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+    fromEmail: 'support@unionverify.com',
     fromName: 'Union Verify Notifications',
-    testRecipient: 'admin@unionverify.com',
+    testRecipient: 'support@unionverify.com',
   })
+
+  useEffect(() => {
+    fetch('/api/admin/email/test')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.host) {
+          setEmailSettings((prev) => ({
+            ...prev,
+            host: data.host,
+            port: data.port || '465',
+            encryption: data.encryption || 'SSL/TLS',
+            user: data.user || '',
+            pass: data.pass || '',
+            fromEmail: data.fromEmail || 'support@unionverify.com',
+            fromName: data.fromName || 'Union Verify Notifications',
+          }))
+        }
+      })
+      .catch((err) => console.error('Failed to load SMTP settings:', err))
+  }, [])
 
   const [showPassword, setShowPassword] = useState(false)
   const [testingEmail, setTestingEmail] = useState(false)
@@ -129,6 +149,23 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const handleApplySesPreset = () => {
+    setEmailSettings({
+      ...emailSettings,
+      host: 'email-smtp.us-east-1.amazonaws.com',
+      port: '465',
+      encryption: 'SSL/TLS',
+      user: 'AKIAVHXIDBLGLO4ATDEA',
+      pass: 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+      fromEmail: 'support@unionverify.com',
+      fromName: 'Union Verify Notifications',
+    })
+    setEmailStatus({
+      type: 'success',
+      message: 'Amazon SES credentials loaded (email-smtp.us-east-1.amazonaws.com:465). Click "Verify Handshake" to test.',
+    })
+  }
+
   const handleApplyVpsPreset = (type: 'invest' | 'noreply' | 'admin') => {
     if (type === 'invest') {
       setEmailSettings({
@@ -166,7 +203,7 @@ export default function AdminSettingsPage() {
     }
     setEmailStatus({
       type: 'success',
-      message: `VPS Mailcow preset (${type}@unionverify.com) loaded. Click "Verify SMTP Connection" to test.`,
+      message: `Preset (${type}@unionverify.com) loaded. Click "Verify Handshake" to test.`,
     })
   }
 
@@ -494,43 +531,30 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
       {/* Tab: Email & SMTP */}
       {activeTab === 'email' && (
         <div className="space-y-6">
-          {/* VPS Preset Banner */}
+          {/* SES & Preset Banner */}
           <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F1C3F] to-[#1c2e61] text-white border border-[#C9A84C]/30 shadow-md">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="space-y-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/30 text-[#C9A84C] text-[10px] font-bold uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold uppercase tracking-wider">
                   <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
-                  VPS Mailcow Detected
+                  Amazon SES (US East - N. Virginia) Connected
                 </div>
                 <h3 className="text-base font-bold text-white">
-                  SMTP Mail Server on VPS (144.91.68.190)
+                  Amazon SES Transactional SMTP Pipeline
                 </h3>
                 <p className="text-xs text-gray-300">
-                  Host: <code className="text-[#C9A84C]">mail.unionverify.com</code> · Port: <code className="text-[#C9A84C]">587</code> (STARTTLS) or <code className="text-[#C9A84C]">465</code> (SSL)
+                  Host: <code className="text-[#C9A84C]">email-smtp.us-east-1.amazonaws.com</code> · Port: <code className="text-[#C9A84C]">465</code> (SSL) · From: <code className="text-[#C9A84C]">support@unionverify.com</code>
                 </p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => handleApplyVpsPreset('invest')}
-                  className="px-3.5 py-2 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm"
+                  onClick={handleApplySesPreset}
+                  className="px-4 py-2.5 rounded-lg bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors shadow-sm flex items-center gap-1.5"
                 >
-                  invest@unionverify.com (Official Dispatch)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyVpsPreset('noreply')}
-                  className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
-                >
-                  noreply@unionverify.com
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyVpsPreset('admin')}
-                  className="px-3.5 py-2 rounded-lg bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/20"
-                >
-                  admin@unionverify.com
+                  <CheckCircle2 size={13} />
+                  Load Amazon SES Credentials
                 </button>
               </div>
             </div>
@@ -832,7 +856,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`}
                     </div>
                     <div>
                       <h3 className="font-semibold text-gray-900 text-sm">Email Dispatcher</h3>
-                      <p className="text-xs text-gray-500">VPS Mailcow / Postfix</p>
+                      <p className="text-xs text-gray-500">Amazon SES (US East - N. Virginia)</p>
                     </div>
                   </div>
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
@@ -841,7 +865,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`}
                   </span>
                 </div>
                 <div className="text-xs text-gray-600 font-mono bg-white p-2.5 rounded border border-gray-200 truncate">
-                  mail.unionverify.com:587 (TLS)
+                  email-smtp.us-east-1.amazonaws.com:465 (SSL)
                 </div>
                 <button
                   type="button"

@@ -2,6 +2,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { auth } from '@/lib/auth'
 
+export async function GET() {
+  try {
+    const session = await auth()
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Unauthorized: Admin role required' }, { status: 401 })
+    }
+
+    return NextResponse.json({
+      host: process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
+      port: process.env.SMTP_PORT || '465',
+      encryption: (process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT) ? 'SSL/TLS' : 'STARTTLS',
+      user: process.env.SMTP_USER || 'AKIAVHXIDBLGLO4ATDEA',
+      pass: process.env.SMTP_PASS || 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+      fromEmail: process.env.EMAIL_FROM || 'support@unionverify.com',
+      fromName: process.env.EMAIL_FROM_NAME || 'Union Verify',
+      testRecipient: 'support@unionverify.com',
+    })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
@@ -11,13 +33,13 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      host = process.env.SMTP_HOST || 'mail.unionverify.com',
-      port = Number(process.env.SMTP_PORT || 587),
-      user = process.env.SMTP_USER || 'invest@unionverify.com',
-      pass = process.env.SMTP_PASS || 'UnionM@il_98Fid!2026',
+      host = process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
+      port = Number(process.env.SMTP_PORT || 465),
+      user = process.env.SMTP_USER || 'AKIAVHXIDBLGLO4ATDEA',
+      pass = process.env.SMTP_PASS || 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
       secure = false,
-      fromEmail = 'invest@unionverify.com',
-      fromName = 'Union Verify Notifications',
+      fromEmail = process.env.EMAIL_FROM || 'support@unionverify.com',
+      fromName = process.env.EMAIL_FROM_NAME || 'Union Verify',
       toEmail,
       sendTest = false,
     } = body
