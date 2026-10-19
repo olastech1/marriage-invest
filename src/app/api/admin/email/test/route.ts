@@ -64,59 +64,54 @@ export async function POST(req: NextRequest) {
     // 1. Verify connection
     await transporter.verify()
 
-    // 2. If test email requested and recipient provided, send a test email
+    // 2. If test email requested and recipient provided, send a clean verification email
     if (sendTest && toEmail) {
       const formattedDate = new Date().toUTCString()
-      const textAlternative = `Union Verify
-SMTP Verification
+      const textAlternative = `Welcome to Union Verify!
 
-This notification confirms that the Union Verify mail server on ${host}:${port} is authenticated and operational.
+This test message confirms that transactional emails from Union Verify are working correctly.
 
-Details:
-- SMTP Host: ${host}
-- Port: ${port}
-- Authenticated Identity: ${user}
-- Timestamp: ${formattedDate}
+Your joint savings and investment account is active and protected by bank-grade security.
 
-Union Verify · Digital Couples Investment Platform
-If you did not request this verification, please contact admin@unionverify.com.`
+Visit Union Verify: https://unionverify.com
+If you have any questions, our support team is available at support@unionverify.com.
+
+© ${new Date().getFullYear()} Union Verify. All rights reserved.`
 
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to: toEmail,
         replyTo: fromEmail,
-        subject: 'Union Verify — Account Communication Verification',
+        subject: 'Welcome to Union Verify — Account Verification',
         text: textAlternative,
         html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
-            <div style="text-align: center; margin-bottom: 24px;">
-              <span style="font-size: 24px; font-weight: bold; color: #0F1C3F;">Union <span style="color: #C9A84C;">Verify</span></span>
-              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #6b7280; margin-top: 4px;">Fiduciary SMTP Verification</p>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
+            <div style="text-align: center; margin-bottom: 28px;">
+              <span style="font-size: 26px; font-weight: 800; color: #0F1C3F; letter-spacing: -0.5px;">Union <span style="color: #C9A84C;">Verify</span></span>
+              <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">Building Wealth Together</p>
             </div>
-            <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-              <p style="color: #065f46; font-weight: 600; margin: 0; font-size: 14px;">Communication Verification Successful</p>
-              <p style="color: #047857; margin: 4px 0 0; font-size: 12px;">This message verifies the authenticated delivery pipeline from <strong>${host}:${port}</strong>.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+              <h2 style="font-size: 18px; font-weight: 700; color: #0F1C3F; margin: 0 0 10px;">Account Verification Test</h2>
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 16px;">
+                This message confirms that transactional communication for your <strong>Union Verify</strong> investor account is successfully authenticated and delivered.
+              </p>
+              <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 16px;">
+                <p style="font-size: 13px; font-weight: 600; color: #065f46; margin: 0;">✓ Authenticated Delivery Confirmed</p>
+                <p style="font-size: 12px; color: #047857; margin: 4px 0 0;">Sender: ${fromEmail} &middot; Verified via Amazon SES</p>
+              </div>
             </div>
-            <table style="width: 100%; font-size: 12px; border-collapse: collapse; margin-bottom: 24px;">
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">SMTP Host</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right; border-bottom: 1px solid #f3f4f6;">${host}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">SMTP Port</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right; border-bottom: 1px solid #f3f4f6;">${port}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280; border-bottom: 1px solid #f3f4f6;">Authenticated User</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right; border-bottom: 1px solid #f3f4f6;">${user}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px 0; color: #6b7280;">Timestamp</td>
-                <td style="padding: 8px 0; font-weight: 600; color: #111827; text-align: right;">${formattedDate}</td>
-              </tr>
-            </table>
-            <div style="border-top: 1px solid #f3f4f6; padding-top: 16px; text-align: center; font-size: 11px; color: #9ca3af;">
-              © ${new Date().getFullYear()} Union Verify. All rights reserved.
+
+            <div style="text-align: center; margin-bottom: 28px;">
+              <a href="https://unionverify.com/dashboard" style="display: inline-block; padding: 12px 28px; background-color: #0F1C3F; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">
+                Access Your Dashboard &rarr;
+              </a>
+            </div>
+
+            <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+              <p style="margin: 0;">Union Verify &middot; Joint Savings & Investment Platform</p>
+              <p style="margin: 4px 0 0;">Timestamp: ${formattedDate}</p>
+              <p style="margin: 8px 0 0;">&copy; ${new Date().getFullYear()} Union Verify. All rights reserved.</p>
             </div>
           </div>
         `,
