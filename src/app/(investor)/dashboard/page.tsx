@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Decimal } from '@prisma/client/runtime/library'
 import DashboardStatsPanel, { type DashboardStats } from '@/components/investor/DashboardStats'
 import AccountRatingCard from '@/components/investor/AccountRatingCard'
+import UrgentNotificationCenter from '@/components/investor/UrgentNotificationCenter'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
@@ -120,7 +121,7 @@ export default async function DashboardPage() {
     prisma.notification.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
-      take: 6,
+      take: 30,
     }),
     prisma.investmentOpportunity.findMany({
       where: { status: 'ACTIVE' },
@@ -226,7 +227,7 @@ export default async function DashboardPage() {
     latestReciprocationLog && latestReciprocationLog.action === 'RECIPROCATION_OBLIGATION_CREATED'
   )
   const pendingRecipAmount = Number((latestReciprocationLog?.after as any)?.amount || 500)
-  const pendingDepositorName = (latestReciprocationLog?.after as any)?.depositorName || 'Marcus Vance'
+  const pendingDepositorName = (latestReciprocationLog?.after as any)?.depositorName || 'Your Partner'
 
   return (
     <div className="space-y-6">
@@ -234,20 +235,27 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0F1C3F]">
-            Welcome back, {currentUser.name?.split(' ')[0] ?? 'Jane'} 👋
+            Welcome back, {currentUser.name?.split(' ')[0] ?? 'Investor'} 👋
           </h1>
           <p className="text-sm text-slate-500">
             {new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(now)}
           </p>
         </div>
         <Link
-          href="/save"
-          className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#b8943e] transition-colors"
+          href="/save?bonus=10percent"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#C9A84C] to-[#d4b460] px-4 py-2.5 text-xs font-black text-[#0F1C3F] shadow-sm hover:shadow transition-all"
         >
-          <TrendingUp size={16} />
-          Save to Vault
+          <Sparkles size={15} />
+          Claim 10% Match Bonus
         </Link>
       </div>
+
+      {/* ── URGENT NOTIFICATION & DISTURBING ACTION CENTER ────────────── */}
+      <UrgentNotificationCenter
+        initialNotifications={notifications as any}
+        currentUserName={currentUser.name || 'Investor'}
+        partnerName="Your Partner"
+      />
 
       {/* ── Compulsory Spousal Reciprocation Due Banner ───────────────── */}
       {hasPendingReciprocation && (

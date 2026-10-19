@@ -75,16 +75,22 @@ export async function POST(req: NextRequest) {
         console.warn('Failed to send email:', e)
       }
 
-      // B. Create In-App Notification
+      // B. Create In-App Notification (persistent until attended)
       try {
         await prisma.notification.create({
           data: {
-            userId: 'usr_marcus_vance',
+            userId: userId || 'usr_jane_doe',
             title: `⏰ Deposit Reminder from ${userName}`,
-            message: `${userName} sent you a reminder to deposit $${numAmount.toLocaleString()} into your joint ${vaultName}. Keep your covenant strong!`,
+            message: `${userName} scheduled a reminder to deposit $${numAmount.toLocaleString()} into your joint ${vaultName}. Keep your covenant strong!`,
             type: 'ALERT',
             link: `/save?amount=${numAmount}&target=joint`,
-          },
+            category: 'PARTNER_CHANGE',
+            requiresAction: true,
+            attended: false,
+            amount: numAmount,
+            partnerName: userName,
+            actionLabel: `Deposit $${numAmount.toLocaleString()}`,
+          } as any,
         })
       } catch (e) {
         console.warn('Failed to create in-app notification:', e)

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   PiggyBank,
@@ -94,8 +95,9 @@ interface DepositReminderItem {
   nextReminderDate: string
 }
 
-export default function SavePage() {
+function SavePageContent() {
   const { data: session } = useSession()
+  const searchParams = useSearchParams()
   const currentUserName = session?.user?.name || 'Investor'
   const partnerName = 'Your Partner'
   const partnerEmail = ''
@@ -112,10 +114,31 @@ export default function SavePage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [error, setError] = useState('')
 
+  // 10% Cash Match Flash Bonus State
+  const [bonusApplied, setBonusApplied] = useState(true)
+
   // Spousal Reciprocation Covenant State
   const [reciprocationData, setReciprocationData] = useState<any>(null)
   const [isReciprocalMatch, setIsReciprocalMatch] = useState(false)
   const [simulatingPartner, setSimulatingPartner] = useState(false)
+
+  // Sync with URL query parameters (?bonus=10percent, ?match=500, ?amount=250)
+  useEffect(() => {
+    if (!searchParams) return
+    const bonusParam = searchParams.get('bonus')
+    const matchParam = searchParams.get('match')
+    const amountParam = searchParams.get('amount')
+    if (matchParam) {
+      setSaveAmount(matchParam)
+      setBeneficiary('JOINT')
+      setIsReciprocalMatch(true)
+    } else if (amountParam) {
+      setSaveAmount(amountParam)
+    }
+    if (bonusParam === '10percent' || bonusParam === 'true') {
+      setBonusApplied(true)
+    }
+  }, [searchParams])
 
   // Reminders & Nudges State
   const [reminders, setReminders] = useState<DepositReminderItem[]>([])
@@ -281,12 +304,34 @@ export default function SavePage() {
       const investData = await investRes.json()
       if (!investRes.ok) throw new Error(investData.error || 'Saving failed.')
 
-      setVaultPrincipal((prev) => prev + numSaveAmount)
+      const calculatedBonus = bonusApplied ? Math.round(numSaveAmount * 0.10 * 100) / 100 : 0
+      const totalCredited = numSaveAmount + calculatedBonus
+
+      // Record deposit in /api/savings/deposits (with 10% bonus match & persistent partner notification)
+      try {
+        await fetch('/api/savings/deposits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount: numSaveAmount,
+            applyBonus: bonusApplied,
+            vaultTitle: `${currentUserName} & ${partnerName} Spousal Contribution Vault`,
+            note: beneficiary === 'PARTNER' ? partnerNote : 'Joint Matrimonial Contribution',
+            isReciprocalMatch: isReciprocalMatch || (reciprocationData?.hasPendingReciprocation && numSaveAmount >= (reciprocationData?.pendingReciprocation?.amount || 0)),
+          }),
+        })
+      } catch (depErr) {
+        console.warn('Failed recording deposit in savings deposits ledger:', depErr)
+      }
+
+      setVaultPrincipal((prev) => prev + totalCredited)
       setSuccess(true)
-      if (isReciprocalMatch || reciprocationData?.hasPendingReciprocation) {
+      if (calculatedBonus > 0) {
+        setSuccessMessage(`✓ Deposit added with +$${calculatedBonus.toFixed(2)} 10% Cash Match! Total credited: $${totalCredited.toFixed(2)}. Your partner has been alerted and will see this deposit on their dashboard until attended to.`)
+      } else if (isReciprocalMatch || reciprocationData?.hasPendingReciprocation) {
         setSuccessMessage(`✓ Spousal Reciprocation Fulfilled! You matched ${partnerName}'s deposit with $${numSaveAmount.toLocaleString()}. Both partners are in full financial parity and vault withdrawals are unlocked!`)
       } else {
-        setSuccessMessage(`Savings added! Under Spousal Covenant Rule 4.2, ${partnerName} is now required to reciprocate with a matching deposit.`)
+        setSuccessMessage(`Savings added! Under Spousal Covenant Rule 4.2, ${partnerName} has been alerted and must reciprocate with an equal match.`)
       }
       setIsReciprocalMatch(false)
       await loadReciprocation()
@@ -696,6 +741,38 @@ export default function SavePage() {
                     placeholder="e.g. For our upcoming travel & future home ❤️"
                     className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
                   />
+                </div>
+              )}
+
+              {/* ── 10% CASH MATCH FLASH BONUS BANNER ── */}
+              {bonusApplied && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-[#C9A84C]/20 to-amber-500/10 border-2 border-[#C9A84C] text-xs space-y-2.5 animate-in fade-in-50 duration-200">
+                  <div className="flex items-center justify-between">
+                    <span className="font-black text-[#0F1C3F] flex items-center gap-1.5 uppercase tracking-wide">
+                      <Zap size={14} className="fill-[#C9A84C] text-[#C9A84C]" />
+                      10% Instant Cash Match Flash Boost Active!
+                    </span>
+                    <span className="bg-[#C9A84C] text-[#0F1C3F] text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs">
+                      FREE CASH MATCH
+                    </span>
+                  </div>
+                  <p className="text-slate-700 leading-relaxed text-[11px]">
+                    Deposit now and Union Verify adds an extra <strong>+${(numSaveAmount * 0.10).toFixed(2)} (10% match)</strong> directly into your joint vault. Free capital credited immediately!
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 pt-1 font-mono text-center">
+                    <div className="p-1.5 rounded-xl bg-white/90 border border-amber-200">
+                      <span className="text-[9px] uppercase text-slate-500 block font-sans">You Deposit</span>
+                      <span className="font-black text-slate-900 text-xs">${numSaveAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-emerald-100 border border-emerald-300">
+                      <span className="text-[9px] uppercase text-emerald-700 block font-sans">+10% Match</span>
+                      <span className="font-black text-emerald-800 text-xs">+${(numSaveAmount * 0.10).toFixed(2)}</span>
+                    </div>
+                    <div className="p-1.5 rounded-xl bg-[#0F1C3F] text-white">
+                      <span className="text-[9px] uppercase text-[#C9A84C] block font-sans">Total Added</span>
+                      <span className="font-black text-[#C9A84C] text-xs">${(numSaveAmount * 1.10).toFixed(2)}</span>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -1184,5 +1261,13 @@ export default function SavePage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function SavePage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-slate-500 font-semibold">Loading Marriage Savings Vault...</div>}>
+      <SavePageContent />
+    </Suspense>
   )
 }

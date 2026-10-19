@@ -8,7 +8,7 @@ export async function GET() {
   try {
     const session = await auth()
     const currentUserId = session?.user?.id || 'usr_jane_doe'
-    const currentUserName = session?.user?.name || 'Jane Doe'
+    const currentUserName = session?.user?.name || 'Investor'
 
     // Fetch deposit transactions
     const rawTransactions = await prisma.transaction.findMany({
@@ -20,8 +20,8 @@ export async function GET() {
     })
 
     const deposits = rawTransactions.map((tx: any) => {
-      const isFromPartner = tx.userId === 'usr_marcus_vance' || tx.metadata?.depositorName === 'Marcus Vance'
-      const depositorName = tx.metadata?.depositorName || (isFromPartner ? 'Marcus Vance' : currentUserName)
+      const isFromPartner = tx.userId === 'usr_marcus_vance' || tx.metadata?.depositorName === 'Your Partner'
+      const depositorName = tx.metadata?.depositorName || (isFromPartner ? 'Your Partner' : currentUserName)
       const isPending = tx.status === 'PENDING' || tx.metadata?.status === 'PENDING_MATCH'
 
       return {
@@ -52,6 +52,127 @@ export async function GET() {
     })
   } catch (error: any) {
     console.error('[GET /api/savings/deposits]', error)
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await auth()
+    const currentUserId = session?.user?.id || 'usr_jane_doe'
+    const currentUserName = session?.user?.name || 'Investor'
+    const partnerName = 'Your Partner'
+
+    const body = await req.json()
+    const {
+      amount,
+      applyBonus = false,
+      vaultTitle = 'Mutual Spousal Contribution Vault',
+      note = '',
+      isReciprocalMatch = false,
+    } = body
+
+    const numAmount = Number(amount)
+    if (!numAmount || numAmount <= 0) {
+      return NextResponse.json({ success: false, error: 'Valid deposit amount is required.' }, { status: 400 })
+    }
+
+    // 10% Cash Match Bonus calculation
+    const bonusAmount = applyBonus ? Math.round(numAmount * 0.10 * 100) / 100 : 0
+    const totalAdded = numAmount + bonusAmount
+    const reference = `DEP-${Date.now().toString(36).toUpperCase()}`
+
+    // 1. Create Transaction
+    const transaction = await prisma.transaction.create({
+      data: {
+        userId: currentUserId,
+        type: 'DEPOSIT',
+        amount: totalAdded as any,
+        fee: 0 as any,
+        netAmount: totalAdded as any,
+        status: 'COMPLETED',
+        reference,
+        description: `${vaultTitle} Deposit ($${numAmount.toLocaleString()})${bonusAmount > 0 ? ` + 10% Cash Match ($${bonusAmount.toLocaleString()})` : ''}`,
+        metadata: {
+          depositorName: currentUserName,
+          baseAmount: numAmount,
+          bonusMatch: bonusAmount,
+          bonusApplied: applyBonus,
+          note,
+          status: 'APPROVED',
+        },
+      },
+    })
+
+    // 2. Create Audit Log
+    await prisma.auditLog.create({
+      data: {
+        userId: currentUserId,
+        action: 'SPOUSAL_VAULT_DEPOSIT_RECORDED',
+        entity: 'SavingsVault',
+        after: {
+          depositorName: currentUserName,
+          amount: numAmount,
+          bonusMatch: bonusAmount,
+          totalAdded,
+          reference,
+          note,
+          isReciprocalMatch,
+        },
+      },
+    }).catch(console.error)
+
+    // 3. Create persistent UNATTENDED disturbing notification for the partner!
+    // Stays on their dashboard until attended to!
+    await prisma.notification.create({
+      data: {
+        userId: currentUserId, // visible in current session dashboard
+        title: `🚨 Partner Action: $${numAmount.toLocaleString()} Deposited by ${currentUserName}`,
+        message: `${currentUserName} contributed $${numAmount.toLocaleString()} to your Joint Vault${bonusAmount > 0 ? ` (+ earned an instant $${bonusAmount.toLocaleString()} 10% cash match!)` : ''}. Note: "${note || 'For our shared goals ❤️'}". Covenant Rule 4.2 requires equal partner attendance & match.`,
+        type: 'ALERT',
+        read: false,
+        link: `/save?match=${numAmount}`,
+        category: 'PARTNER_DEPOSIT',
+        requiresAction: true,
+        attended: false,
+        amount: numAmount,
+        partnerName: currentUserName,
+        actionLabel: `Match Deposit ($${numAmount.toLocaleString()})`,
+        metadata: {
+          transactionId: transaction.id,
+          reference,
+          bonusMatch: bonusAmount,
+        },
+      } as any,
+    })
+
+    // 4. Also create celebratory notification for the depositor if 10% bonus was earned
+    if (bonusAmount > 0) {
+      await prisma.notification.create({
+        data: {
+          userId: currentUserId,
+          title: `🎁 +$${bonusAmount.toLocaleString()} 10% Bonus Match Credited!`,
+          message: `Congratulations! Your deposit of $${numAmount.toLocaleString()} earned an instant $${bonusAmount.toLocaleString()} 10% match. Total credited: $${totalAdded.toLocaleString()}.`,
+          type: 'SUCCESS',
+          read: false,
+          link: '/save',
+          category: 'BONUS_MATCH',
+          requiresAction: false,
+          attended: true,
+        } as any,
+      })
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Deposit processed successfully.',
+      transaction,
+      baseAmount: numAmount,
+      bonusAmount,
+      totalAdded,
+    })
+  } catch (error: any) {
+    console.error('[POST /api/savings/deposits]', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

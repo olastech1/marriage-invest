@@ -29,6 +29,7 @@ import {
   Share2,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
+import NotificationBellDropdown from '@/components/investor/NotificationBellDropdown'
 
 // ---------------------------------------------------------------------------
 // Nav items
@@ -204,7 +205,8 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             <span className="text-[#0F1C3F] font-bold tracking-tight">Union</span>
             <span className="text-[#C9A84C] font-bold tracking-tight">Verify</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <NotificationBellDropdown />
             <Link
               href="/chat"
               className="relative p-1.5 rounded-lg text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors"
@@ -224,12 +226,36 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
           </div>
         </header>
 
+        {/* Desktop top header bar */}
+        <header className="hidden lg:flex items-center justify-between border-b border-slate-200 bg-white px-8 py-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Joint Portfolio Portal</span>
+            <span className="text-slate-300">·</span>
+            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              6.8% APY Vault Active
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationBellDropdown />
+            <Link
+              href="/chat"
+              className="relative p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
+              title="Mutual Chat"
+            >
+              <MessageSquare size={17} />
+              <span>Partner Chat</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </Link>
+          </div>
+        </header>
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 relative">
           <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0">{children}</div>
 
           {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages) */}
-          <FloatingChatWidget partnerName="Marcus Vance" />
+          <FloatingChatWidget partnerName="Your Partner" />
         </main>
       </div>
     </div>

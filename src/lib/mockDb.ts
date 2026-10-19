@@ -145,6 +145,14 @@ export interface MockNotification {
   read: boolean
   link: string | null
   createdAt: Date
+  category?: 'BONUS_MATCH' | 'PARTNER_DEPOSIT' | 'PARTNER_CHANGE' | 'COMPOUND_URGENCY' | 'GENERAL'
+  requiresAction?: boolean
+  attended?: boolean
+  attendedAt?: Date | null
+  amount?: number
+  partnerName?: string
+  actionLabel?: string
+  metadata?: any
 }
 
 export interface MockDocument {
@@ -378,7 +386,68 @@ const transactions: MockTransaction[] = []
 
 const withdrawals: MockWithdrawal[] = []
 
-const notifications: MockNotification[] = []
+const notifications: MockNotification[] = [
+  {
+    id: 'notif_bonus_10percent',
+    userId: 'usr_jane_doe',
+    title: '🎁 Flash Bonus: Save Now & Earn an Instant 10% Cash Match!',
+    message: 'Limited 24-Hour Boost: Deposit into your joint vault today and Union Verify matches 10% of what you save instantly credited to your vault principal! (e.g. Save $500 ➔ Get $50 Cash Match free). Limited promotion window.',
+    type: 'ALERT',
+    read: false,
+    link: '/save?bonus=10percent',
+    createdAt: new Date(),
+    category: 'BONUS_MATCH',
+    requiresAction: true,
+    attended: false,
+    amount: 500,
+    actionLabel: 'Claim 10% Match & Save',
+  },
+  {
+    id: 'notif_partner_deposit_pending',
+    userId: 'usr_jane_doe',
+    title: '🚨 Partner Deposit Pending Action: Equal Match Required',
+    message: 'Your partner deposited $500.00 into your Mutual Spousal Contribution Vault. Under Covenant Rule 4.2, equal reciprocal match is required to maintain 50/50 balance rights and unlock withdrawals.',
+    type: 'WARNING',
+    read: false,
+    link: '/save?match=500',
+    createdAt: new Date(Date.now() - 3600 * 1000),
+    category: 'PARTNER_DEPOSIT',
+    requiresAction: true,
+    attended: false,
+    amount: 500,
+    partnerName: 'Your Partner',
+    actionLabel: 'Match Deposit ($500)',
+  },
+  {
+    id: 'notif_idle_money_urgency',
+    userId: 'usr_jane_doe',
+    title: '⚠️ Lost Compound Interest Warning',
+    message: 'Your savings vault is missing out on 6.8% daily compounding interest. Unsaved capital loses purchasing power. Deposit today to start second-by-second compounding.',
+    type: 'WARNING',
+    read: false,
+    link: '/save',
+    createdAt: new Date(Date.now() - 7200 * 1000),
+    category: 'COMPOUND_URGENCY',
+    requiresAction: true,
+    attended: false,
+    actionLabel: 'Start Compounding',
+  },
+  {
+    id: 'notif_partner_reminder_update',
+    userId: 'usr_jane_doe',
+    title: '🔔 Partner Added a Shared Deposit Reminder',
+    message: 'Your partner scheduled a monthly $500.00 contribution reminder for your joint vault. Review and attend to sync your calendar.',
+    type: 'INFO',
+    read: false,
+    link: '/save#reminders',
+    createdAt: new Date(Date.now() - 14400 * 1000),
+    category: 'PARTNER_CHANGE',
+    requiresAction: true,
+    attended: false,
+    partnerName: 'Your Partner',
+    actionLabel: 'Review Reminder',
+  },
+]
 
 const documents: MockDocument[] = [
   {

@@ -172,6 +172,22 @@ export async function PATCH(req: NextRequest) {
       })
     }
 
+    // Trigger persistent partner notification for changes made
+    await prisma.notification.create({
+      data: {
+        userId: currentUserId,
+        title: '🔔 Partner Settings & Profile Updated',
+        message: 'Your partner updated contact information, profile biography, and social links. Please review and confirm your joint details.',
+        type: 'INFO',
+        category: 'PARTNER_CHANGE',
+        requiresAction: true,
+        attended: false,
+        partnerName: 'Your Partner',
+        actionLabel: 'Review Settings',
+        link: '/settings',
+      } as any,
+    }).catch(console.error)
+
     return NextResponse.json({
       success: true,
       message: 'Contact and social profile information updated successfully.',
