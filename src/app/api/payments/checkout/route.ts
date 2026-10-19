@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { auth } from '@/lib/auth'
+import { getStripeConfig } from '@/lib/stripeConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,8 +27,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid amount in USD is required (minimum $1).' }, { status: 400 })
     }
 
-    const secretKey = process.env.STRIPE_SECRET_KEY || ''
-    const isSandbox = !secretKey || secretKey.includes('placeholder')
+    const config = await getStripeConfig()
+    const secretKey = config.secretKey
+    const isSandbox = config.isPlaceholder || !secretKey
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
 
     // If sandbox mode, return immediate simulation flag

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { auth } from '@/lib/auth'
+import { getStripeConfig } from '@/lib/stripeConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,8 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => ({}))
-    const secretKey = (body.secretKey || process.env.STRIPE_SECRET_KEY || '').trim()
+    const config = await getStripeConfig()
+    const secretKey = (body.secretKey || config.secretKey || process.env.STRIPE_SECRET_KEY || '').trim()
 
     if (!secretKey) {
       return NextResponse.json(

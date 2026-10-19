@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/db'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || 'sk_test_placeholder_key', {
-  apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
-})
-
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_placeholder'
+import { getStripeConfig } from '@/lib/stripeConfig'
 
 export async function POST(req: NextRequest) {
   try {
     const rawBody = await req.text()
     const signature = req.headers.get('stripe-signature')
 
+    const config = await getStripeConfig()
+    const stripe = new Stripe(config.secretKey || 'sk_test_placeholder_key', {
+      apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
+    })
+    const webhookSecret = config.webhookSecret || 'whsec_placeholder'
+
     let event: Stripe.Event
 
-    if (process.env.STRIPE_WEBHOOK_SECRET && !process.env.STRIPE_WEBHOOK_SECRET.includes('placeholder')) {
+    if (webhookSecret && !webhookSecret.includes('placeholder')) {
       if (!signature) {
         return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
       }

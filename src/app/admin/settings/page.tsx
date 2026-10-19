@@ -115,12 +115,35 @@ export default function AdminSettingsPage() {
   const [emailStatus, setEmailStatus] = useState<{ type: 'success' | 'error'; message: string; details?: string } | null>(null)
   const [copiedEnv, setCopiedEnv] = useState(false)
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
+
+    // Save payment credentials if present or on payments tab
+    if (activeTab === 'payments' || paymentSettings.secretKey) {
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('union_stripe_secret_key', paymentSettings.secretKey)
+          localStorage.setItem('union_stripe_publishable_key', paymentSettings.publishableKey)
+          localStorage.setItem('union_stripe_webhook_secret', paymentSettings.webhookSecret)
+        }
+        await fetch('/api/admin/payments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            secretKey: paymentSettings.secretKey,
+            publishableKey: paymentSettings.publishableKey,
+            webhookSecret: paymentSettings.webhookSecret,
+          }),
+        })
+      } catch (err) {
+        console.warn('Payment save in handleSave:', err)
+      }
+    }
+
     setTimeout(() => {
       setSaving(false)
-      setStatusMsg('All platform and SMTP settings successfully saved.')
+      setStatusMsg('All platform, payment, and SMTP settings successfully saved.')
       setTimeout(() => setStatusMsg(''), 4000)
     }, 600)
   }
@@ -258,20 +281,47 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
   }
 
   const loadPaymentSettings = () => {
+    // 1. Check localStorage first so inputs never wipe out on client
+    if (typeof window !== 'undefined') {
+      try {
+        const savedSecret = localStorage.getItem('union_stripe_secret_key')
+        const savedPub = localStorage.getItem('union_stripe_publishable_key')
+        const savedWebhook = localStorage.getItem('union_stripe_webhook_secret')
+        if (savedSecret || savedPub || savedWebhook) {
+          setPaymentSettings((prev) => ({
+            ...prev,
+            secretKey: savedSecret || prev.secretKey,
+            publishableKey: savedPub || prev.publishableKey,
+            webhookSecret: savedWebhook || prev.webhookSecret,
+          }))
+        }
+      } catch {}
+    }
+
     fetch('/api/admin/payments')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.success) {
-          setPaymentSettings({
-            secretKey: data.secretKey || '',
-            publishableKey: data.publishableKey || '',
-            webhookSecret: data.webhookSecret || '',
-            mode: data.mode || 'SANDBOX',
-            isPlaceholder: data.isPlaceholder ?? true,
-            isLive: data.isLive ?? false,
-            webhookUrl: data.webhookUrl || 'https://unionverify.com/api/webhooks/stripe',
-            rawSecretKeyPresent: data.rawSecretKeyPresent ?? false,
-            rawWebhookSecretPresent: data.rawWebhookSecretPresent ?? false,
+          setPaymentSettings((prev) => {
+            const secret = data.secretKey && !data.isPlaceholder ? data.secretKey : (prev.secretKey || data.secretKey || '')
+            const pub = data.publishableKey ? data.publishableKey : (prev.publishableKey || data.publishableKey || '')
+            const wh = data.webhookSecret && !data.webhookSecret.includes('placeholder') ? data.webhookSecret : (prev.webhookSecret || data.webhookSecret || '')
+            const isLive = secret.startsWith('sk_live_')
+            const isPlaceholder = !secret || secret.includes('placeholder')
+            const mode = isPlaceholder ? 'SANDBOX' : (isLive ? 'LIVE' : 'TEST')
+
+            return {
+              ...prev,
+              secretKey: secret,
+              publishableKey: pub,
+              webhookSecret: wh,
+              mode: data.mode || mode,
+              isPlaceholder,
+              isLive,
+              webhookUrl: data.webhookUrl || prev.webhookUrl,
+              rawSecretKeyPresent: Boolean(secret && !isPlaceholder),
+              rawWebhookSecretPresent: Boolean(wh && !wh.includes('placeholder')),
+            }
           })
         }
       })
@@ -285,12 +335,14 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
   const handleTestPayment = async () => {
     setTestingPayment(true)
     setPaymentStatus(null)
+    const keyToTest = paymentSettings.secretKey.trim()
+
     try {
       const res = await fetch('/api/admin/payments/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          secretKey: paymentSettings.secretKey,
+          secretKey: keyToTest,
         }),
       })
       const data = await res.json()
@@ -300,7 +352,6 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
           message: data.message,
           details: data.details,
         })
-        loadPaymentSettings()
       } else {
         setPaymentStatus({
           type: 'error',
@@ -321,6 +372,16 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
   const handleSavePayment = async () => {
     setSavingPayment(true)
     setPaymentStatus(null)
+
+    // Save locally immediately
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('union_stripe_secret_key', paymentSettings.secretKey)
+        localStorage.setItem('union_stripe_publishable_key', paymentSettings.publishableKey)
+        localStorage.setItem('union_stripe_webhook_secret', paymentSettings.webhookSecret)
+      } catch {}
+    }
+
     try {
       const res = await fetch('/api/admin/payments', {
         method: 'POST',
@@ -335,9 +396,14 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
       if (res.ok && data.success) {
         setPaymentStatus({
           type: 'success',
-          message: '✓ Stripe API keys and Webhook secret saved to environment successfully!',
+          message: '✓ Stripe API keys and Webhook secret saved and active across the platform!',
         })
-        loadPaymentSettings()
+        setPaymentSettings((prev) => ({
+          ...prev,
+          mode: data.mode || (prev.secretKey.startsWith('sk_live_') ? 'LIVE' : 'TEST'),
+          isLive: data.config?.isLive ?? prev.secretKey.startsWith('sk_live_'),
+          isPlaceholder: data.config?.isPlaceholder ?? (!prev.secretKey || prev.secretKey.includes('placeholder')),
+        }))
       } else {
         setPaymentStatus({
           type: 'error',
@@ -737,7 +803,11 @@ STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
                   <input
                     type={showStripeSecret ? 'text' : 'password'}
                     value={paymentSettings.secretKey}
-                    onChange={(e) => setPaymentSettings({ ...paymentSettings, secretKey: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setPaymentSettings((prev) => ({ ...prev, secretKey: val }))
+                      try { localStorage.setItem('union_stripe_secret_key', val) } catch {}
+                    }}
                     placeholder="sk_test_51... or sk_live_51..."
                     className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                   />
@@ -765,7 +835,11 @@ STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
                 <input
                   type="text"
                   value={paymentSettings.publishableKey}
-                  onChange={(e) => setPaymentSettings({ ...paymentSettings, publishableKey: e.target.value })}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setPaymentSettings((prev) => ({ ...prev, publishableKey: val }))
+                    try { localStorage.setItem('union_stripe_publishable_key', val) } catch {}
+                  }}
                   placeholder="pk_test_51... or pk_live_51..."
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                 />
@@ -786,7 +860,11 @@ STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
                   <input
                     type={showWebhookSecret ? 'text' : 'password'}
                     value={paymentSettings.webhookSecret}
-                    onChange={(e) => setPaymentSettings({ ...paymentSettings, webhookSecret: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setPaymentSettings((prev) => ({ ...prev, webhookSecret: val }))
+                      try { localStorage.setItem('union_stripe_webhook_secret', val) } catch {}
+                    }}
                     placeholder="whsec_..."
                     className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
                   />
