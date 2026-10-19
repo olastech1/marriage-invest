@@ -122,7 +122,8 @@ export default function MutualChatPage() {
   const [isNudging, setIsNudging] = useState(false)
   const [nudgeBanner, setNudgeBanner] = useState('')
 
-  // Scroll anchor
+  // Scroll anchor and container refs
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
   const lastMessageCountRef = useRef<number>(0)
@@ -237,10 +238,19 @@ export default function MutualChatPage() {
     }
   }, [fetchSpouseMessages, fetchAdvisorMessages, activeChannel])
 
-  // Auto scroll to bottom when new messages arrive
+  // Auto scroll to bottom within messagesContainerRef (prevents iOS window scrolling jump)
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto',
+      })
+    }
+  }, [])
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [spouseMessages, advisorMessages, isTyping])
+    scrollToBottom(true)
+  }, [spouseMessages, advisorMessages, isTyping, scrollToBottom])
 
   // -------------------------------------------------------------------------
   // Send Message (Spouse or Advisor)
@@ -270,6 +280,54 @@ export default function MutualChatPage() {
           setSpouseMessages((prev) => [...prev, data.message])
           lastMessageCountRef.current += 1
           broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
+          setTimeout(() => scrollToBottom(true), 50)
+
+          // Responsive spousal simulation: Marcus Vance / partner responds
+          const isFromCurrentUser = activeUserId === 'usr_jane_doe' || currentUserName.includes('Jane')
+          if (isFromCurrentUser) {
+            setTimeout(() => {
+              setIsTyping(true)
+              scrollToBottom(true)
+            }, 750)
+
+            setTimeout(async () => {
+              setIsTyping(false)
+              const userLower = messageText.toLowerCase()
+              let replyText = "Got your message babe! Checking our savings vault now ❤️"
+              if (userLower.includes('deposit') || userLower.includes('save') || userLower.includes('match') || userLower.includes('$') || userLower.includes('money')) {
+                replyText = "Awesome love! I will match your deposit in our joint vault right now 💰💍"
+              } else if (userLower.includes('love') || userLower.includes('miss') || userLower.includes('babe') || userLower.includes('kiss')) {
+                replyText = "Love you so much! Excited for our next milestone together ❤️✨"
+              } else if (userLower.includes('goal') || userLower.includes('trip') || userLower.includes('home') || userLower.includes('house')) {
+                replyText = "Yes! We are so close to our goal. Compounding is doing the work! 🏡📈"
+              } else if (userLower.includes('hello') || userLower.includes('hey') || userLower.includes('hi')) {
+                replyText = "Hey love! How is your day going? I'm watching our vault compound right now 🔥"
+              }
+
+              try {
+                const partnerRes = await fetch('/api/chat', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    threadId: 'spouse',
+                    text: replyText,
+                    senderId: 'usr_marcus_vance',
+                    senderName: 'Marcus Vance',
+                    type: 'text',
+                  }),
+                })
+                const partnerData = await partnerRes.json()
+                if (partnerData.success && partnerData.message) {
+                  setSpouseMessages((prev) => [...prev, partnerData.message])
+                  lastMessageCountRef.current += 1
+                  playNotificationChime()
+                  setTimeout(() => scrollToBottom(true), 50)
+                }
+              } catch {
+                // Silently catch
+              }
+            }, 2100)
+          }
         }
       } catch (err) {
         console.error('Failed to send message:', err)
@@ -470,9 +528,9 @@ export default function MutualChatPage() {
   const currentMessages = activeChannel === 'spouse' ? spouseMessages : advisorMessages
 
   return (
-    <div className="h-[calc(100dvh-5.5rem)] lg:h-[calc(100vh-5.5rem)] flex flex-col min-w-0 max-w-7xl mx-auto">
-      {/* ── PARTNER IDENTITY & NOTIFICATION HEADER ── */}
-      <div className="flex-shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 mb-2 border-b border-gray-200">
+    <div className="h-full flex-1 flex flex-col min-w-0 w-full overflow-hidden">
+      {/* ── DESKTOP PARTNER IDENTITY & NOTIFICATION HEADER (Hidden on mobile) ── */}
+      <div className="hidden sm:flex flex-shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 mb-2 border-b border-gray-200">
         <div className="flex items-center gap-2 flex-wrap">
           <Link
             href="/dashboard"
@@ -525,7 +583,7 @@ export default function MutualChatPage() {
       </div>
 
       {/* ── MAIN CHAT CANVAS ── */}
-      <div className="flex-1 min-h-0 bg-white rounded-2xl sm:rounded-3xl border border-gray-200 shadow-xl overflow-hidden flex flex-col lg:flex-row relative">
+      <div className="flex-1 min-h-0 bg-white rounded-none sm:rounded-2xl border-0 sm:border border-gray-200 shadow-none sm:shadow-lg overflow-hidden flex flex-col lg:flex-row relative">
         {/* ── LEFT SIDEBAR: THREADS & CHANNELS ── */}
         <div
           className={`w-full lg:w-80 xl:w-96 flex-shrink-0 border-r border-gray-100 bg-[#FCFBF7]/60 flex-col h-full ${
@@ -678,70 +736,100 @@ export default function MutualChatPage() {
             mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          {/* Thread Header */}
-          <div className="px-4 sm:px-6 py-3 border-b border-gray-100 flex items-center justify-between bg-white/90 backdrop-blur-sm sticky top-0 z-10 flex-shrink-0">
-            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          {/* Thread Header — Sticky to the top */}
+          <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20 flex-shrink-0 shadow-xs">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
                 onClick={() => setMobileTab('channels')}
-                className="lg:hidden p-2 -ml-1 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 flex items-center gap-1 text-xs font-bold transition-colors"
+                className="lg:hidden p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 flex items-center gap-1 text-xs font-bold transition-colors"
                 title="Back to Channels"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span className="text-[11px] hidden xs:inline">Channels</span>
               </button>
 
-              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-sm flex-shrink-0">
-                {activeChannel === 'spouse' ? partnerInitials : <Shield className="w-5 h-5 text-[#C9A84C]" />}
+              <div className="relative">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-sm flex-shrink-0">
+                  {activeChannel === 'spouse' ? partnerInitials : <Shield className="w-5 h-5 text-[#C9A84C]" />}
+                </div>
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full ring-2 ring-emerald-400/30" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] flex items-center gap-2 truncate">
-                  <span className="truncate">{activeChannel === 'spouse' ? `${partnerName} (Spouse)` : advisorName}</span>
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
-                </h3>
-                <span className="text-[10px] sm:text-[11px] text-gray-400 block truncate">
-                  {activeChannel === 'spouse'
-                    ? `Encrypted Matrimonial Line · ${currentUserName} & ${partnerName}`
-                    : 'Senior Matrimonial Wealth Manager'}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
+                    {activeChannel === 'spouse' ? `${partnerName}` : advisorName}
+                  </h3>
+                  <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Spouse)</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                  <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Online
+                  </span>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={handleSwitchPartner}
+                    className="text-[#C9A84C] font-semibold hover:underline"
+                    title={`Switch perspective to test as ${partnerName}`}
+                  >
+                    Switch to {partnerName}
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Quick action triggers */}
             {activeChannel === 'spouse' && (
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+              <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={handleSendInstantNudge}
                   disabled={isNudging}
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
                   title="Send instant deposit reminder to spouse via Email, Notification, and Chat"
                 >
                   <Bell className="w-3.5 h-3.5 text-amber-600" />
                   <span className="hidden xs:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
-                  <span className="xs:hidden">Nudge</span>
+                  <span className="xs:hidden text-[10px]">Nudge</span>
                 </button>
                 <button
                   onClick={() => setShowProposalModal(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
+                  className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
                 >
                   <PiggyBank className="w-3.5 h-3.5 text-[#C9A84C]" />
                   <span className="hidden xs:inline">Propose Deposit</span>
-                  <span className="xs:hidden">Deposit</span>
+                  <span className="xs:hidden text-[10px]">Deposit</span>
                 </button>
                 <button
                   onClick={() => setShowLoveNoteModal(true)}
-                  className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
+                  className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
                 >
                   <Heart className="w-3.5 h-3.5 text-rose-500" />
                   <span className="hidden xs:inline">Love Note</span>
-                  <span className="xs:hidden">Note</span>
+                  <span className="xs:hidden text-[10px]">Note</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Messages Stream */}
-          <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gray-50/50">
+          {/* Messages Stream with container ref for smooth non-jumping scrolling */}
+          <div
+            ref={messagesContainerRef}
+            className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-3 sm:space-y-4 bg-gray-50/50"
+          >
+            {/* Spousal Covenant & Vault Overview Banner */}
+            <div className="mx-auto max-w-md p-3 rounded-2xl bg-white border border-[#C9A84C]/30 shadow-2xs space-y-1 text-center my-1">
+              <div className="flex items-center justify-center gap-1.5">
+                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
+                <span className="text-xs font-bold text-[#0F1C3F]">Marcus Vance & Jane Doe</span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">Active</span>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                Joint Vault: <strong className="text-emerald-700 font-bold">$24,750.00</strong> compounding at <strong>6.8% APY</strong> · 50/50 Mutual Rights
+              </p>
+            </div>
+
             {/* Instant Nudge Feedback Banner */}
             {nudgeBanner && (
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in-50 slide-in-from-top-2 duration-200 shadow-sm">
@@ -751,26 +839,43 @@ export default function MutualChatPage() {
             )}
 
             {/* Encryption Notice */}
-            <div className="text-center my-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-xs">
+            <div className="text-center my-1">
+              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-2xs">
                 <Shield className="w-3 h-3 text-[#C9A84C]" />
                 End-to-End Encrypted Matrimonial Line · Direct Two-Way Communication
               </span>
             </div>
 
             {currentMessages.length === 0 && (
-              <div className="py-16 text-center space-y-3">
+              <div className="py-6 sm:py-10 text-center space-y-4">
                 <div className="w-12 h-12 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/10 flex items-center justify-center mx-auto text-[#C9A84C]">
                   {activeChannel === 'spouse' ? <Heart className="w-6 h-6 text-rose-500 fill-rose-500/20" /> : <Shield className="w-6 h-6 text-[#C9A84C]" />}
                 </div>
-                <h4 className="text-sm font-bold text-[#0F1C3F]">
-                  {activeChannel === 'spouse' ? `Start Your Matrimonial Chat with ${partnerName}` : 'Union Verify Support Desk'}
-                </h4>
-                <p className="text-xs text-gray-400 max-w-sm mx-auto leading-relaxed">
-                  {activeChannel === 'spouse'
-                    ? 'Propose shared deposits, send mutual love notes, or discuss your joint financial goals in real time.'
-                    : 'Our support team is on standby to assist with your portfolio and investment questions.'}
-                </p>
+                <div>
+                  <h4 className="text-sm font-bold text-[#0F1C3F]">
+                    {activeChannel === 'spouse' ? `Chat with ${partnerName}` : 'Union Verify Support Desk'}
+                  </h4>
+                  <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">
+                    Tap a starter below or type a message to start conversation:
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md mx-auto text-left">
+                  {[
+                    { label: '💰 Propose Matching Deposit', text: 'Hey love! How much should we add to our vault this week?' },
+                    { label: '📈 Check Our 6.8% APY Vault', text: 'Just checked our savings vault — our balance is compounding fast! 🚀' },
+                    { label: '🏡 Dream Home Milestone', text: 'Proposed adding $250 to our Family Dream Home goal! 🏡' },
+                    { label: '❤️ Send Matrimonial Love Note', text: 'So happy building our wealth and life together! ❤️' },
+                  ].map((starter, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setInputText(starter.text)}
+                      className="p-3 rounded-xl bg-white border border-gray-200 hover:border-[#C9A84C] text-xs text-gray-700 hover:text-[#0F1C3F] transition-all text-left shadow-2xs"
+                    >
+                      <strong className="block text-[11px] text-[#0F1C3F]">{starter.label}</strong>
+                      <span className="text-[10px] text-gray-500 line-clamp-1">{starter.text}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 
@@ -996,7 +1101,7 @@ export default function MutualChatPage() {
           </div>
 
           {/* Quick Reply Chips */}
-          <div className="px-4 py-2 border-t border-gray-100 bg-white flex items-center gap-2 overflow-x-auto text-xs no-scrollbar flex-shrink-0">
+          <div className="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-gray-100 bg-white flex items-center gap-1.5 sm:gap-2 overflow-x-auto text-xs no-scrollbar flex-shrink-0">
             <span className="text-[10px] uppercase font-bold text-gray-400 flex-shrink-0">
               Quick:
             </span>
@@ -1018,8 +1123,9 @@ export default function MutualChatPage() {
             ).map((chip, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => setInputText(chip)}
-                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-gray-100 hover:bg-[#C9A84C]/20 hover:text-[#0F1C3F] text-gray-600 text-[11px] font-medium transition-colors cursor-pointer"
+                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-[#C9A84C]/20 hover:text-[#0F1C3F] text-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
               >
                 {chip}
               </button>
@@ -1029,47 +1135,47 @@ export default function MutualChatPage() {
           {/* Message Input Bar */}
           <form
             onSubmit={handleSendMessage}
-            className="p-3 sm:p-4 border-t border-gray-200 bg-white flex items-center gap-2 sm:gap-3 flex-shrink-0"
+            className="p-2 sm:p-3.5 border-t border-gray-200 bg-white flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0"
           >
             {activeChannel === 'spouse' && (
               <>
                 <button
                   type="button"
+                  onClick={() => setShowLoveNoteModal(true)}
+                  className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer flex-shrink-0"
+                  title="Send Matrimonial Love Note"
+                >
+                  <Heart className="w-5 h-5 fill-rose-500/20" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowProposalModal(true)}
-                  className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:text-[#C9A84C] hover:bg-gray-100 transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors cursor-pointer flex-shrink-0"
                   title="Propose Joint Deposit"
                 >
                   <PiggyBank className="w-5 h-5" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowLoveNoteModal(true)}
-                  className="p-2 sm:p-2.5 rounded-xl text-gray-500 hover:text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
-                  title="Send Matrimonial Love Note"
-                >
-                  <Heart className="w-5 h-5" />
-                </button>
               </>
             )}
 
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={
                   activeChannel === 'spouse'
-                    ? `Message ${partnerName}… (instant mutual sync)`
+                    ? `Message ${partnerName}…`
                     : 'Ask Union Verify support…'
                 }
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:border-transparent bg-gray-50/50"
+                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:border-transparent bg-gray-50/70"
               />
             </div>
 
             <button
               type="submit"
               disabled={!inputText.trim()}
-              className="px-4 py-3 rounded-2xl bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white disabled:opacity-40 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer"
+              className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white disabled:opacity-40 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0"
             >
               <span className="hidden sm:inline text-xs font-bold">Send</span>
               <Send className="w-4 h-4 text-[#C9A84C]" />

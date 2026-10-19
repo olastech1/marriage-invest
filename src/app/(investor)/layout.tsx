@@ -251,10 +251,24 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden w-full min-w-0 relative">
-          <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0">{children}</div>
+        <main
+          className={`flex-1 min-w-0 ${
+            pathname === '/chat'
+              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px)] lg:h-[calc(100vh-53px)]'
+              : 'overflow-y-auto overflow-x-hidden relative'
+          }`}
+        >
+          <div
+            className={
+              pathname === '/chat'
+                ? 'flex-1 h-full w-full flex flex-col min-w-0 p-0 sm:p-3 lg:p-4 max-w-7xl mx-auto'
+                : 'mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0'
+            }
+          >
+            {children}
+          </div>
 
-          {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages) */}
+          {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages, hidden on /chat) */}
           <FloatingChatWidget partnerName="Your Partner" />
         </main>
       </div>

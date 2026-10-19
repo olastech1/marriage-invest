@@ -12,10 +12,84 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const thread = searchParams.get('thread') || 'spouse'
 
-    const messages = await (prisma as any).chatMessage.findMany({
+    let messages = await (prisma as any).chatMessage.findMany({
       where: { threadId: thread },
       orderBy: { createdAt: 'asc' },
     })
+
+    if (thread === 'spouse' && (!messages || messages.length === 0)) {
+      const seedData = [
+        {
+          id: 'seed-msg-1',
+          threadId: 'spouse',
+          senderId: 'usr_marcus_vance',
+          senderName: 'Marcus Vance',
+          text: 'Hey love! Just deposited $500 into our Joint Marriage Reserve vault. Did you see our compounding interest rate is currently at 6.8% APY? 📈💰',
+          timestamp: 'Yesterday at 4:15 PM',
+          read: true,
+          type: 'text',
+          reactions: { '❤️': 1, '🔥': 1 },
+          createdAt: new Date(Date.now() - 86400000),
+        },
+        {
+          id: 'seed-msg-2',
+          threadId: 'spouse',
+          senderId: 'usr_jane_doe',
+          senderName: 'Jane Doe',
+          text: 'Yes!! Love watching our numbers compound every single second. Matching your $500 tonight after work! ❤️🥂',
+          timestamp: 'Yesterday at 4:32 PM',
+          read: true,
+          type: 'text',
+          reactions: { '💍': 1 },
+          createdAt: new Date(Date.now() - 80000000),
+        },
+        {
+          id: 'seed-msg-3',
+          threadId: 'spouse',
+          senderId: 'usr_marcus_vance',
+          senderName: 'Marcus Vance',
+          text: 'Proposed adding $250 each to our Family Dream Home goal for our monthly savings sprint 🏡',
+          timestamp: 'Today at 9:15 AM',
+          read: true,
+          type: 'proposal',
+          proposalData: {
+            goalName: 'Family Dream Home Down Payment',
+            amount: 250,
+            split: '50/50 Equal Match',
+            status: 'approved',
+            proposedBy: 'Marcus Vance',
+            approvedBy: 'Jane Doe',
+          },
+          reactions: { '🏡': 1, '✅': 1 },
+          createdAt: new Date(Date.now() - 3600000),
+        },
+        {
+          id: 'seed-msg-4',
+          threadId: 'spouse',
+          senderId: 'usr_marcus_vance',
+          senderName: 'Marcus Vance',
+          text: 'Ready to deposit whenever you are! Let\'s keep our 12-day streak going 🔥',
+          timestamp: 'Today at 10:45 AM',
+          read: true,
+          type: 'text',
+          reactions: { '❤️': 1 },
+          createdAt: new Date(Date.now() - 1800000),
+        },
+      ]
+
+      try {
+        for (const m of seedData) {
+          await (prisma as any).chatMessage.create({ data: m })
+        }
+        messages = await (prisma as any).chatMessage.findMany({
+          where: { threadId: thread },
+          orderBy: { createdAt: 'asc' },
+        })
+      } catch (err) {
+        console.error('Failed to seed chat:', err)
+        messages = seedData as any
+      }
+    }
 
     const user = await prisma.user.findUnique({ where: { id: session?.user?.id || 'usr_jane_doe' } })
     const spouse = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
