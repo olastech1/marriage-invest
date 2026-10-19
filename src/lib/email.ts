@@ -64,13 +64,14 @@ function getTransporter(): Transporter {
     })
   } else {
     // Generic SMTP transport
-    const smtpUser = process.env.SMTP_USER ?? 'invest@unionverify.com'
-    const smtpPass = process.env.SMTP_PASS ?? 'UnionM@il_98Fid!2026'
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const smtpPort = Number(process.env.SMTP_PORT ?? 465)
 
     _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST ?? 'mail.unionverify.com',
-      port: Number(process.env.SMTP_PORT ?? 587),
-      secure: Number(process.env.SMTP_PORT ?? 587) === 465,
+      host: process.env.SMTP_HOST ?? 'email-smtp.us-east-1.amazonaws.com',
+      port: smtpPort,
+      secure: smtpPort === 465,
       auth:
         smtpUser && smtpPass
           ? {
@@ -91,7 +92,7 @@ function getTransporter(): Transporter {
 // Shared template helpers
 // ---------------------------------------------------------------------------
 
-const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Verify'} <${process.env.EMAIL_FROM ?? 'invest@unionverify.com'}>`
+const FROM = `${process.env.EMAIL_FROM_NAME ?? 'Union Verify'} <${process.env.EMAIL_FROM ?? 'support@unionverify.com'}>`
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://unionverify.com'
 const BRAND_COLOR = '#0F1C3F'
 
