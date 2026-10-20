@@ -383,6 +383,10 @@ export default function UnifiedChatPage() {
           if (latest && latest.senderId !== activeUserId) {
             playNotificationChime()
           }
+          // Bring new messages into view unless the user scrolled up to read history
+          const el = messagesContainerRef.current
+          const nearBottom = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 200
+          if (nearBottom) setTimeout(() => scrollToBottom(true), 60)
         }
         lastMessageCountRef.current = data.messages.length
         setMessages((prev) => {
@@ -886,7 +890,7 @@ export default function UnifiedChatPage() {
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
 
-              <div className="min-w-0">
+              <div className="min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
                     {activeRecipient.name}
@@ -895,7 +899,7 @@ export default function UnifiedChatPage() {
                     <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Spouse)</span>
                   )}
                 </div>
-                <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
                   <span className="text-emerald-600 font-semibold flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                     Online
@@ -928,26 +932,28 @@ export default function UnifiedChatPage() {
                   disabled={isNudging}
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
                   title="Send instant deposit reminder"
+                  aria-label="Send instant deposit reminder"
                 >
                   <Bell className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden xs:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
-                  <span className="xs:hidden text-[10px]">Nudge</span>
+                  <span className="hidden sm:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
                 </button>
                 <button
                   onClick={() => setShowProposalModal(true)}
+                  title="Propose deposit"
+                  aria-label="Propose deposit"
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-[#C9A84C]/15 text-[#0F1C3F] hover:bg-[#C9A84C]/25 transition-colors border border-[#C9A84C]/30"
                 >
                   <PiggyBank className="w-3.5 h-3.5 text-[#C9A84C]" />
-                  <span className="hidden xs:inline">Propose Deposit</span>
-                  <span className="xs:hidden text-[10px]">Deposit</span>
+                  <span className="hidden sm:inline">Propose Deposit</span>
                 </button>
                 <button
                   onClick={() => setShowLoveNoteModal(true)}
+                  title="Love note"
+                  aria-label="Love note"
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors border border-rose-200"
                 >
                   <Heart className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="hidden xs:inline">Love Note</span>
-                  <span className="xs:hidden text-[10px]">Note</span>
+                  <span className="hidden sm:inline">Love Note</span>
                 </button>
               </div>
             )}
@@ -1031,7 +1037,7 @@ export default function UnifiedChatPage() {
                     {/* STANDARD TEXT */}
                     {(!msg.type || msg.type === 'text') && (
                       <div
-                        className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
+                        className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
                           isMe
                             ? 'bg-[#0F1C3F] text-white rounded-tr-none'
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
@@ -1151,14 +1157,14 @@ export default function UnifiedChatPage() {
           </div>
 
           {/* Message Input Box */}
-          <div className="p-3 sm:p-4 border-t border-gray-100 bg-white flex-shrink-0">
+          <div className="p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-gray-100 bg-white flex-shrink-0">
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={`Type a message to ${activeRecipient.name}...`}
-                className="flex-1 px-4 py-3 text-xs sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C] bg-gray-50/50"
+                className="flex-1 min-w-0 px-4 py-3 text-base sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C] bg-gray-50/50"
               />
               <button
                 type="submit"

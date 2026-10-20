@@ -29,6 +29,22 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Never let the page scroll sideways on mobile */
+html,
+body {
+  overflow-x: clip;
+}
+
+/* iOS Safari zooms into any focused field under 16px, which shifts the
+   page sideways and pushes the send button off-screen. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Selection color */
 ::selection {
   background-color: #C9A84C;

@@ -45,6 +45,11 @@ export function FloatingChatWidget({
   const prevCountRef = useRef(0)
   // Confirmed messages we sent recently (id -> sent time), kept until a poll returns them
   const recentlySentRef = useRef<Map<string, number>>(new Map())
+
+  // Keep the newest message in view
+  useEffect(() => {
+    if (isOpen) messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+  }, [messages.length, isOpen])
   // Who the server says we are, and our spouse (resolved server-side from the session)
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
 
@@ -391,7 +396,7 @@ export function FloatingChatWidget({
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               placeholder={`Message ${displayPartnerName}…`}
-              className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:bg-white transition-all"
+              className="flex-1 min-w-0 px-3.5 py-2 text-base sm:text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:bg-white transition-all"
             />
             <button
               type="submit"
