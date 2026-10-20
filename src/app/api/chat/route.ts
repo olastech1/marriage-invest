@@ -3,145 +3,229 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 
 // ---------------------------------------------------------------------------
-// GET /api/chat?thread=spouse|advisor
-// Returns all synchronized chat messages and partner status
+// Helper: Build a deterministic thread ID for two users (alphabetical sort)
+// ---------------------------------------------------------------------------
+export function buildThreadId(userA: string, userB: string): string {
+  const cleanA = String(userA || 'user1').trim().toLowerCase()
+  const cleanB = String(userB || 'user2').trim().toLowerCase()
+  return `dm_${[cleanA, cleanB].sort().join('_')}`
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/chat
+// Supports:
+//   - ?users=true            -> returns directory of all platform members to chat with
+//   - ?list=true             -> returns all active conversation threads for current user
+//   - ?thread=<id>&senderId= -> returns messages for a specific thread
+//   - ?recipientId=<id>      -> returns or initializes thread between current user and recipient
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
     const { searchParams } = new URL(req.url)
-    const thread = searchParams.get('thread') || 'spouse'
+    const threadParam = searchParams.get('thread')
+    const recipientIdParam = searchParams.get('recipientId')
+    const listConversations = searchParams.get('list') === 'true'
+    const listUsers = searchParams.get('users') === 'true'
+
+    const currentUserId = searchParams.get('senderId') || session?.user?.id || 'usr_jane_doe'
+
+    // ── 1. RETURN USER DIRECTORY (all contacts you can message) ──
+    if (listUsers) {
+      const allUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          phone: true,
+        },
+      })
+
+      const contacts = allUsers.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        username: u.username || u.name?.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+        email: u.email,
+        role: u.role,
+        bio: u.bio || `${u.role === 'ADMIN' ? 'Platform Administrator' : 'Verified Member'}`,
+        avatar: (u.name || 'UV').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+        online: true,
+      }))
+
+      return NextResponse.json({
+        success: true,
+        users: contacts,
+        currentUserId,
+      })
+    }
+
+    // ── 2. LIST ALL CONVERSATIONS for current user ──
+    if (listConversations) {
+      const allMessages = await (prisma as any).chatMessage.findMany({
+        orderBy: { createdAt: 'desc' },
+      })
+
+      // Always include key contacts (Marcus, Jane, Admin) even if 0 messages yet
+      const allUsers = await prisma.user.findMany()
+      const threadMap = new Map<string, any>()
+
+      for (const msg of allMessages) {
+        const tid = msg.threadId || ''
+        // Check if thread belongs to current user
+        if (tid.startsWith('dm_')) {
+          if (!tid.includes(currentUserId.toLowerCase())) continue
+        }
+
+        if (!threadMap.has(tid)) {
+          // Identify the other participant
+          let otherId = ''
+          if (tid.startsWith('dm_')) {
+            const rawParts = tid.replace('dm_', '').split('_')
+            otherId = rawParts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
+          } else if (tid === 'spouse') {
+            otherId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+          } else if (tid === 'advisor') {
+            otherId = 'usr_admin'
+          }
+
+          const matchedUser = allUsers.find((u: any) => u.id === otherId || u.username === otherId)
+          const fallbackName = otherId === 'usr_marcus_vance' ? 'Marcus Vance' : (otherId === 'usr_jane_doe' ? 'Jane Doe' : (otherId === 'usr_admin' ? 'Support & Advisor' : otherId))
+
+          threadMap.set(tid, {
+            threadId: tid,
+            lastMessage: msg,
+            otherUserId: otherId,
+            otherUserName: matchedUser?.name || msg.recipientName || (msg.senderId !== currentUserId ? msg.senderName : fallbackName),
+            unreadCount: 0,
+            updatedAt: msg.createdAt,
+          })
+        }
+
+        // Count unread messages
+        if (!msg.read && msg.senderId !== currentUserId) {
+          const entry = threadMap.get(tid)!
+          entry.unreadCount++
+        }
+      }
+
+      // If spouse thread doesn't exist yet, seed default entry
+      const spouseOtherId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+      const spouseThreadId = buildThreadId(currentUserId, spouseOtherId)
+      if (!threadMap.has(spouseThreadId) && !threadMap.has('spouse')) {
+        const spouseUser = allUsers.find((u: any) => u.id === spouseOtherId)
+        threadMap.set(spouseThreadId, {
+          threadId: spouseThreadId,
+          lastMessage: {
+            text: 'Mutual matrimonial vault and joint messaging active.',
+            createdAt: new Date(),
+          },
+          otherUserId: spouseOtherId,
+          otherUserName: spouseUser?.name || (spouseOtherId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'),
+          unreadCount: 0,
+          updatedAt: new Date(),
+        })
+      }
+
+      return NextResponse.json({
+        success: true,
+        conversations: Array.from(threadMap.values()),
+        currentUserId,
+      })
+    }
+
+    // ── 3. RESOLVE ACTIVE THREAD ID & MESSAGES ──
+    let threadId = threadParam || ''
+    let recipientId = recipientIdParam || ''
+
+    if (!threadId && recipientId) {
+      threadId = buildThreadId(currentUserId, recipientId)
+    } else if (!threadId) {
+      recipientId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+      threadId = buildThreadId(currentUserId, recipientId)
+    }
+
+    // Legacy "spouse" alias
+    if (threadId === 'spouse') {
+      threadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
+    }
+
+    // If recipientId not explicitly passed, deduce it from threadId
+    if (!recipientId && threadId.startsWith('dm_')) {
+      const parts = threadId.replace('dm_', '').split('_')
+      recipientId = parts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
+    }
 
     let messages = await (prisma as any).chatMessage.findMany({
-      where: { threadId: thread },
+      where: {
+        OR: [
+          { threadId },
+          // Backwards compatibility for legacy 'spouse' thread
+          ...(threadId === buildThreadId('usr_jane_doe', 'usr_marcus_vance') ? [{ threadId: 'spouse' }] : []),
+        ],
+      },
       orderBy: { createdAt: 'asc' },
     })
 
-    if (thread === 'spouse' && (!messages || messages.length === 0)) {
-      const seedData = [
-        {
-          id: 'seed-msg-1',
-          threadId: 'spouse',
-          senderId: 'usr_marcus_vance',
-          senderName: 'Marcus Vance',
-          text: 'Hey love! Just deposited $500 into our Joint Marriage Reserve vault. Did you see our compounding interest rate is currently at 6.8% APY? 📈💰',
-          timestamp: 'Yesterday at 4:15 PM',
-          read: true,
-          type: 'text',
-          reactions: { '❤️': 1, '🔥': 1 },
-          createdAt: new Date(Date.now() - 86400000),
-        },
-        {
-          id: 'seed-msg-2',
-          threadId: 'spouse',
-          senderId: 'usr_jane_doe',
-          senderName: 'Jane Doe',
-          text: 'Yes!! Love watching our numbers compound every single second. Matching your $500 tonight after work! ❤️🥂',
-          timestamp: 'Yesterday at 4:32 PM',
-          read: true,
-          type: 'text',
-          reactions: { '💍': 1 },
-          createdAt: new Date(Date.now() - 80000000),
-        },
-        {
-          id: 'seed-msg-3',
-          threadId: 'spouse',
-          senderId: 'usr_marcus_vance',
-          senderName: 'Marcus Vance',
-          text: 'Proposed adding $250 each to our Family Dream Home goal for our monthly savings sprint 🏡',
-          timestamp: 'Today at 9:15 AM',
-          read: true,
-          type: 'proposal',
-          proposalData: {
-            goalName: 'Family Dream Home Down Payment',
-            amount: 250,
-            split: '50/50 Equal Match',
-            status: 'approved',
-            proposedBy: 'Marcus Vance',
-            approvedBy: 'Jane Doe',
-          },
-          reactions: { '🏡': 1, '✅': 1 },
-          createdAt: new Date(Date.now() - 3600000),
-        },
-        {
-          id: 'seed-msg-4',
-          threadId: 'spouse',
-          senderId: 'usr_marcus_vance',
-          senderName: 'Marcus Vance',
-          text: 'Ready to deposit whenever you are! Let\'s keep our 12-day streak going 🔥',
-          timestamp: 'Today at 10:45 AM',
-          read: true,
-          type: 'text',
-          reactions: { '❤️': 1 },
-          createdAt: new Date(Date.now() - 1800000),
-        },
-      ]
-
-      try {
-        for (const m of seedData) {
-          await (prisma as any).chatMessage.create({ data: m })
-        }
-        messages = await (prisma as any).chatMessage.findMany({
-          where: { threadId: thread },
-          orderBy: { createdAt: 'asc' },
+    // Look up recipient user info
+    let recipientUser = null
+    if (recipientId) {
+      recipientUser = await prisma.user.findUnique({
+        where: { id: recipientId },
+      })
+      if (!recipientUser) {
+        recipientUser = await (prisma.user as any).findFirst({
+          where: { username: recipientId.toLowerCase() },
         })
-      } catch (err) {
-        console.error('Failed to seed chat:', err)
-        messages = seedData as any
       }
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session?.user?.id || 'usr_jane_doe' } })
-    const spouse = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
+    // Default recipient fallback if missing
+    if (!recipientUser && recipientId) {
+      recipientUser = {
+        id: recipientId,
+        name: recipientId === 'usr_marcus_vance' ? 'Marcus Vance' : (recipientId === 'usr_jane_doe' ? 'Jane Doe' : recipientId),
+        email: `${recipientId}@unionverify.com`,
+      } as any
+    }
 
     return NextResponse.json({
       success: true,
-      thread,
+      threadId,
       messages: messages || [],
       currentUser: {
-        id: session?.user?.id || 'usr_jane_doe',
-        name: session?.user?.name || 'Jane Doe',
-        email: user?.email || '',
-        phone: (user as any)?.phone || '',
+        id: currentUserId,
+        name: session?.user?.name || (currentUserId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'),
       },
-      partners: {
-        partner1: {
-          id: 'usr_jane_doe',
-          name: user?.name || 'Jane Doe',
-          email: user?.email || '',
-          phone: (user as any)?.phone || '',
-          status: 'Online',
-          covenantId: 'UV-2026-98420',
-        },
-        partner2: {
-          id: 'usr_marcus_vance',
-          name: spouse?.name || 'Marcus Vance',
-          email: spouse?.email || '',
-          phone: (spouse as any)?.phone || '',
-          status: 'Online',
-          covenantId: 'UV-2026-98420',
-        },
-      },
+      recipient: recipientUser ? {
+        id: recipientUser.id,
+        name: recipientUser.name,
+        email: recipientUser.email,
+        avatar: (recipientUser.name || 'UV').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+      } : null,
     })
   } catch (err: any) {
+    console.error('[GET /api/chat]', err)
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   }
 }
 
 // ---------------------------------------------------------------------------
 // POST /api/chat
-// Send message from one partner to the other or to the advisor
+// Send a message to ANY user or thread
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
     const session = await auth()
     const body = await req.json()
     const {
-      threadId = 'spouse',
       text,
       type = 'text',
       senderId,
       senderName,
+      recipientId,
+      recipientName,
+      threadId: threadIdOverride,
       proposalData,
       loveNoteTitle,
       voiceDuration,
@@ -152,8 +236,31 @@ export async function POST(req: Request) {
     }
 
     const effectiveSenderId = senderId || session?.user?.id || 'usr_jane_doe'
-    const effectiveSenderName = senderName || session?.user?.name || 'Jane Doe'
-    const recipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+    const effectiveSenderName = senderName || session?.user?.name || (effectiveSenderId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe')
+
+    // Determine target recipient
+    let effectiveRecipientId = recipientId || ''
+    let threadId = threadIdOverride || ''
+
+    if (!effectiveRecipientId && threadId.startsWith('dm_')) {
+      const parts = threadId.replace('dm_', '').split('_')
+      effectiveRecipientId = parts.find((p: string) => p.toLowerCase() !== effectiveSenderId.toLowerCase()) || ''
+    }
+
+    if (!effectiveRecipientId) {
+      effectiveRecipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+    }
+
+    if (!threadId) {
+      threadId = buildThreadId(effectiveSenderId, effectiveRecipientId)
+    }
+
+    // Determine recipient name
+    let effectiveRecipientName = recipientName || ''
+    if (!effectiveRecipientName) {
+      const recUser = await prisma.user.findUnique({ where: { id: effectiveRecipientId } })
+      effectiveRecipientName = recUser?.name || (effectiveRecipientId === 'usr_marcus_vance' ? 'Marcus Vance' : (effectiveRecipientId === 'usr_jane_doe' ? 'Jane Doe' : 'Member'))
+    }
 
     const now = new Date()
     const formattedTime = new Intl.DateTimeFormat('en-US', {
@@ -162,12 +269,15 @@ export async function POST(req: Request) {
       hour12: true,
     }).format(now)
 
+    // Save message into persistent ledger (zero AI bots or canned responses)
     const newMsg = await (prisma as any).chatMessage.create({
       data: {
         id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         threadId,
         senderId: effectiveSenderId,
         senderName: effectiveSenderName,
+        recipientId: effectiveRecipientId,
+        recipientName: effectiveRecipientName,
         text: text ? text.trim() : (proposalData ? `Proposed deposit for ${proposalData.goalName}` : (loveNoteTitle || 'Matrimonial Love Note')),
         timestamp: formattedTime,
         createdAt: now,
@@ -180,30 +290,33 @@ export async function POST(req: Request) {
       },
     })
 
-    // Create notification for the spousal recipient in the notification database
-    try {
-      await prisma.notification.create({
-        data: {
-          userId: recipientId,
-          title: `New Message from ${effectiveSenderName}`,
-          message: text ? text.slice(0, 100) : 'You received a new mutual matrimonial chat item.',
-          type: type === 'proposal' ? 'ALERT' : 'INFO',
-          link: '/chat',
-        },
-      })
-    } catch {
-      // Non-blocking notification
+    // Create an in-app notification for the recipient
+    if (effectiveRecipientId && effectiveRecipientId !== effectiveSenderId) {
+      try {
+        await prisma.notification.create({
+          data: {
+            userId: effectiveRecipientId,
+            title: `New Message from ${effectiveSenderName}`,
+            message: text ? text.slice(0, 100) : 'You received a new message.',
+            type: 'INFO',
+            link: `/chat?recipientId=${effectiveSenderId}`,
+          },
+        })
+      } catch {
+        // Non-blocking notification
+      }
     }
 
     return NextResponse.json({ success: true, message: newMsg })
   } catch (err: any) {
+    console.error('[POST /api/chat]', err)
     return NextResponse.json({ success: false, error: err.message }, { status: 500 })
   }
 }
 
 // ---------------------------------------------------------------------------
 // PATCH /api/chat
-// Interactive partner actions: approve proposal, add spousal emoji reaction
+// Actions: react (emoji), approve_proposal
 // ---------------------------------------------------------------------------
 export async function PATCH(req: Request) {
   try {
@@ -223,9 +336,9 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 })
     }
 
-    // ACTION: APPROVE PROPOSAL
+    // Approve proposal
     if (action === 'approve_proposal') {
-      const approver = approvedBy || session?.user?.name || partnerName || 'Marcus Vance'
+      const approver = approvedBy || session?.user?.name || partnerName || 'User'
 
       const updated = await (prisma as any).chatMessage.update({
         where: { id: messageId },
@@ -238,60 +351,17 @@ export async function PATCH(req: Request) {
         },
       })
 
-      // Add spousal confirmation message to thread
-      const halfAmount = existing.proposalData?.amount ? (Number(existing.proposalData.amount) / 2).toFixed(2) : '125.00'
-      const goalName = existing.proposalData?.goalName || 'Joint Savings Vault'
-
-      const confirmMsg = await (prisma as any).chatMessage.create({
-        data: {
-          id: `msg-${Date.now()}-confirmed`,
-          threadId: existing.threadId || 'spouse',
-          senderId: 'usr_marcus_vance',
-          senderName: approver,
-          text: `Awesome! Both $${halfAmount} shares have been deposited into our ${goalName} vault! 🎉 High-five!`,
-          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
-          createdAt: new Date(),
-          read: true,
-          type: 'text',
-          reactions: { '🎉': 2, '❤️': 1 },
-        },
-      })
-
-      // Log transaction in the ledger
-      try {
-        await prisma.transaction.create({
-          data: {
-            userId: session?.user?.id || 'usr_jane_doe',
-            type: 'DEPOSIT',
-            amount: existing.proposalData?.amount || 250,
-            fee: 0,
-            netAmount: existing.proposalData?.amount || 250,
-            status: 'COMPLETED',
-            reference: `PROP-DEP-${Date.now().toString(36).toUpperCase()}`,
-            description: `Mutual Approved Deposit: ${goalName} ($${halfAmount} x 2)`,
-          },
-        })
-      } catch {
-        // Non-blocking
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: updated,
-        confirmationMessage: confirmMsg,
-      })
+      return NextResponse.json({ success: true, message: updated })
     }
 
-    // ACTION: TOGGLE / INCREMENT EMOJI REACTION
+    // Toggle emoji reaction
     if (action === 'react' && reaction) {
       const currentReactions = { ...(existing.reactions || {}) }
       currentReactions[reaction] = (currentReactions[reaction] || 0) + 1
 
       const updated = await (prisma as any).chatMessage.update({
         where: { id: messageId },
-        data: {
-          reactions: currentReactions,
-        },
+        data: { reactions: currentReactions },
       })
 
       return NextResponse.json({ success: true, message: updated })

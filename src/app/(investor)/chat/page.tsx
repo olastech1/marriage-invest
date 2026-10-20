@@ -10,8 +10,6 @@ import {
   VolumeX,
   PiggyBank,
   Award,
-  Play,
-  Pause,
   Shield,
   Clock,
   X,
@@ -27,31 +25,50 @@ import {
   Phone,
   Mail,
   Share2,
+  MessageSquare,
+  Search,
+  Plus,
+  Users,
+  ExternalLink,
+  User,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-export type ChannelType = 'spouse' | 'advisor'
+export interface ChatUser {
+  id: string
+  name: string
+  username?: string
+  email?: string
+  role?: string
+  bio?: string
+  avatar?: string
+  online?: boolean
+}
 
 export interface ChatMessage {
   id: string
   threadId?: string
   senderId?: string
   senderName: string
+  recipientId?: string
+  recipientName?: string
   sender?: 'user' | 'partner' | 'advisor'
   text: string
   timestamp: string
+  createdAt?: string | Date
   read: boolean
   reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry'
   proposalData?: {
-    goalName: string
-    amount: number
-    split: string
-    status: 'pending' | 'approved' | 'rejected'
+    goalName?: string
+    amount?: number
+    split?: string
+    status?: 'pending' | 'approved' | 'rejected'
     proposedBy?: string
     approvedBy?: string
+    [key: string]: any
   }
   depositData?: {
     amount: number
@@ -61,30 +78,52 @@ export interface ChatMessage {
     reference?: string
     isReciprocalMatch?: boolean
   }
-  voiceDuration?: string
   loveNoteTitle?: string
 }
 
-export default function MutualChatPage() {
+export interface ConversationItem {
+  threadId: string
+  otherUserId: string
+  otherUserName: string
+  lastMessage?: {
+    text: string
+    createdAt?: string | Date
+  }
+  unreadCount?: number
+}
+
+// ---------------------------------------------------------------------------
+// Helper: deterministic thread builder
+// ---------------------------------------------------------------------------
+function getThreadId(userA: string, userB: string): string {
+  const cleanA = String(userA || 'user1').trim().toLowerCase()
+  const cleanB = String(userB || 'user2').trim().toLowerCase()
+  return `dm_${[cleanA, cleanB].sort().join('_')}`
+}
+
+export default function UnifiedChatPage() {
   const { data: session } = useSession()
 
   // -------------------------------------------------------------------------
-  // Partner Identities (Jane Doe <-> Marcus Vance)
+  // 1. Current Active User Identity (Sender Perspective)
   // -------------------------------------------------------------------------
   const [activeUserId, setActiveUserId] = useState<string>('usr_jane_doe')
+  const [activeUserName, setActiveUserName] = useState<string>('Jane Doe')
   const [copiedInvite, setCopiedInvite] = useState(false)
 
-  // Set initial identity with priority: URL query param (?as=marcus / ?as=jane) -> session -> localStorage
+  // Initialize current user identity from session, localStorage, or URL parameter (?as=...)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const asParam = params.get('as')?.toLowerCase()
       if (asParam === 'marcus' || asParam === 'usr_marcus_vance' || asParam === 'husband') {
         setActiveUserId('usr_marcus_vance')
+        setActiveUserName('Marcus Vance')
         localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
         return
       } else if (asParam === 'jane' || asParam === 'usr_jane_doe' || asParam === 'wife') {
         setActiveUserId('usr_jane_doe')
+        setActiveUserName('Jane Doe')
         localStorage.setItem('union_verify_active_partner', 'usr_jane_doe')
         return
       }
@@ -92,43 +131,47 @@ export default function MutualChatPage() {
 
     if (session?.user?.id === 'usr_marcus_vance' || session?.user?.name?.toLowerCase().includes('marcus')) {
       setActiveUserId('usr_marcus_vance')
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
-      }
+      setActiveUserName('Marcus Vance')
       return
     }
 
     if (session?.user?.id === 'usr_jane_doe' || session?.user?.name?.toLowerCase().includes('jane')) {
       setActiveUserId('usr_jane_doe')
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('union_verify_active_partner', 'usr_jane_doe')
-      }
+      setActiveUserName('Jane Doe')
+      return
+    }
+
+    if (session?.user?.id) {
+      setActiveUserId(session.user.id)
+      setActiveUserName(session.user.name || 'Member')
       return
     }
 
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('union_verify_active_partner')
-      if (saved === 'usr_marcus_vance' || saved === 'usr_jane_doe') {
-        setActiveUserId(saved)
+      if (saved === 'usr_marcus_vance') {
+        setActiveUserId('usr_marcus_vance')
+        setActiveUserName('Marcus Vance')
+        return
+      } else if (saved === 'usr_jane_doe') {
+        setActiveUserId('usr_jane_doe')
+        setActiveUserName('Jane Doe')
         return
       }
     }
 
     setActiveUserId('usr_jane_doe')
+    setActiveUserName('Jane Doe')
   }, [session])
 
-  // Derive Current User & Partner Info
   const isMarcus = activeUserId === 'usr_marcus_vance'
-  const currentUserName = isMarcus ? 'Marcus Vance' : (session?.user?.name || 'Jane Doe')
-  const partnerName = isMarcus ? 'Jane Doe' : 'Marcus Vance'
-  const partnerInitials = isMarcus ? 'JD' : 'MV'
-  const userInitials = isMarcus ? 'MV' : 'JD'
-  const advisorName = 'UV Support'
 
-  // Switch Active Partner Toggle (updates localStorage and URL without refresh)
+  // Quick switch between Jane Doe and Marcus Vance for instant testing
   const handleSwitchPartner = () => {
     const nextId = isMarcus ? 'usr_jane_doe' : 'usr_marcus_vance'
+    const nextName = isMarcus ? 'Jane Doe' : 'Marcus Vance'
     setActiveUserId(nextId)
+    setActiveUserName(nextName)
     if (typeof window !== 'undefined') {
       localStorage.setItem('union_verify_active_partner', nextId)
       const url = new URL(window.location.href)
@@ -137,89 +180,191 @@ export default function MutualChatPage() {
     }
   }
 
-  // Copy Direct Partner Invite Link for live two-person testing
-  const handleCopyPartnerInvite = () => {
-    if (typeof window === 'undefined') return
-    const partnerParam = isMarcus ? 'jane' : 'marcus'
-    const inviteUrl = `${window.location.origin}/chat?as=${partnerParam}`
-    navigator.clipboard.writeText(inviteUrl)
-    setCopiedInvite(true)
-    setTimeout(() => setCopiedInvite(false), 3500)
-  }
+  // -------------------------------------------------------------------------
+  // 2. Chat Recipient & Contact Management
+  // -------------------------------------------------------------------------
+  const [activeRecipient, setActiveRecipient] = useState<ChatUser>({
+    id: 'usr_marcus_vance',
+    name: 'Marcus Vance',
+    username: 'marcus-vance',
+    email: 'marcus.vance@unionverify.com',
+    role: 'Husband & Joint Signatory',
+    avatar: 'MV',
+    online: true,
+  })
 
-  // Channels & Active Thread
-  const [activeChannel, setActiveChannel] = useState<ChannelType>('spouse')
-  const [mobileTab, setMobileTab] = useState<'channels' | 'chat'>('chat')
+  const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([
+    {
+      id: 'usr_marcus_vance',
+      name: 'Marcus Vance',
+      username: 'marcus-vance',
+      email: 'marcus.vance@unionverify.com',
+      role: 'Husband & Joint Signatory',
+      avatar: 'MV',
+      online: true,
+      bio: 'Joint covenant wealth partner. 6.8% APY compounding vault.',
+    },
+    {
+      id: 'usr_jane_doe',
+      name: 'Jane Doe',
+      username: 'jane-doe',
+      email: 'jane.doe@unionverify.com',
+      role: 'Wife & Joint Signatory',
+      avatar: 'JD',
+      online: true,
+      bio: 'Joint covenant wealth partner. Co-managing our matrimonial reserve.',
+    },
+    {
+      id: 'usr_admin',
+      name: 'Union Verify Desk',
+      username: 'support',
+      email: 'admin@unionverify.com',
+      role: 'Support & Concierge',
+      avatar: 'UV',
+      online: true,
+      bio: '24/7 Platform assistance, registry, and fiduciary support desk.',
+    },
+  ])
 
-  // Notification & Match banner from URL query params (e.g. from notification bell)
-  const [matchedDepositAlert, setMatchedDepositAlert] = useState<{ amount: number; action: string } | null>(null)
+  const [conversations, setConversations] = useState<ConversationItem[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const threadParam = params.get('thread')
-      if (threadParam === 'advisor' || threadParam === 'spouse') {
-        setActiveChannel(threadParam as ChannelType)
+  // Derive active thread ID
+  const activeThreadId = getThreadId(activeUserId, activeRecipient.id)
+
+  // Load Contacts Directory from API
+  const fetchContacts = useCallback(async () => {
+    try {
+      const res = await fetch('/api/chat?users=true')
+      const data = await res.json()
+      if (data.success && Array.isArray(data.users)) {
+        setAvailableContacts(data.users)
       }
-      const actionParam = params.get('action')
-      const amountParam = params.get('amount')
-      if (actionParam === 'match' && amountParam) {
-        setMatchedDepositAlert({
-          amount: parseFloat(amountParam) || 500,
-          action: 'match',
-        })
-      }
+    } catch (err) {
+      console.warn('Failed to fetch user directory:', err)
     }
   }, [])
 
-  // Notification settings
-  const [soundEnabled, setSoundEnabled] = useState(true)
+  // Load Active Conversations List
+  const fetchConversations = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/chat?list=true&senderId=${encodeURIComponent(activeUserId)}`)
+      const data = await res.json()
+      if (data.success && Array.isArray(data.conversations)) {
+        setConversations(data.conversations)
+      }
+    } catch (err) {
+      console.warn('Failed to fetch conversations:', err)
+    }
+  }, [activeUserId])
 
-  // Message input state
+  // Handle URL parameters for direct deep-linking (e.g. from /u/[slug] or notifications)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const params = new URLSearchParams(window.location.search)
+    const recId = params.get('recipientId') || params.get('to') || params.get('user')
+    const recName = params.get('name')
+    const threadParam = params.get('thread')
+
+    if (recId) {
+      const matched = availableContacts.find(
+        (c) => c.id.toLowerCase() === recId.toLowerCase() || c.username?.toLowerCase() === recId.toLowerCase()
+      )
+      if (matched) {
+        setActiveRecipient(matched)
+      } else {
+        const cleanName = recName ? decodeURIComponent(recName) : (recId.includes('marcus') ? 'Marcus Vance' : (recId.includes('jane') ? 'Jane Doe' : recId))
+        setActiveRecipient({
+          id: recId,
+          name: cleanName,
+          username: recId,
+          email: `${recId}@unionverify.com`,
+          avatar: cleanName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+          online: true,
+        })
+      }
+      setMobileTab('chat')
+    } else if (threadParam === 'advisor' || threadParam === 'support') {
+      setActiveRecipient({
+        id: 'usr_admin',
+        name: 'Union Verify Desk',
+        username: 'support',
+        email: 'admin@unionverify.com',
+        role: 'Support & Concierge',
+        avatar: 'UV',
+        online: true,
+      })
+      setMobileTab('chat')
+    } else {
+      // Default to the other spouse if currently Jane or Marcus
+      if (activeUserId === 'usr_jane_doe') {
+        setActiveRecipient({
+          id: 'usr_marcus_vance',
+          name: 'Marcus Vance',
+          username: 'marcus-vance',
+          email: 'marcus.vance@unionverify.com',
+          role: 'Husband & Joint Signatory',
+          avatar: 'MV',
+          online: true,
+        })
+      } else if (activeUserId === 'usr_marcus_vance') {
+        setActiveRecipient({
+          id: 'usr_jane_doe',
+          name: 'Jane Doe',
+          username: 'jane-doe',
+          email: 'jane.doe@unionverify.com',
+          role: 'Wife & Joint Signatory',
+          avatar: 'JD',
+          online: true,
+        })
+      }
+    }
+  }, [availableContacts, activeUserId])
+
+  // Select contact & start/open chat
+  const handleSelectContact = (contact: ChatUser) => {
+    setActiveRecipient(contact)
+    setMobileTab('chat')
+    setShowNewChatModal(false)
+
+    // Update URL query without page reload
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.set('recipientId', contact.id)
+      if (contact.name) url.searchParams.set('name', contact.name)
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Messages & Real-Time Synchronization
+  // -------------------------------------------------------------------------
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null)
+  const [soundEnabled, setSoundEnabled] = useState(true)
   const [isApprovingId, setIsApprovingId] = useState<string | null>(null)
 
-  // Interactive Modals
+  // Modals & Extras
   const [showProposalModal, setShowProposalModal] = useState(false)
   const [proposalGoal, setProposalGoal] = useState('Family Dream Home Down Payment')
   const [proposalAmount, setProposalAmount] = useState('250')
   const [showLoveNoteModal, setShowLoveNoteModal] = useState(false)
   const [loveNoteText, setLoveNoteText] = useState('Adding $150 to our Amalfi Coast fund today. Loving our life together! ❤️')
   const [loveNotePreset, setLoveNotePreset] = useState('Vacation Nest Egg')
-
-  // Instant Spousal Deposit Nudge
   const [isNudging, setIsNudging] = useState(false)
   const [nudgeBanner, setNudgeBanner] = useState('')
 
-  // Scroll anchor and container refs
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
   const lastMessageCountRef = useRef<number>(0)
-
-  // -------------------------------------------------------------------------
-  // Chat Messages State
-  // -------------------------------------------------------------------------
-  const [spouseMessages, setSpouseMessages] = useState<ChatMessage[]>([])
-  const [advisorMessages, setAdvisorMessages] = useState<ChatMessage[]>([
-    {
-      id: 'adv-1',
-      senderName: advisorName,
-      text: 'Welcome to Union Verify! Our support team is here to assist with your joint portfolio and platform questions. Feel free to ask about your vaults, dual-signature governance, or compound distributions.',
-      timestamp: 'Today',
-      read: true,
-      type: 'text',
-      reactions: { '🏛️': 1 },
-    },
-  ])
 
   // Play pleasant notification chime
   const playNotificationChime = useCallback(() => {
     if (!soundEnabled) return
     try {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
       if (!AudioCtx) return
       const audioCtx = new AudioCtx()
       const osc = audioCtx.createOscillator()
@@ -238,78 +383,11 @@ export default function MutualChatPage() {
       osc.start()
       osc.stop(audioCtx.currentTime + 0.35)
     } catch {
-      // Audio playback restrictions fallback
+      // Audio playback fallback
     }
   }, [soundEnabled])
 
-  // -------------------------------------------------------------------------
-  // Load & Synchronize Messages from API
-  // -------------------------------------------------------------------------
-  const fetchSpouseMessages = useCallback(async (isInitial = false) => {
-    try {
-      const res = await fetch('/api/chat?thread=spouse')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.messages)) {
-        if (!isInitial && data.messages.length > lastMessageCountRef.current) {
-          const latest = data.messages[data.messages.length - 1]
-          if (latest && latest.senderId !== activeUserId && latest.senderName !== currentUserName) {
-            playNotificationChime()
-          }
-        }
-        lastMessageCountRef.current = data.messages.length
-        setSpouseMessages(data.messages)
-      }
-    } catch (err) {
-      console.error('Failed to sync chat messages:', err)
-    }
-  }, [activeUserId, currentUserName, playNotificationChime])
-
-  // -------------------------------------------------------------------------
-  // Load & Synchronize Advisor Messages from Contact API
-  // -------------------------------------------------------------------------
-  const fetchAdvisorMessages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/contact')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.messages) && data.messages.length > 0) {
-        setAdvisorMessages(data.messages)
-      }
-    } catch (err) {
-      console.error('Failed to sync advisor messages:', err)
-    }
-  }, [])
-
-  // Initial load + Polling interval (Every 1.5 seconds)
-  useEffect(() => {
-    fetchSpouseMessages(true)
-    fetchAdvisorMessages()
-
-    const pollInterval = setInterval(() => {
-      if (activeChannel === 'spouse') {
-        fetchSpouseMessages(false)
-      } else {
-        fetchAdvisorMessages()
-      }
-    }, 2000)
-
-    // Cross-tab real-time broadcast channel
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      const channel = new BroadcastChannel('union_verify_chat')
-      broadcastChannelRef.current = channel
-      channel.onmessage = () => {
-        fetchSpouseMessages(false)
-      }
-    }
-
-    return () => {
-      clearInterval(pollInterval)
-      if (broadcastChannelRef.current) {
-        broadcastChannelRef.current.close()
-      }
-    }
-  }, [fetchSpouseMessages, fetchAdvisorMessages, activeChannel])
-
-  // Auto scroll to bottom within messagesContainerRef (prevents iOS window scrolling jump)
+  // Scroll to bottom smoothly
   const scrollToBottom = useCallback((smooth = true) => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTo({
@@ -319,12 +397,62 @@ export default function MutualChatPage() {
     }
   }, [])
 
+  // Fetch messages for the active thread
+  const fetchMessages = useCallback(async (isInitial = false) => {
+    try {
+      const res = await fetch(
+        `/api/chat?thread=${encodeURIComponent(activeThreadId)}&recipientId=${encodeURIComponent(activeRecipient.id)}&senderId=${encodeURIComponent(activeUserId)}`
+      )
+      const data = await res.json()
+      if (data.success && Array.isArray(data.messages)) {
+        if (!isInitial && data.messages.length > lastMessageCountRef.current) {
+          const latest = data.messages[data.messages.length - 1]
+          if (latest && latest.senderId !== activeUserId) {
+            playNotificationChime()
+          }
+        }
+        lastMessageCountRef.current = data.messages.length
+        setMessages(data.messages)
+        if (isInitial) {
+          setTimeout(() => scrollToBottom(false), 80)
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to sync chat messages:', err)
+    }
+  }, [activeThreadId, activeRecipient.id, activeUserId, playNotificationChime, scrollToBottom])
+
+  // Initial setup + polling interval + BroadcastChannel
   useEffect(() => {
-    scrollToBottom(true)
-  }, [spouseMessages, advisorMessages, isTyping, scrollToBottom])
+    fetchContacts()
+    fetchConversations()
+    fetchMessages(true)
+
+    // Polling interval every 2.0s for authentic real-time delivery
+    const pollInterval = setInterval(() => {
+      fetchMessages(false)
+      fetchConversations()
+    }, 2000)
+
+    // Cross-tab real-time sync
+    let bc: BroadcastChannel | null = null
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      bc = new BroadcastChannel('union_verify_chat')
+      broadcastChannelRef.current = bc
+      bc.onmessage = () => {
+        fetchMessages(false)
+        fetchConversations()
+      }
+    }
+
+    return () => {
+      clearInterval(pollInterval)
+      if (bc) bc.close()
+    }
+  }, [fetchContacts, fetchConversations, fetchMessages])
 
   // -------------------------------------------------------------------------
-  // Send Message (Spouse or Advisor)
+  // 4. Send Message (100% Authentic Human-to-Human, No Bots)
   // -------------------------------------------------------------------------
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -333,72 +461,62 @@ export default function MutualChatPage() {
     const messageText = inputText.trim()
     setInputText('')
 
-    if (activeChannel === 'spouse') {
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            threadId: 'spouse',
-            text: messageText,
-            senderId: activeUserId,
-            senderName: currentUserName,
-            type: 'text',
-          }),
-        })
-        const data = await res.json()
-        if (data.success && data.message) {
-          setSpouseMessages((prev) => [...prev, data.message])
-          lastMessageCountRef.current += 1
-          broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
-          setTimeout(() => scrollToBottom(true), 50)
-        }
-      } catch (err) {
-        console.error('Failed to send message:', err)
-      }
-    } else {
-      // Advisor Channel (Connected directly to Contact Desk)
-      const now = new Date()
-      const formattedTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(now)
+    const optimisticTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date())
 
-      const optimisticMsg: ChatMessage = {
-        id: `adv-user-${Date.now()}`,
-        senderName: currentUserName,
-        text: messageText,
-        timestamp: formattedTime,
-        read: false,
-        type: 'text',
-      }
-      setAdvisorMessages((prev) => [...prev, optimisticMsg])
+    const optimisticMsg: ChatMessage = {
+      id: `opt-${Date.now()}`,
+      threadId: activeThreadId,
+      senderId: activeUserId,
+      senderName: activeUserName,
+      recipientId: activeRecipient.id,
+      recipientName: activeRecipient.name,
+      text: messageText,
+      timestamp: optimisticTime,
+      read: false,
+      type: 'text',
+      reactions: {},
+    }
 
-      setIsTyping(true)
-      try {
-        const res = await fetch('/api/contact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: currentUserName,
-            email: session?.user?.email || 'jane.doe@unionverify.com',
-            message: messageText,
-            department: 'ADVISOR',
-          }),
-        })
-        const data = await res.json()
-        if (data.success && data.advisorMessage) {
-          setAdvisorMessages((prev) => [...prev, data.advisorMessage])
-          playNotificationChime()
-        }
-      } catch (err) {
-        console.error('Advisor chat error:', err)
-      } finally {
-        setIsTyping(false)
+    setMessages((prev) => [...prev, optimisticMsg])
+    lastMessageCountRef.current += 1
+    setTimeout(() => scrollToBottom(true), 40)
+
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadId: activeThreadId,
+          text: messageText,
+          senderId: activeUserId,
+          senderName: activeUserName,
+          recipientId: activeRecipient.id,
+          recipientName: activeRecipient.name,
+          type: 'text',
+        }),
+      })
+
+      const data = await res.json()
+      if (data.success && data.message) {
+        setMessages((prev) => prev.map((m) => (m.id === optimisticMsg.id ? data.message : m)))
+        broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
+        fetchConversations()
       }
+    } catch (err) {
+      console.error('Failed to send message:', err)
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Send Instant Spousal Deposit Nudge
-  // -------------------------------------------------------------------------
+  // Copy Direct Chat Invite Link for sharing
+  const handleCopyPartnerInvite = () => {
+    if (typeof window === 'undefined') return
+    const inviteUrl = `${window.location.origin}/chat?recipientId=${encodeURIComponent(activeUserId)}&name=${encodeURIComponent(activeUserName)}`
+    navigator.clipboard.writeText(inviteUrl)
+    setCopiedInvite(true)
+    setTimeout(() => setCopiedInvite(false), 3500)
+  }
+
+  // Instant Spousal Deposit Nudge
   const handleSendInstantNudge = async () => {
     setIsNudging(true)
     try {
@@ -408,28 +526,25 @@ export default function MutualChatPage() {
         body: JSON.stringify({
           action: 'send_now',
           amount: 500,
-          targetPartnerName: partnerName,
-          targetEmail: isMarcus ? 'jane.doe@unionverify.com' : 'marcus.vance@unionverify.com',
-          vaultName: `${currentUserName} & ${partnerName} Spousal Contribution`,
-          note: `Hey ${partnerName}, sending a deposit reminder to keep our joint compounding vault growing! ❤️`,
+          targetPartnerId: activeRecipient.id,
+          targetPartnerName: activeRecipient.name,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        setNudgeBanner(`✓ Deposit reminder dispatched to ${partnerName} via Email, Notification, and Couple Chat!`)
-        fetchSpouseMessages(false)
+        setNudgeBanner(`Deposit reminder dispatched directly to ${activeRecipient.name}!`)
+        fetchMessages(false)
+        broadcastChannelRef.current?.postMessage({ type: 'NUDGE_SENT' })
         setTimeout(() => setNudgeBanner(''), 4500)
       }
     } catch (err) {
-      console.error('Failed to send instant nudge:', err)
+      console.error('Failed to dispatch nudge:', err)
     } finally {
       setIsNudging(false)
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Interactive Partner Actions: Approve Proposal & Match
-  // -------------------------------------------------------------------------
+  // Approve Proposal
   const handleApproveProposal = async (msgId: string) => {
     setIsApprovingId(msgId)
     try {
@@ -439,14 +554,14 @@ export default function MutualChatPage() {
         body: JSON.stringify({
           messageId: msgId,
           action: 'approve_proposal',
-          approvedBy: currentUserName,
-          partnerName: currentUserName,
+          approvedBy: activeUserName,
+          partnerName: activeUserName,
         }),
       })
       const data = await res.json()
       if (data.success) {
         playNotificationChime()
-        fetchSpouseMessages(false)
+        fetchMessages(false)
         broadcastChannelRef.current?.postMessage({ type: 'PROPOSAL_APPROVED' })
       }
     } catch (err) {
@@ -456,9 +571,7 @@ export default function MutualChatPage() {
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Propose Shared Vault Deposit (Modal Submit)
-  // -------------------------------------------------------------------------
+  // Send Shared Vault Proposal
   const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault()
     const amountNum = parseFloat(proposalAmount) || 250
@@ -469,34 +582,34 @@ export default function MutualChatPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          threadId: 'spouse',
+          threadId: activeThreadId,
           senderId: activeUserId,
-          senderName: currentUserName,
+          senderName: activeUserName,
+          recipientId: activeRecipient.id,
+          recipientName: activeRecipient.name,
           type: 'proposal',
-          text: `Hey ${partnerName}, I propose adding $${amountNum.toFixed(2)} to our ${proposalGoal}. Will you approve our 50/50 contribution?`,
+          text: `Hey ${activeRecipient.name}, I propose adding $${amountNum.toFixed(2)} to our ${proposalGoal}. Will you approve our 50/50 contribution?`,
           proposalData: {
             goalName: proposalGoal,
             amount: amountNum,
             split: `50/50 Split ($${(amountNum / 2).toFixed(2)} each)`,
             status: 'pending',
-            proposedBy: currentUserName,
+            proposedBy: activeUserName,
           },
         }),
       })
       const data = await res.json()
       if (data.success && data.message) {
-        setSpouseMessages((prev) => [...prev, data.message])
-        lastMessageCountRef.current += 1
+        setMessages((prev) => [...prev, data.message])
         broadcastChannelRef.current?.postMessage({ type: 'NEW_PROPOSAL' })
+        setTimeout(() => scrollToBottom(true), 50)
       }
     } catch (err) {
       console.error('Failed to create proposal:', err)
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Send Matrimonial Love Note (Modal Submit)
-  // -------------------------------------------------------------------------
+  // Send Matrimonial Love Note
   const handleSendLoveNote = async (e: React.FormEvent) => {
     e.preventDefault()
     setShowLoveNoteModal(false)
@@ -506,9 +619,11 @@ export default function MutualChatPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          threadId: 'spouse',
+          threadId: activeThreadId,
           senderId: activeUserId,
-          senderName: currentUserName,
+          senderName: activeUserName,
+          recipientId: activeRecipient.id,
+          recipientName: activeRecipient.name,
           type: 'love_note',
           text: loveNoteText,
           loveNoteTitle: loveNotePreset,
@@ -516,18 +631,16 @@ export default function MutualChatPage() {
       })
       const data = await res.json()
       if (data.success && data.message) {
-        setSpouseMessages((prev) => [...prev, data.message])
-        lastMessageCountRef.current += 1
+        setMessages((prev) => [...prev, data.message])
         broadcastChannelRef.current?.postMessage({ type: 'NEW_LOVE_NOTE' })
+        setTimeout(() => scrollToBottom(true), 50)
       }
     } catch (err) {
       console.error('Failed to send love note:', err)
     }
   }
 
-  // -------------------------------------------------------------------------
-  // Emoji Reaction
-  // -------------------------------------------------------------------------
+  // Toggle Emoji Reaction
   const handleToggleReaction = async (msgId: string, emoji: string) => {
     try {
       const res = await fetch('/api/chat', {
@@ -541,7 +654,7 @@ export default function MutualChatPage() {
       })
       const data = await res.json()
       if (data.success) {
-        fetchSpouseMessages(false)
+        fetchMessages(false)
         broadcastChannelRef.current?.postMessage({ type: 'REACTION' })
       }
     } catch (err) {
@@ -549,11 +662,25 @@ export default function MutualChatPage() {
     }
   }
 
-  const currentMessages = activeChannel === 'spouse' ? spouseMessages : advisorMessages
+  // Filter contacts by search query
+  const filteredContacts = availableContacts.filter((c) => {
+    if (c.id === activeUserId) return false // don't list yourself
+    if (!searchQuery.trim()) return true
+    const q = searchQuery.toLowerCase()
+    return (
+      c.name.toLowerCase().includes(q) ||
+      c.username?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q)
+    )
+  })
+
+  const isChattingWithSpouse =
+    (activeUserId === 'usr_jane_doe' && activeRecipient.id === 'usr_marcus_vance') ||
+    (activeUserId === 'usr_marcus_vance' && activeRecipient.id === 'usr_jane_doe')
 
   return (
     <div className="h-full flex-1 flex flex-col min-w-0 w-full overflow-hidden">
-      {/* ── DESKTOP PARTNER IDENTITY & NOTIFICATION HEADER (Hidden on mobile) ── */}
+      {/* ── TOP BAR: IDENTITY PERSPECTIVE & SHORTCUTS ── */}
       <div className="hidden sm:flex flex-shrink-0 flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 mb-2 border-b border-gray-200">
         <div className="flex items-center gap-2 flex-wrap">
           <Link
@@ -566,51 +693,49 @@ export default function MutualChatPage() {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h1 className="text-base sm:text-lg font-black text-[#0F1C3F] tracking-tight">
-              Matrimonial Real-Time Chat
+              Real-Time Direct Messenger
             </h1>
           </div>
           <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
-            Live Synchronized
+            Live Peer-to-Peer
           </span>
         </div>
 
-        {/* ── INTERACTIVE PARTNER SWITCHER PILL ── */}
+        {/* Sender Switcher & Invite Link */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs shadow-2xs">
             <UserCheck className="w-3.5 h-3.5 text-[#C9A84C]" />
             <span className="text-gray-500 text-[11px]">Chatting as:</span>
-            <strong className="text-[#0F1C3F] font-bold">{currentUserName}</strong>
+            <strong className="text-[#0F1C3F] font-bold">{activeUserName}</strong>
             <button
               type="button"
               onClick={handleSwitchPartner}
               className="ml-1 text-[11px] font-bold text-[#C9A84C] hover:text-[#b3933e] underline cursor-pointer flex items-center gap-0.5"
-              title={`Switch perspective to test as ${partnerName}`}
+              title={`Switch perspective to test as ${isMarcus ? 'Jane Doe' : 'Marcus Vance'}`}
             >
-              ⇄ Switch to {partnerName}
+              ⇄ Switch to {isMarcus ? 'Jane Doe' : 'Marcus Vance'}
             </button>
           </div>
 
-          {/* Copy Partner Invite Link Button */}
           <button
             type="button"
             onClick={handleCopyPartnerInvite}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C9A84C]/15 hover:bg-[#C9A84C]/25 text-[#0F1C3F] border border-[#C9A84C]/40 transition-all cursor-pointer shadow-2xs"
-            title={`Copy chat invite link for ${partnerName} to test live on another phone or browser`}
+            title="Copy your personal direct chat link to share with anyone"
           >
             {copiedInvite ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700 font-bold">Partner Link Copied!</span>
+                <span className="text-emerald-700 font-bold">Chat Link Copied!</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-[#C9A84C]" />
-                <span>Invite {partnerName}</span>
+                <span>Share My Chat Link</span>
               </>
             )}
           </button>
 
-          {/* Sound Toggle */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all border ${
@@ -628,157 +753,116 @@ export default function MutualChatPage() {
 
       {/* ── MAIN CHAT CANVAS ── */}
       <div className="flex-1 min-h-0 bg-white rounded-none sm:rounded-2xl border-0 sm:border border-gray-200 shadow-none sm:shadow-lg overflow-hidden flex flex-col lg:flex-row relative">
-        {/* ── LEFT SIDEBAR: THREADS & CHANNELS ── */}
+        {/* ── LEFT SIDEBAR: CONVERSATIONS & DIRECTORY ── */}
         <div
           className={`w-full lg:w-80 xl:w-96 flex-shrink-0 border-r border-gray-100 bg-[#FCFBF7]/60 flex-col h-full ${
-            mobileTab === 'channels' ? 'flex' : 'hidden lg:flex'
+            mobileTab === 'contacts' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          <div className="p-4 border-b border-gray-100 flex-shrink-0">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-3">
-              Encrypted Matrimonial Channels
-            </span>
-
-            <div className="space-y-2">
-              {/* Channel 1: Married Partner */}
-              <div
-                onClick={() => {
-                  setActiveChannel('spouse')
-                  setMobileTab('chat')
-                }}
-                className={`p-3.5 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
-                  activeChannel === 'spouse'
-                    ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
+          {/* Sidebar Top: Search & New Message */}
+          <div className="p-3.5 border-b border-gray-100 flex-shrink-0 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
+                Direct Conversations
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowNewChatModal(true)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white text-[11px] font-bold transition-all shadow-xs"
               >
-                <div className="relative">
-                  <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#ebd59b] text-[#0F1C3F] font-bold flex items-center justify-center text-sm shadow-sm">
-                    {partnerInitials}
-                  </div>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full ring-2 ring-emerald-400/30" />
-                </div>
+                <Plus size={13} />
+                <span>New Chat</span>
+              </button>
+            </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className={`text-sm font-bold truncate ${activeChannel === 'spouse' ? 'text-white' : 'text-[#0F1C3F]'}`}>
-                      {partnerName} (Spouse)
-                    </span>
-                    <span className={`text-[10px] font-mono ${activeChannel === 'spouse' ? 'text-[#C9A84C]' : 'text-emerald-600 font-bold'}`}>
-                      Online
-                    </span>
-                  </div>
-                  <p className={`text-xs truncate mt-0.5 ${activeChannel === 'spouse' ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {spouseMessages[spouseMessages.length - 1]?.text || 'Start chatting with your partner...'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Channel 2: Support & Concierge */}
-              <div
-                onClick={() => {
-                  setActiveChannel('advisor')
-                  setMobileTab('chat')
-                }}
-                className={`p-3.5 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
-                  activeChannel === 'advisor'
-                    ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
-                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="relative">
-                  <div className="w-11 h-11 rounded-full bg-[#1b2b52] text-[#C9A84C] font-bold flex items-center justify-center text-sm shadow-sm border border-[#C9A84C]/40">
-                    <Shield className="w-5 h-5 text-[#C9A84C]" />
-                  </div>
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className={`text-sm font-bold truncate ${activeChannel === 'advisor' ? 'text-white' : 'text-[#0F1C3F]'}`}>
-                      Support & Concierge
-                    </span>
-                    <span className={`text-[10px] font-mono ${activeChannel === 'advisor' ? 'text-[#C9A84C]' : 'text-gray-400'}`}>
-                      24/7 Desk
-                    </span>
-                  </div>
-                  <p className={`text-xs truncate mt-0.5 ${activeChannel === 'advisor' ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {advisorMessages[advisorMessages.length - 1]?.text || 'Union Verify Support'}
-                  </p>
-                </div>
-              </div>
+            {/* Search Box */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search members or contacts..."
+                className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-white placeholder-gray-400 focus:outline-none focus:border-[#C9A84C]"
+              />
             </div>
           </div>
 
-          {/* Connected Spousal Contact Card */}
-          <div className="p-4 flex-1 flex flex-col justify-end space-y-3">
-            <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-sm text-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[#0F1C3F] flex items-center gap-1.5">
-                  <UserCheck className="w-4 h-4 text-[#C9A84C]" />
-                  Verified Spouse Contact
-                </span>
-                <span className="text-[10px] font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
-                  Online
-                </span>
+          {/* Conversations & Contacts List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            {filteredContacts.length === 0 ? (
+              <div className="p-6 text-center text-xs text-gray-400">
+                No members found matching &quot;{searchQuery}&quot;
               </div>
-              <div className="space-y-1.5 text-[11px] text-gray-600">
-                <div className="font-bold text-gray-900">{partnerName}</div>
-                <div className="flex items-center gap-1.5 text-gray-500">
-                  <Mail className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
-                  <span className="truncate">Active Spousal Signatory</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-gray-500">
-                  <Phone className="w-3 h-3 text-[#C9A84C] flex-shrink-0" />
-                  <span>Verified Mutual Ledger</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleSendInstantNudge}
-                disabled={isNudging}
-                className="w-full py-2 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[11px] transition-colors border border-amber-200 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Bell className="w-3.5 h-3.5 text-amber-600" />
-                <span>{isNudging ? 'Dispatching Nudge...' : 'Send Deposit Nudge'}</span>
-              </button>
-              <Link
-                href={isMarcus ? '/u/marcus-vance' : '/u/jane-doe'}
-                target="_blank"
-                className="w-full py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5 text-blue-600" />
-                <span>My Public Bio & Chat Link</span>
-              </Link>
-              <button
-                type="button"
-                onClick={handleCopyPartnerInvite}
-                className="w-full py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-[11px] transition-colors border border-purple-200 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Share2 className="w-3.5 h-3.5 text-purple-600" />
-                <span>{copiedInvite ? '✓ Partner Link Copied!' : `Invite ${partnerName} to Chat`}</span>
-              </button>
-            </div>
+            ) : (
+              filteredContacts.map((contact) => {
+                const isSelected = activeRecipient.id === contact.id
+                const isSpouse = (activeUserId === 'usr_jane_doe' && contact.id === 'usr_marcus_vance') ||
+                                 (activeUserId === 'usr_marcus_vance' && contact.id === 'usr_jane_doe')
 
-            {/* Matrimonial Covenant Snapshot Card */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F]/5 to-[#C9A84C]/10 border border-[#C9A84C]/30 text-xs text-gray-700 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-bold text-[#0F1C3F] flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-[#C9A84C]" />
-                  Covenant Status
-                </span>
-                <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-bold">
-                  Active
-                </span>
-              </div>
-              <p className="text-[11px] text-gray-600 leading-relaxed">
-                Both spouses hold 50/50 mutual beneficial rights with instant notification triggers for all deposits and chats.
-              </p>
-              <div className="pt-1 flex items-center justify-between text-[11px] font-mono">
-                <span className="text-gray-500">Registry Seal:</span>
-                <strong className="text-[#0F1C3F]">CH-MIC-2026-98420</strong>
-              </div>
-            </div>
+                return (
+                  <div
+                    key={contact.id}
+                    onClick={() => handleSelectContact(contact)}
+                    className={`p-3 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
+                      isSelected
+                        ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="relative flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-xs ${
+                        isSelected
+                          ? 'bg-[#C9A84C] text-[#0F1C3F]'
+                          : isSpouse
+                          ? 'bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F]'
+                          : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}>
+                        {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
+                          {contact.name}
+                        </span>
+                        {isSpouse && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            isSelected ? 'bg-[#C9A84C] text-[#0F1C3F]' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                          }`}>
+                            Spouse
+                          </span>
+                        )}
+                        {contact.id === 'usr_admin' && (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                            isSelected ? 'bg-blue-400 text-[#0F1C3F]' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}>
+                            Support
+                          </span>
+                        )}
+                      </div>
+                      <p className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
+                        {contact.bio || contact.email || 'Click to open conversation'}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+
+          {/* Connected Quick Profile Bar */}
+          <div className="p-3 border-t border-gray-100 bg-white/60 flex-shrink-0 space-y-2">
+            <Link
+              href={activeRecipient.username ? `/u/${activeRecipient.username}` : (activeRecipient.id === 'usr_marcus_vance' ? '/u/marcus-vance' : '/u/jane-doe')}
+              target="_blank"
+              className="w-full py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5"
+            >
+              <ExternalLink size={13} className="text-blue-600" />
+              <span>View {activeRecipient.name}&apos;s Public Profile</span>
+            </Link>
           </div>
         </div>
 
@@ -788,31 +872,34 @@ export default function MutualChatPage() {
             mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
           }`}
         >
-          {/* Thread Header — Sticky to the top */}
+          {/* Thread Header */}
           <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20 flex-shrink-0 shadow-xs">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
-                onClick={() => setMobileTab('channels')}
+                onClick={() => setMobileTab('contacts')}
                 className="lg:hidden p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 flex items-center gap-1 text-xs font-bold transition-colors"
-                title="Back to Channels"
+                title="Back to Conversations"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span className="text-[11px] hidden xs:inline">Channels</span>
+                <span className="text-[11px]">Chats</span>
               </button>
 
-              <div className="relative">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-sm flex-shrink-0">
-                  {activeChannel === 'spouse' ? partnerInitials : <Shield className="w-5 h-5 text-[#C9A84C]" />}
+              <div className="relative flex-shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-xs">
+                  {activeRecipient.avatar || (activeRecipient.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full ring-2 ring-emerald-400/30" />
+                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
+
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
-                    {activeChannel === 'spouse' ? `${partnerName}` : advisorName}
+                    {activeRecipient.name}
                   </h3>
-                  <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Spouse)</span>
+                  {isChattingWithSpouse && (
+                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Spouse)</span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
                   <span className="text-emerald-600 font-semibold flex items-center gap-1">
@@ -820,35 +907,33 @@ export default function MutualChatPage() {
                     Online
                   </span>
                   <span>·</span>
-                  <button
-                    type="button"
-                    onClick={handleSwitchPartner}
-                    className="text-[#C9A84C] font-semibold hover:underline"
-                    title={`Switch perspective to test as ${partnerName}`}
+                  <Link
+                    href={activeRecipient.username ? `/u/${activeRecipient.username}` : (activeRecipient.id === 'usr_marcus_vance' ? '/u/marcus-vance' : '/u/jane-doe')}
+                    target="_blank"
+                    className="text-[#C9A84C] hover:underline"
                   >
-                    Switch to {partnerName}
-                  </button>
+                    Profile
+                  </Link>
                   <span>·</span>
                   <button
                     type="button"
                     onClick={handleCopyPartnerInvite}
-                    className="text-purple-600 font-semibold hover:underline flex items-center gap-0.5"
-                    title={`Copy direct invite link for ${partnerName} to chat live`}
+                    className="text-purple-600 font-semibold hover:underline"
                   >
-                    {copiedInvite ? '✓ Copied' : `Invite ${partnerName}`}
+                    {copiedInvite ? '✓ Link Copied' : 'Invite'}
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* Quick action triggers */}
-            {activeChannel === 'spouse' && (
+            {/* Spousal Action Triggers */}
+            {isChattingWithSpouse && (
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={handleSendInstantNudge}
                   disabled={isNudging}
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
-                  title="Send instant deposit reminder to spouse via Email, Notification, and Chat"
+                  title="Send instant deposit reminder"
                 >
                   <Bell className="w-3.5 h-3.5 text-amber-600" />
                   <span className="hidden xs:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
@@ -874,141 +959,67 @@ export default function MutualChatPage() {
             )}
           </div>
 
-          {/* Messages Stream with container ref for smooth non-jumping scrolling */}
+          {/* Messages Stream */}
           <div
             ref={messagesContainerRef}
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-3 sm:space-y-4 bg-gray-50/50"
           >
-            {/* Spousal Covenant & Vault Overview Banner */}
-            <div className="mx-auto max-w-md p-3 rounded-2xl bg-white border border-[#C9A84C]/30 shadow-2xs space-y-1 text-center my-1">
-              <div className="flex items-center justify-center gap-1.5">
-                <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" />
-                <span className="text-xs font-bold text-[#0F1C3F]">Marcus Vance & Jane Doe</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">Active</span>
-              </div>
-              <p className="text-[11px] text-gray-500">
-                Joint Vault: <strong className="text-emerald-700 font-bold">$24,750.00</strong> compounding at <strong>6.8% APY</strong> · 50/50 Mutual Rights
-              </p>
-            </div>
-
-            {/* Partner Invite Copied Alert Banner */}
-            {copiedInvite && (
-              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center justify-between gap-2 shadow-sm animate-in fade-in-50 slide-in-from-top-2 duration-200">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>
-                    Partner invite link copied to clipboard! Send this link to {partnerName} (or open in another browser) to test live two-person chat.
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setCopiedInvite(false)}
-                  className="text-emerald-700 hover:text-emerald-950 p-1 rounded-lg hover:bg-emerald-100/60"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-
-            {/* Instant Nudge Feedback Banner */}
+            {/* Feedback Banners */}
             {nudgeBanner && (
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 animate-in fade-in-50 slide-in-from-top-2 duration-200 shadow-sm">
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 shadow-xs">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                 <span>{nudgeBanner}</span>
               </div>
             )}
 
-            {/* Notification-Linked Reciprocal Match Callout */}
-            {matchedDepositAlert && (
-              <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-600 via-rose-700 to-amber-600 text-white shadow-lg space-y-2 animate-in fade-in-50 slide-in-from-top-2 duration-200 border-2 border-rose-300">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-rose-200 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-amber-300 animate-spin" />
-                    Spousal Covenant Action Center · Rule 4.2
+            {copiedInvite && (
+              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center justify-between gap-2 shadow-xs">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>
+                    Your direct chat link has been copied! Send it to anyone to chat in real-time.
                   </span>
-                  <button
-                    onClick={() => setMatchedDepositAlert(null)}
-                    className="p-1 rounded-lg hover:bg-white/20 text-white/80 hover:text-white"
-                  >
-                    <X size={14} />
-                  </button>
                 </div>
-                <div className="text-xs space-y-1">
-                  <p className="font-bold text-white text-sm">
-                    ⚡ Partner Reciprocal Match Requested: ${matchedDepositAlert.amount.toLocaleString()}
-                  </p>
-                  <p className="text-rose-100 text-[11px]">
-                    Your spouse made a deposit to your Joint Marriage Savings Vault. Under your covenant, matching this deposit preserves 50/50 beneficial parity.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 pt-1">
-                  <Link
-                    href={`/save?match=${matchedDepositAlert.amount}`}
-                    className="flex-1 py-2 px-3 rounded-xl bg-white text-rose-900 font-black text-xs hover:bg-rose-50 transition-colors shadow-sm flex items-center justify-center gap-1.5"
-                  >
-                    <span>Match Deposit in Vault (${matchedDepositAlert.amount.toLocaleString()}) ↗</span>
-                  </Link>
-                  <button
-                    onClick={() => {
-                      setInputText(`I saw your $${matchedDepositAlert.amount.toLocaleString()} deposit! Reviewing and matching right now ❤️🥂`)
-                      setMatchedDepositAlert(null)
-                    }}
-                    className="px-3 py-2 rounded-xl bg-rose-900/50 hover:bg-rose-900/70 border border-white/20 text-white font-bold text-xs transition-colors"
-                  >
-                    Quick Reply
-                  </button>
-                </div>
+                <button onClick={() => setCopiedInvite(false)} className="text-emerald-700 hover:text-emerald-950">
+                  <X size={14} />
+                </button>
               </div>
             )}
 
-            {/* Encryption Notice */}
-            <div className="text-center my-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-white border border-gray-200 text-[10px] text-gray-500 shadow-2xs">
-                <Shield className="w-3 h-3 text-[#C9A84C]" />
-                End-to-End Encrypted Matrimonial Line · Direct Two-Way Communication
-              </span>
+            {/* Conversation Header Card */}
+            <div className="mx-auto max-w-md p-3.5 rounded-2xl bg-white border border-gray-200 shadow-2xs space-y-1 text-center my-1">
+              <div className="flex items-center justify-center gap-1.5">
+                <div className="w-5 h-5 rounded-full bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] flex items-center justify-center">
+                  {activeRecipient.avatar || 'UV'}
+                </div>
+                <span className="text-xs font-bold text-[#0F1C3F]">Direct Line with {activeRecipient.name}</span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
+                  Live
+                </span>
+              </div>
+              <p className="text-[11px] text-gray-500">
+                End-to-end encrypted direct communication. No bots or automated AI responses.
+              </p>
             </div>
 
-            {currentMessages.length === 0 && (
-              <div className="py-6 sm:py-10 text-center space-y-4">
+            {/* Empty State */}
+            {messages.length === 0 && (
+              <div className="py-10 text-center space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/10 flex items-center justify-center mx-auto text-[#C9A84C]">
-                  {activeChannel === 'spouse' ? <Heart className="w-6 h-6 text-rose-500 fill-rose-500/20" /> : <Shield className="w-6 h-6 text-[#C9A84C]" />}
+                  <MessageSquare className="w-6 h-6 text-[#C9A84C]" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-[#0F1C3F]">
-                    {activeChannel === 'spouse' ? `Chat with ${partnerName}` : 'Union Verify Support Desk'}
-                  </h4>
+                  <h4 className="text-sm font-bold text-[#0F1C3F]">Start conversation with {activeRecipient.name}</h4>
                   <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">
-                    Tap a starter below or type a message to start conversation:
+                    Send a message below. Your recipient will receive an instant notification.
                   </p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md mx-auto text-left">
-                  {[
-                    { label: '💰 Propose Matching Deposit', text: 'Hey love! How much should we add to our vault this week?' },
-                    { label: '📈 Check Our 6.8% APY Vault', text: 'Just checked our savings vault — our balance is compounding fast! 🚀' },
-                    { label: '🏡 Dream Home Milestone', text: 'Proposed adding $250 to our Family Dream Home goal! 🏡' },
-                    { label: '❤️ Send Matrimonial Love Note', text: 'So happy building our wealth and life together! ❤️' },
-                  ].map((starter, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setInputText(starter.text)}
-                      className="p-3 rounded-xl bg-white border border-gray-200 hover:border-[#C9A84C] text-xs text-gray-700 hover:text-[#0F1C3F] transition-all text-left shadow-2xs"
-                    >
-                      <strong className="block text-[11px] text-[#0F1C3F]">{starter.label}</strong>
-                      <span className="text-[10px] text-gray-500 line-clamp-1">{starter.text}</span>
-                    </button>
-                  ))}
                 </div>
               </div>
             )}
 
-            {currentMessages.map((msg) => {
-              // Determine if message belongs to current user
-              const isMe = msg.senderId
-                ? msg.senderId === activeUserId
-                : (msg.senderName === currentUserName || msg.sender === 'user')
-
-              const isPartnerProposal = msg.type === 'proposal' && !isMe
+            {/* Messages Rendering */}
+            {messages.map((msg) => {
+              const isMe = msg.senderId ? msg.senderId === activeUserId : (msg.senderName === activeUserName)
 
               return (
                 <div
@@ -1017,17 +1028,16 @@ export default function MutualChatPage() {
                 >
                   <div className="flex items-baseline gap-2 mb-1 px-1">
                     <span className="text-[11px] font-bold text-gray-500">
-                      {isMe ? `${currentUserName} (You)` : msg.senderName}
+                      {isMe ? `${activeUserName} (You)` : msg.senderName}
                     </span>
                     <span className="text-[10px] text-gray-400 font-mono">{msg.timestamp}</span>
                   </div>
 
-                  {/* Message Bubble Rendering */}
                   <div className="max-w-[88%] sm:max-w-[75%] relative">
                     {/* STANDARD TEXT */}
                     {(!msg.type || msg.type === 'text') && (
                       <div
-                        className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-sm ${
+                        className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-xs ${
                           isMe
                             ? 'bg-[#0F1C3F] text-white rounded-tr-none'
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
@@ -1037,9 +1047,9 @@ export default function MutualChatPage() {
                       </div>
                     )}
 
-                    {/* INTERACTIVE PROPOSAL CARD */}
+                    {/* PROPOSAL CARD */}
                     {msg.type === 'proposal' && msg.proposalData && (
-                      <div className="p-4 rounded-2xl bg-white border-2 border-[#C9A84C] shadow-lg text-xs space-y-3 min-w-[270px] sm:min-w-[340px]">
+                      <div className="p-4 rounded-2xl bg-white border-2 border-[#C9A84C] shadow-md text-xs space-y-3 min-w-[270px] sm:min-w-[340px]">
                         <div className="flex items-center justify-between border-b border-gray-100 pb-2">
                           <span className="text-[11px] font-bold uppercase tracking-wider text-[#C9A84C] flex items-center gap-1.5">
                             <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
@@ -1049,446 +1059,284 @@ export default function MutualChatPage() {
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               msg.proposalData.status === 'approved'
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800 animate-pulse'
+                                : 'bg-amber-100 text-amber-800'
                             }`}
                           >
-                            {msg.proposalData.status === 'approved' ? '✓ Approved & Funded' : 'Awaiting Consent'}
+                            {msg.proposalData.status === 'approved' ? '✓ Approved' : 'Awaiting Approval'}
                           </span>
                         </div>
 
                         <div>
-                          <span className="text-gray-500 block text-[11px]">Vault Destination</span>
+                          <span className="text-gray-500 block text-[11px]">Vault Goal</span>
                           <strong className="text-[#0F1C3F] text-sm block">{msg.proposalData.goalName}</strong>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 bg-gray-50 p-2.5 rounded-xl">
                           <div>
-                            <span className="text-gray-400 block text-[10px]">Total Contribution</span>
+                            <span className="text-gray-400 block text-[10px]">Total Amount</span>
                             <span className="text-base font-bold text-[#0F1C3F]">
                               ${Number(msg.proposalData.amount).toFixed(2)}
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-400 block text-[10px]">Split Ratio</span>
+                            <span className="text-gray-400 block text-[10px]">Split</span>
                             <span className="text-xs font-semibold text-emerald-700">
                               {msg.proposalData.split}
                             </span>
                           </div>
                         </div>
 
-                        {/* Proposal Actions */}
                         {msg.proposalData.status === 'pending' ? (
-                          isPartnerProposal ? (
+                          !isMe ? (
                             <button
                               onClick={() => handleApproveProposal(msg.id)}
                               disabled={isApprovingId === msg.id}
-                              className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                             >
                               {isApprovingId === msg.id ? (
                                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                               ) : (
                                 <Check className="w-4 h-4" />
                               )}
-                              <span>Approve & Match Deposit (${(Number(msg.proposalData.amount) / 2).toFixed(2)})</span>
+                              <span>Approve & Match Deposit</span>
                             </button>
                           ) : (
                             <div className="p-2 rounded-lg bg-amber-50 text-amber-800 text-[11px] text-center font-medium border border-amber-200">
-                              ⏳ Waiting for {partnerName} to approve & match deposit
+                              ⏳ Waiting for {activeRecipient.name} to approve
                             </div>
                           )
                         ) : (
                           <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] text-center font-semibold flex items-center justify-center gap-1.5 border border-emerald-200">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            Approved by Both Partners · Vault Updated
+                            <span>Approved by {msg.proposalData.approvedBy || 'Partner'}</span>
                           </div>
                         )}
                       </div>
                     )}
 
-                    {/* SPOUSAL VAULT DEPOSIT ALERT CARD */}
-                    {msg.type === 'deposit_alert' && (
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F] via-[#162752] to-[#0F1C3F] text-white border-2 border-[#C9A84C] shadow-xl text-xs space-y-3 min-w-[280px] sm:min-w-[340px]">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-[#C9A84C] flex items-center gap-1.5">
-                            <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
-                            Spousal Vault Deposit Alert
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                            {msg.proposalData?.status === 'approved' ? '✓ Parity Maintained' : 'Rule 4.2 Active'}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {msg.text}
-                        </p>
-
-                        <div className="p-3 rounded-xl bg-white/10 border border-white/15 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Deposit Amount</span>
-                            <span className="text-lg font-black text-[#C9A84C]">
-                              ${Number(msg.depositData?.amount || msg.proposalData?.amount || 500).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Compounding Growth</span>
-                            <span className="text-xs font-bold text-emerald-400">6.8% APY Compounding</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 pt-1">
-                          {msg.proposalData?.status === 'pending' && !isMe ? (
-                            <Link
-                              href={`/save?match=${msg.depositData?.amount || msg.proposalData?.amount || 500}`}
-                              className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-[#C9A84C] to-[#d4b460] hover:brightness-105 text-[#0F1C3F] font-black text-xs transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                            >
-                              <Sparkles className="w-3.5 h-3.5" />
-                              <span>Match Deposit (${Number(msg.depositData?.amount || msg.proposalData?.amount || 500).toLocaleString()}) ↗</span>
-                            </Link>
-                          ) : (
-                            <Link
-                              href="/save"
-                              className="flex-1 py-2.5 rounded-xl bg-white/15 hover:bg-white/20 text-white font-bold text-xs transition-all border border-white/20 flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                            >
-                              <span>View Compounding Vault ↗</span>
-                            </Link>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* OFFICIAL SYSTEM DEPOSIT REMINDER CARD */}
-                    {(msg.type === 'system_reminder' || msg.type === 'reminder') && (
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0F1C3F] via-[#162752] to-[#0F1C3F] text-white border-2 border-[#C9A84C] shadow-xl text-xs space-y-3 min-w-[280px] sm:min-w-[340px]">
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                          <span className="text-[11px] font-black uppercase tracking-wider text-[#C9A84C] flex items-center gap-1.5">
-                            <Bell className="w-4 h-4 text-[#C9A84C] animate-bounce" />
-                            Official System Deposit Reminder
-                          </span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A84C]/20 text-[#C9A84C] border border-[#C9A84C]/30">
-                            Covenant Priority
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-slate-200 leading-relaxed font-medium">
-                          {msg.text}
-                        </p>
-
-                        <div className="p-3 rounded-xl bg-white/10 border border-white/15 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Target Deposit</span>
-                            <span className="text-base font-black text-[#C9A84C]">
-                              ${Number(msg.proposalData?.amount || 500).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="text-right">
-                            <span className="text-[10px] text-slate-400 uppercase tracking-wider block">Compounding</span>
-                            <span className="text-xs font-bold text-emerald-400">6.8% APY Active</span>
-                          </div>
-                        </div>
-
-                        <div className="pt-1">
-                          <Link
-                            href={`/save?amount=${msg.proposalData?.amount || 500}&target=joint`}
-                            className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
-                          >
-                            <Sparkles className="w-4 h-4" />
-                            <span>Go to Vault & Deposit ${Number(msg.proposalData?.amount || 500).toLocaleString()} ↗</span>
-                          </Link>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* MATRIMONIAL LOVE NOTE */}
+                    {/* LOVE NOTE CARD */}
                     {msg.type === 'love_note' && (
-                      <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50 to-amber-50 border border-rose-200 shadow-md text-xs space-y-2 min-w-[250px]">
-                        <div className="flex items-center gap-1.5 text-rose-700 font-bold text-xs uppercase tracking-wider">
-                          <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                      <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50 via-pink-50 to-white border-2 border-rose-200 shadow-xs text-xs space-y-2 min-w-[240px]">
+                        <div className="flex items-center gap-1.5 text-rose-600 font-bold text-xs border-b border-rose-100 pb-1.5">
+                          <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
                           <span>{msg.loveNoteTitle || 'Matrimonial Love Note'}</span>
                         </div>
-                        <p className="text-sm font-serif italic text-gray-800 leading-relaxed">
-                          &ldquo;{msg.text}&rdquo;
-                        </p>
+                        <p className="text-gray-800 text-xs italic leading-relaxed">&ldquo;{msg.text}&rdquo;</p>
                       </div>
                     )}
 
-                    {/* CERTIFICATE SEAL NOTICE */}
-                    {msg.type === 'certificate' && (
-                      <div className="p-4 rounded-2xl bg-white border border-[#C9A84C]/40 shadow-md text-xs space-y-2 min-w-[250px]">
-                        <div className="flex items-center gap-2 text-[#C9A84C] font-bold">
-                          <Award className="w-4 h-4" />
-                          <span>Official Matrimonial Seal</span>
-                        </div>
-                        <p className="text-xs text-gray-700 leading-relaxed">{msg.text}</p>
-                        <Link
-                          href="/certificate"
-                          className="inline-flex items-center gap-1 text-[11px] text-[#0F1C3F] font-bold hover:underline"
-                        >
-                          View Official Certificate ↗
-                        </Link>
-                      </div>
-                    )}
-
-                    {/* VOICE MEMO SIMULATOR */}
-                    {msg.type === 'voice_memo' && (
-                      <div className="p-3.5 rounded-2xl bg-white border border-gray-200 shadow-sm flex items-center gap-3 min-w-[220px]">
-                        <button
-                          onClick={() => setPlayingVoiceId(playingVoiceId === msg.id ? null : msg.id)}
-                          className="w-9 h-9 rounded-full bg-[#0F1C3F] text-[#C9A84C] flex items-center justify-center flex-shrink-0 shadow-sm cursor-pointer"
-                        >
-                          {playingVoiceId === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-                        </button>
-                        <div className="flex-1">
-                          <span className="text-xs font-semibold text-gray-800 block truncate">{msg.text}</span>
-                          <span className="text-[10px] text-gray-400 font-mono">{msg.voiceDuration || '0:34'}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Reactions Display */}
-                    {msg.reactions && Object.keys(msg.reactions).length > 0 && (
-                      <div className="flex gap-1 mt-1.5 flex-wrap">
-                        {Object.entries(msg.reactions).map(([emoji, count]) => (
+                    {/* Reactions Bar */}
+                    <div className="flex items-center gap-1 mt-1 justify-end">
+                      {msg.reactions &&
+                        Object.entries(msg.reactions).map(([emoji, count]) => (
                           <button
                             key={emoji}
                             onClick={() => handleToggleReaction(msg.id, emoji)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-gray-200 text-xs shadow-2xs hover:bg-gray-50 transition-colors"
+                            className="px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold flex items-center gap-1 hover:border-[#C9A84C] transition-colors shadow-2xs"
                           >
                             <span>{emoji}</span>
-                            <span className="text-[10px] font-bold text-gray-600">{count}</span>
+                            <span className="text-gray-500 font-mono text-[10px]">{count}</span>
+                          </button>
+                        ))}
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 ml-1">
+                        {['❤️', '👍', '🔥'].map((emoji) => (
+                          <button
+                            key={emoji}
+                            onClick={() => handleToggleReaction(msg.id, emoji)}
+                            className="p-1 rounded-full hover:bg-gray-200 text-xs transition-colors"
+                          >
+                            {emoji}
                           </button>
                         ))}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
               )
             })}
-
-            {isTyping && (
-              <div className="flex items-center gap-2 text-xs text-gray-400 italic py-1">
-                <span className="w-2 h-2 rounded-full bg-gray-400 animate-ping" />
-                <span>{activeChannel === 'spouse' ? `${partnerName} is typing…` : 'Advisor is typing…'}</span>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Reply Chips */}
-          <div className="px-3 sm:px-4 py-1.5 sm:py-2 border-t border-gray-100 bg-white flex items-center gap-1.5 sm:gap-2 overflow-x-auto text-xs no-scrollbar flex-shrink-0">
-            <span className="text-[10px] uppercase font-bold text-gray-400 flex-shrink-0">
-              Quick:
-            </span>
-            {(activeChannel === 'spouse'
-              ? [
-                  'Approved, let’s deposit! 💰',
-                  'Love this goal ❤️',
-                  'Checking our savings vault now 📊',
-                  'I’ll match 50% tonight 💍',
-                  'Let’s consult UV support 🏛️',
-                ]
-              : [
-                  'How does reciprocal matching work? 💰',
-                  'What is needed to marry online? 💍',
-                  'How do we unlock our gold certificate? 📜',
-                  'Explain 6.8% compounding APY 📈',
-                  'How do I find a member profile? 👤',
-                ]
-            ).map((chip, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setInputText(chip)}
-                className="flex-shrink-0 px-2.5 py-1 rounded-full bg-slate-100 hover:bg-[#C9A84C]/20 hover:text-[#0F1C3F] text-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-
-          {/* Message Input Bar */}
-          <form
-            onSubmit={handleSendMessage}
-            className="p-2 sm:p-3.5 border-t border-gray-200 bg-white flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0"
-          >
-            {activeChannel === 'spouse' && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setShowLoveNoteModal(true)}
-                  className="p-2 rounded-xl text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer flex-shrink-0"
-                  title="Send Matrimonial Love Note"
-                >
-                  <Heart className="w-5 h-5 fill-rose-500/20" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowProposalModal(true)}
-                  className="p-2 rounded-xl text-[#C9A84C] hover:bg-[#C9A84C]/10 transition-colors cursor-pointer flex-shrink-0"
-                  title="Propose Joint Deposit"
-                >
-                  <PiggyBank className="w-5 h-5" />
-                </button>
-              </>
-            )}
-
-            <div className="flex-1 relative min-w-0">
+          {/* Message Input Box */}
+          <div className="p-3 sm:p-4 border-t border-gray-100 bg-white flex-shrink-0">
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               <input
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={
-                  activeChannel === 'spouse'
-                    ? `Message ${partnerName}…`
-                    : 'Ask Union Verify support…'
-                }
-                className="w-full px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-gray-200 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:border-transparent bg-gray-50/70"
+                placeholder={`Type a message to ${activeRecipient.name}...`}
+                className="flex-1 px-4 py-3 text-xs sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C] bg-gray-50/50"
               />
-            </div>
-
-            <button
-              type="submit"
-              disabled={!inputText.trim()}
-              className="px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl bg-[#0F1C3F] hover:bg-[#1a2c5e] text-white disabled:opacity-40 transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer flex-shrink-0"
-            >
-              <span className="hidden sm:inline text-xs font-bold">Send</span>
-              <Send className="w-4 h-4 text-[#C9A84C]" />
-            </button>
-          </form>
+              <button
+                type="submit"
+                disabled={!inputText.trim()}
+                className="p-3 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs cursor-pointer flex items-center justify-center flex-shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
 
-      {/* ── MODAL 1: PROPOSE SHARED DEPOSIT ── */}
-      {showProposalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 relative">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+      {/* ── MODAL: START NEW CHAT (Member Directory) ── */}
+      {showNewChatModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 bg-[#0F1C3F] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center">
-                  <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
-                </div>
-                <h3 className="text-base font-bold text-[#0F1C3F]">Propose Shared Vault Deposit</h3>
+                <Users className="w-5 h-5 text-[#C9A84C]" />
+                <h3 className="font-bold text-sm">Select Member to Message</h3>
               </div>
               <button
-                onClick={() => setShowProposalModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
+                onClick={() => setShowNewChatModal(false)}
+                className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateProposal} className="space-y-4">
+            <div className="p-3 border-b border-gray-100">
+              <input
+                type="text"
+                placeholder="Search by name, role, or username..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+              />
+            </div>
+
+            <div className="p-3 overflow-y-auto space-y-1.5 flex-1">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  onClick={() => handleSelectContact(contact)}
+                  className="p-3 rounded-2xl border border-gray-200 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 cursor-pointer transition-all flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#0F1C3F] flex-shrink-0">
+                      {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-[#0F1C3F] truncate group-hover:text-[#C9A84C] transition-colors">
+                        {contact.name}
+                      </h4>
+                      <p className="text-[11px] text-gray-500 truncate">
+                        {contact.role || contact.email || 'Member'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-[#C9A84C] opacity-0 group-hover:opacity-100 transition-opacity">
+                    Chat →
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: PROPOSE DEPOSIT ── */}
+      {showProposalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <PiggyBank className="w-5 h-5 text-[#C9A84C]" />
+                <h3 className="font-bold text-sm text-[#0F1C3F]">Propose Shared Vault Contribution</h3>
+              </div>
+              <button onClick={() => setShowProposalModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateProposal} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Destination Matrimonial Vault
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Vault Milestone Goal
                 </label>
-                <select
+                <input
+                  type="text"
+                  required
                   value={proposalGoal}
                   onChange={(e) => setProposalGoal(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-[#C9A84C] focus:outline-none bg-white"
-                >
-                  <option value="Family Dream Home Down Payment">Family Dream Home Down Payment</option>
-                  <option value="First Baby & Education Nest Egg">First Baby & Education Nest Egg</option>
-                  <option value="10-Year Anniversary Trip (Amalfi Coast)">10-Year Anniversary Trip (Amalfi Coast)</option>
-                  <option value="Joint Emergency Liquid Buffer">Joint Emergency Liquid Buffer</option>
-                </select>
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Total Contribution Amount ($ USD)
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Total Match Amount ($)
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-gray-400 text-sm">$</span>
-                  <input
-                    type="number"
-                    min="10"
-                    step="10"
-                    required
-                    value={proposalAmount}
-                    onChange={(e) => setProposalAmount(e.target.value)}
-                    className="w-full pl-8 pr-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-semibold focus:ring-2 focus:ring-[#C9A84C] focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Split Breakdown */}
-              <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 text-xs space-y-1">
-                <div className="flex justify-between text-gray-600">
-                  <span>Your Share (50%):</span>
-                  <strong className="text-[#0F1C3F]">${((parseFloat(proposalAmount) || 0) / 2).toFixed(2)}</strong>
-                </div>
-                <div className="flex justify-between text-gray-600">
-                  <span>{partnerName}&apos;s Share (50%):</span>
-                  <strong className="text-[#0F1C3F]">${((parseFloat(proposalAmount) || 0) / 2).toFixed(2)}</strong>
-                </div>
+                <input
+                  type="number"
+                  min="20"
+                  step="10"
+                  required
+                  value={proposalAmount}
+                  onChange={(e) => setProposalAmount(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+                />
+                <span className="text-[11px] text-gray-500 mt-1 block">
+                  Each spouse contributes 50% (${((parseFloat(proposalAmount) || 0) / 2).toFixed(2)})
+                </span>
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-xs tracking-wide transition-all shadow-md cursor-pointer"
+                className="w-full py-3 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs transition-colors shadow-xs"
               >
-                Send Proposal to {partnerName}
+                Send Proposal to {activeRecipient.name}
               </button>
             </form>
           </div>
         </div>
       )}
 
-      {/* ── MODAL 2: SEND MATRIMONIAL LOVE NOTE ── */}
+      {/* ── MODAL: LOVE NOTE ── */}
       {showLoveNoteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-8 shadow-2xl border border-gray-100 relative">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                  <Heart className="w-4 h-4 text-rose-600 fill-rose-600" />
-                </div>
-                <h3 className="text-base font-bold text-[#0F1C3F]">Send Matrimonial Love Note</h3>
+                <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
+                <h3 className="font-bold text-sm text-[#0F1C3F]">Send Matrimonial Love Note</h3>
               </div>
-              <button
-                onClick={() => setShowLoveNoteModal(false)}
-                className="text-gray-400 hover:text-gray-600 text-xs font-bold cursor-pointer"
-              >
-                ✕
+              <button onClick={() => setShowLoveNoteModal(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSendLoveNote} className="space-y-4">
+            <form onSubmit={handleSendLoveNote} className="space-y-3.5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Card Category
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Occasion / Preset
                 </label>
-                <select
+                <input
+                  type="text"
                   value={loveNotePreset}
                   onChange={(e) => setLoveNotePreset(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-[#C9A84C] focus:outline-none bg-white"
-                >
-                  <option value="Vacation Nest Egg">Vacation Nest Egg Voucher</option>
-                  <option value="Anniversary Love Voucher">Anniversary Love Voucher</option>
-                  <option value="Family Home Milestone">Family Home Milestone</option>
-                  <option value="Romantic Matrimonial Covenant">Romantic Matrimonial Covenant</option>
-                </select>
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Personal Love Message
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Your Note
                 </label>
                 <textarea
                   rows={3}
                   required
                   value={loveNoteText}
                   onChange={(e) => setLoveNoteText(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-gray-300 text-xs font-serif leading-relaxed focus:ring-2 focus:ring-[#C9A84C] focus:outline-none"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs tracking-wide transition-all shadow-md cursor-pointer"
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs transition-colors shadow-xs"
               >
-                Post Love Note to {partnerName}
+                Send Note to {activeRecipient.name} ❤️
               </button>
             </form>
           </div>

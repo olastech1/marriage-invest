@@ -246,20 +246,29 @@ export default function UserPublicProfilePage() {
 
           {/* ── PRIMARY HERO CTA: CHAT DIRECTLY ── */}
           <div className="space-y-2 pt-1">
-            <button
-              onClick={() => {
-                setChatModalOpen(true)
-                setMsgSentSuccess(false)
-              }}
+            <Link
+              href={`/chat?recipientId=${profile.userId}&name=${encodeURIComponent(primaryName)}`}
               className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] hover:from-[#d4b460] hover:to-[#d4b460] text-[#0F1C3F] font-black text-sm sm:text-base shadow-xl shadow-[#C9A84C]/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
-              <span>Chat with {primaryName.split(' ')[0]} & {spouseName.split(' ')[0]}</span>
-            </button>
-            <p className="text-[11px] text-gray-400 flex items-center justify-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Direct encrypted inbox · Instant notification to couple</span>
-            </p>
+              <span>Chat with {primaryName.split(' ')[0]} Now</span>
+            </Link>
+            <div className="flex items-center justify-between text-[11px] text-gray-400 px-1">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Direct real-time chat</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setChatModalOpen(true)
+                  setMsgSentSuccess(false)
+                }}
+                className="text-[#C9A84C] hover:underline cursor-pointer"
+              >
+                Send quick note without login →
+              </button>
+            </div>
           </div>
         </div>
 
@@ -466,14 +475,22 @@ export default function UserPublicProfilePage() {
                 <CheckCircle2 className="w-12 h-12 text-emerald-400 mx-auto" />
                 <h4 className="text-base font-bold text-white">Message Dispatched!</h4>
                 <p className="text-xs text-gray-300 max-w-xs mx-auto">
-                  Your message has been delivered directly to {primaryName} & {spouseName}&apos;s verified Union Verify portal and chat inbox.
+                  Your message has been delivered directly to {primaryName}&apos;s verified Union Verify inbox.
                 </p>
-                <button
-                  onClick={() => setChatModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-xs hover:bg-[#d4b460] transition-colors"
-                >
-                  Done
-                </button>
+                <div className="flex items-center justify-center gap-2 pt-2">
+                  <Link
+                    href={`/chat?recipientId=${profile.userId}&name=${encodeURIComponent(primaryName)}`}
+                    className="px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-xs hover:bg-[#d4b460] transition-colors"
+                  >
+                    Open in Real-Time Chat →
+                  </Link>
+                  <button
+                    onClick={() => setChatModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
               </div>
             ) : (
               <form onSubmit={handleSendMessage} className="space-y-3.5">

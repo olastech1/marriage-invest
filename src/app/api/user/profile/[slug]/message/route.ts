@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
+import { buildThreadId } from '@/app/api/chat/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +11,7 @@ export async function POST(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const session = await auth()
     const { slug } = await params
     const body = await req.json()
     const { senderName, senderEmail, senderPhone, message, channel = 'CHAT' } = body
@@ -17,14 +20,33 @@ export async function POST(
       return NextResponse.json({ success: false, error: 'Message cannot be empty.' }, { status: 400 })
     }
 
-    const cleanSenderName = senderName?.trim() || 'Social Profile Visitor'
-    const cleanSenderContact = senderEmail?.trim() || senderPhone?.trim() || 'Via Social Bio Link'
+    const cleanSlug = slug.toLowerCase().trim()
 
-    // Determine target recipient (Jane or Marcus based on slug)
-    const isMarcus = slug.toLowerCase().includes('marcus')
-    const targetUserId = isMarcus ? 'usr_marcus_vance' : 'usr_jane_doe'
-    const targetName = isMarcus ? 'Marcus Vance' : 'Jane Doe'
-    const targetEmail = isMarcus ? 'marcus.vance@unionverify.com' : 'jane.doe@unionverify.com'
+    // Find target user from slug (by username or ID)
+    let targetUser = await (prisma.user as any).findFirst({
+      where: { username: cleanSlug },
+    })
+
+    if (!targetUser) {
+      if (cleanSlug.includes('marcus')) {
+        targetUser = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
+      } else if (cleanSlug.includes('jane')) {
+        targetUser = await prisma.user.findUnique({ where: { id: 'usr_jane_doe' } })
+      } else {
+        targetUser = await prisma.user.findUnique({ where: { id: cleanSlug } })
+      }
+    }
+
+    const targetUserId = targetUser?.id || (cleanSlug.includes('marcus') ? 'usr_marcus_vance' : 'usr_jane_doe')
+    const targetName = targetUser?.name || (targetUserId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe')
+    const targetEmail = targetUser?.email || `${cleanSlug}@unionverify.com`
+
+    // Determine sender identity
+    const effectiveSenderId = session?.user?.id || (senderEmail ? `guest_${senderEmail.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `guest_${Date.now().toString(36)}`)
+    const cleanSenderName = session?.user?.name || senderName?.trim() || 'Visitor'
+    const cleanSenderContact = senderEmail?.trim() || senderPhone?.trim() || 'Direct Profile Reach'
+
+    const threadId = buildThreadId(effectiveSenderId, targetUserId)
 
     const now = new Date()
     const formattedTime = new Intl.DateTimeFormat('en-US', {
@@ -33,36 +55,32 @@ export async function POST(
       hour12: true,
     }).format(now)
 
-    // 1. Record in chat thread
+    // 1. Record directly into real 1-on-1 chat thread
     const chatMsg = await (prisma as any).chatMessage.create({
       data: {
-        id: `msg-ext-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        threadId: 'social_inquiries',
-        senderId: 'guest_social',
-        senderName: `${cleanSenderName} (${cleanSenderContact})`,
+        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        threadId,
+        senderId: effectiveSenderId,
+        senderName: cleanSenderName,
+        recipientId: targetUserId,
+        recipientName: targetName,
         text: message.trim(),
         timestamp: formattedTime,
         createdAt: now,
         read: false,
-        type: 'social_inquiry',
-        proposalData: {
-          senderName: cleanSenderName,
-          senderContact: cleanSenderContact,
-          channel,
-          slug,
-        },
+        type: 'text',
       },
     })
 
-    // 2. Create in-app Notification for the couple
+    // 2. Create in-app Notification for the recipient
     try {
       await prisma.notification.create({
         data: {
           userId: targetUserId,
-          title: `💬 New Message via Social Profile from ${cleanSenderName}`,
-          message: `${cleanSenderName} (${cleanSenderContact}) sent you a message: "${message.slice(0, 90)}${message.length > 90 ? '...' : ''}"`,
+          title: `💬 New Message from ${cleanSenderName}`,
+          message: `${cleanSenderName} (${cleanSenderContact}): "${message.slice(0, 90)}${message.length > 90 ? '...' : ''}"`,
           type: 'INFO',
-          link: '/chat',
+          link: `/chat?recipientId=${effectiveSenderId}`,
         },
       })
     } catch (notifErr) {
@@ -73,24 +91,23 @@ export async function POST(
     try {
       await sendEmail({
         to: targetEmail,
-        subject: `[Union Verify] New Message from your Social Bio Link (${cleanSenderName})`,
+        subject: `[Union Verify] New Message from ${cleanSenderName}`,
         html: `
           <div style="font-family: sans-serif; line-height: 1.6; color: #1e293b; max-width: 580px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px;">
             <div style="text-align: center; margin-bottom: 20px;">
               <span style="font-size: 20px; font-weight: bold; color: #0F1C3F;">Union <span style="color: #C9A84C;">Verify</span></span>
-              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-top: 4px;">Public Profile & Bio Chat Dispatch</p>
+              <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-top: 4px;">Direct Member Chat</p>
             </div>
             <div style="background-color: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-              <p style="margin: 0; font-size: 13px;"><strong>Sender Name:</strong> ${cleanSenderName}</p>
+              <p style="margin: 0; font-size: 13px;"><strong>From:</strong> ${cleanSenderName}</p>
               <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact:</strong> ${cleanSenderContact}</p>
-              <p style="margin: 4px 0 0; font-size: 13px;"><strong>Profile Bio Slug:</strong> /u/${slug}</p>
             </div>
             <div style="background-color: #f1f5f9; border-left: 4px solid #C9A84C; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
               <p style="margin: 0; font-style: italic; color: #0f172a; font-size: 14px;">"${message}"</p>
             </div>
             <div style="text-align: center;">
-              <a href="https://unionverify.com/chat" style="display: inline-block; background-color: #0F1C3F; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13px; padding: 12px 24px; rounded-xl: 10px; border-radius: 10px;">
-                Reply in Union Verify Chat →
+              <a href="https://unionverify.com/chat?recipientId=${effectiveSenderId}" style="display: inline-block; background-color: #0F1C3F; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13px; padding: 12px 24px; border-radius: 10px;">
+                Open in Chat →
               </a>
             </div>
           </div>
@@ -103,6 +120,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       message: `Message sent directly to ${targetName}!`,
+      chatUrl: `/chat?recipientId=${targetUserId}`,
       chatMsg,
     })
   } catch (error: any) {
