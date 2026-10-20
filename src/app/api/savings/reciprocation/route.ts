@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { buildThreadId } from '@/app/api/chat/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -123,7 +124,7 @@ export async function POST(req: NextRequest) {
         await (prisma as any).chatMessage.create({
           data: {
             id: `msg-recip-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            threadId: 'spouse',
+            threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
             senderId: 'usr_marcus_vance',
             senderName: DEFAULT_PARTNER_NAME,
             text: `💍 I just saved $${depositAmount.toLocaleString()} to our Joint Vault! Under Spousal Covenant Rule 4.2, your reciprocal match is now due ❤️ Note: "${note}"`,
@@ -237,7 +238,7 @@ export async function POST(req: NextRequest) {
         await (prisma as any).chatMessage.create({
           data: {
             id: `msg-match-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-            threadId: 'spouse',
+            threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
             senderId: userId,
             senderName: userName,
             text: `✓ Matched ${DEFAULT_PARTNER_NAME}'s deposit with $${matchAmount.toLocaleString()}! Both spouses are in 100% financial harmony. Vault withdrawals unlocked. 🎉🥂`,

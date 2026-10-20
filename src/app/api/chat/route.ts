@@ -71,7 +71,10 @@ export async function GET(req: NextRequest) {
       const threadMap = new Map<string, any>()
 
       for (const msg of allMessages) {
-        const tid = msg.threadId || ''
+        let tid = msg.threadId || ''
+        if (tid === 'spouse') {
+          tid = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
+        }
         // Check if thread belongs to current user
         if (tid.startsWith('dm_')) {
           if (!tid.includes(currentUserId.toLowerCase())) continue
@@ -83,8 +86,6 @@ export async function GET(req: NextRequest) {
           if (tid.startsWith('dm_')) {
             const rawParts = tid.replace('dm_', '').split('_')
             otherId = rawParts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
-          } else if (tid === 'spouse') {
-            otherId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
           } else if (tid === 'advisor') {
             otherId = 'usr_admin'
           }
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest) {
         // Count unread messages
         if (!msg.read && msg.senderId !== currentUserId) {
           const entry = threadMap.get(tid)!
-          entry.unreadCount++
+          if (entry) entry.unreadCount++
         }
       }
 
@@ -156,16 +157,55 @@ export async function GET(req: NextRequest) {
       recipientId = parts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
     }
 
+    const isSpousalThread = threadId === buildThreadId('usr_jane_doe', 'usr_marcus_vance') || threadParam === 'spouse'
+
     let messages = await (prisma as any).chatMessage.findMany({
       where: {
         OR: [
           { threadId },
           // Backwards compatibility for legacy 'spouse' thread
-          ...(threadId === buildThreadId('usr_jane_doe', 'usr_marcus_vance') ? [{ threadId: 'spouse' }] : []),
+          ...(isSpousalThread ? [{ threadId: 'spouse' }, { threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance') }] : []),
         ],
       },
       orderBy: { createdAt: 'asc' },
     })
+
+    // Seed default messages if spousal thread is completely empty
+    if (messages.length === 0 && isSpousalThread) {
+      const seed1 = await (prisma as any).chatMessage.create({
+        data: {
+          id: 'msg-seed-1',
+          threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
+          senderId: 'usr_marcus_vance',
+          senderName: 'Marcus Vance',
+          recipientId: 'usr_jane_doe',
+          recipientName: 'Jane Doe',
+          text: 'Hey love! I reviewed our joint matrimonial vault. Looking great with the 6.8% compounding interest! ❤️',
+          timestamp: '10:15 AM',
+          createdAt: new Date(Date.now() - 3600000 * 2),
+          read: true,
+          type: 'text',
+          reactions: { '❤️': 1 },
+        },
+      })
+      const seed2 = await (prisma as any).chatMessage.create({
+        data: {
+          id: 'msg-seed-2',
+          threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
+          senderId: 'usr_jane_doe',
+          senderName: 'Jane Doe',
+          recipientId: 'usr_marcus_vance',
+          recipientName: 'Marcus Vance',
+          text: "So proud of our progress together! Let's keep building our generational wealth.",
+          timestamp: '10:18 AM',
+          createdAt: new Date(Date.now() - 3600000),
+          read: true,
+          type: 'text',
+          reactions: { '🚀': 1 },
+        },
+      })
+      messages = [seed1, seed2]
+    }
 
     // Look up recipient user info
     let recipientUser = null
@@ -242,6 +282,13 @@ export async function POST(req: Request) {
     let effectiveRecipientId = recipientId || ''
     let threadId = threadIdOverride || ''
 
+    if (threadId === 'spouse') {
+      threadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
+      if (!effectiveRecipientId) {
+        effectiveRecipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+      }
+    }
+
     if (!effectiveRecipientId && threadId.startsWith('dm_')) {
       const parts = threadId.replace('dm_', '').split('_')
       effectiveRecipientId = parts.find((p: string) => p.toLowerCase() !== effectiveSenderId.toLowerCase()) || ''
@@ -251,7 +298,7 @@ export async function POST(req: Request) {
       effectiveRecipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
     }
 
-    if (!threadId) {
+    if (!threadId || threadId === 'spouse') {
       threadId = buildThreadId(effectiveSenderId, effectiveRecipientId)
     }
 

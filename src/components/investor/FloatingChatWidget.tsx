@@ -43,20 +43,33 @@ export function FloatingChatWidget({
 
   const [messages, setMessages] = useState<FloatingMessage[]>([])
   const prevCountRef = useRef(0)
+  const [activePartnerId, setActivePartnerId] = useState<string>('usr_jane_doe')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
+      setActivePartnerId(saved)
+    }
+  }, [isOpen])
+
+  const displayPartnerName = activePartnerId === 'usr_marcus_vance' ? 'Jane Doe' : 'Marcus Vance'
+  const partnerInitials = activePartnerId === 'usr_marcus_vance' ? 'JD' : 'MV'
+  const partnerRelation = activePartnerId === 'usr_marcus_vance' ? 'Wife' : 'Husband'
 
   // Live synchronization with /api/chat?thread=spouse
   const fetchLiveMessages = async () => {
     try {
-      const res = await fetch('/api/chat?thread=spouse')
+      const currentActiveId = typeof window !== 'undefined'
+        ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
+        : 'usr_jane_doe'
+      setActivePartnerId(currentActiveId)
+
+      const res = await fetch(`/api/chat?thread=spouse&senderId=${encodeURIComponent(currentActiveId)}`)
       const data = await res.json()
       if (data.success && Array.isArray(data.messages)) {
-        const activePartnerId = typeof window !== 'undefined'
-          ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
-          : 'usr_jane_doe'
-
         const formatted: FloatingMessage[] = data.messages.map((m: any) => ({
           id: m.id,
-          sender: m.senderId === activePartnerId ? 'user' : 'partner',
+          sender: m.senderId === currentActiveId ? 'user' : 'partner',
           text: m.text,
           time: m.timestamp || new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: m.type,
@@ -73,7 +86,14 @@ export function FloatingChatWidget({
           }
         }
         prevCountRef.current = formatted.length
-        setMessages(formatted)
+
+        // Preserve any optimistic messages not yet confirmed by the server
+        setMessages((prev) => {
+          const pending = prev.filter(
+            (p) => p.id.startsWith('float-') && !formatted.some((f) => f.text === p.text && f.sender === 'user')
+          )
+          return [...formatted, ...pending]
+        })
       }
     } catch (err) {
       console.warn('Failed to fetch floating chat messages:', err)
@@ -137,46 +157,70 @@ export function FloatingChatWidget({
     }
   }
 
-  function handleSendMessage(e: React.FormEvent) {
+  async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault()
     if (!inputText.trim()) return
 
     const textToSend = inputText.trim()
-    const activePartnerId = typeof window !== 'undefined'
+    const senderId = typeof window !== 'undefined'
       ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
       : 'usr_jane_doe'
-    const activePartnerName = activePartnerId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'
+    const senderName = senderId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'
+    const recipientId = senderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+    const recipientName = senderId === 'usr_marcus_vance' ? 'Jane Doe' : 'Marcus Vance'
 
+    const tempId = `float-${Date.now()}`
     const newMsg: FloatingMessage = {
-      id: `float-${Date.now()}`,
+      id: tempId,
       sender: 'user',
       text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: 'text',
     }
 
     setMessages((prev) => [...prev, newMsg])
     setInputText('')
 
-    // Sync with server shared chat store
-    fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        threadId: 'spouse',
-        text: textToSend,
-        senderId: activePartnerId,
-        senderName: activePartnerName,
-        type: 'text',
-      }),
-    })
-      .then(() => {
-        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-          const bc = new BroadcastChannel('union_verify_chat')
-          bc.postMessage({ type: 'NEW_MESSAGE' })
-          bc.close()
-        }
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          threadId: 'spouse',
+          text: textToSend,
+          senderId,
+          senderName,
+          recipientId,
+          recipientName,
+          type: 'text',
+        }),
       })
-      .catch(() => {})
+
+      const data = await res.json()
+      if (data.success && data.message) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? {
+                  id: data.message.id,
+                  sender: 'user',
+                  text: data.message.text,
+                  time: data.message.timestamp || new Date(data.message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  type: data.message.type,
+                }
+              : m
+          )
+        )
+      }
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        const bc = new BroadcastChannel('union_verify_chat')
+        bc.postMessage({ type: 'NEW_MESSAGE' })
+        bc.close()
+      }
+    } catch (err) {
+      console.error('Failed to send floating chat message:', err)
+    }
   }
 
   function handleOpenWidget() {
@@ -199,14 +243,14 @@ export function FloatingChatWidget({
             <div className="flex items-center gap-2.5 min-w-0">
               <div className="relative">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F] font-bold flex items-center justify-center text-xs shadow-sm">
-                  MV
+                  {partnerInitials}
                 </div>
                 <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#0F1C3F] rounded-full" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <h4 className="text-xs font-bold text-white truncate">{partnerName}</h4>
-                  <span className="text-[10px] text-[#C9A84C] font-semibold">(Spouse)</span>
+                  <h4 className="text-xs font-bold text-white truncate">{displayPartnerName}</h4>
+                  <span className="text-[10px] text-[#C9A84C] font-semibold">({partnerRelation})</span>
                 </div>
                 <p className="text-[10px] text-gray-300 truncate flex items-center gap-1">
                   <Shield className="w-2.5 h-2.5 text-[#C9A84C]" />
@@ -348,7 +392,7 @@ export function FloatingChatWidget({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={`Message ${partnerName}…`}
+              placeholder={`Message ${displayPartnerName}…`}
               className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] focus:bg-white transition-all"
             />
             <button
@@ -373,7 +417,7 @@ export function FloatingChatWidget({
         >
           <div className="relative flex items-center justify-center">
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F] font-bold flex items-center justify-center text-[11px] shadow-sm">
-              MV
+              {partnerInitials}
             </div>
             <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0F1C3F] animate-pulse" />
           </div>
@@ -384,7 +428,7 @@ export function FloatingChatWidget({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             </div>
             <span className="text-[10px] text-gray-300 font-medium">
-              {partnerName} · <span className="text-[#C9A84C]">Online</span>
+              {displayPartnerName} · <span className="text-[#C9A84C]">Online</span>
             </span>
           </div>
 

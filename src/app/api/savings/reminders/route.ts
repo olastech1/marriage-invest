@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendDepositReminderEmail } from '@/lib/email'
+import { buildThreadId } from '@/app/api/chat/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
         await (prisma as any).chatMessage.create({
           data: {
             id: `sys-remind-${Date.now()}`,
-            threadId: 'spouse',
+            threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
             senderId: 'system_concierge',
             senderName: 'Union Verify Concierge',
             text: `🔔 SYSTEM DEPOSIT REMINDER: ${userName} has sent an official deposit reminder to ${targetPartnerName} for $${numAmount.toLocaleString()} into the ${vaultName}.`,

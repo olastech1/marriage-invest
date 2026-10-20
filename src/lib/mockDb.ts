@@ -7,6 +7,9 @@
  */
 
 import { Prisma } from '@prisma/client'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 
 export interface MockUser {
   id: string
@@ -188,12 +191,14 @@ export interface MockChatMessage {
   threadId: string
   senderId: string
   senderName: string
+  recipientId?: string
+  recipientName?: string
   text: string
   timestamp: string
   createdAt: Date
   read: boolean
   reactions?: Record<string, number>
-  type: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert'
+  type: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry'
   proposalData?: {
     goalName: string
     amount: number
@@ -520,7 +525,75 @@ const documentAcknowledgments: any[] = []
 
 const auditLogs: MockAuditLog[] = []
 
-export const chatMessages: MockChatMessage[] = []
+const CHAT_BACKUP_FILE = path.join(os.tmpdir(), 'union_verify_chat_messages.json')
+
+function getInitialChatMessages(): MockChatMessage[] {
+  if (typeof globalThis !== 'undefined' && (globalThis as any).__mockChatMessages) {
+    return (globalThis as any).__mockChatMessages
+  }
+  try {
+    if (fs.existsSync(CHAT_BACKUP_FILE)) {
+      const content = fs.readFileSync(CHAT_BACKUP_FILE, 'utf8')
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const msgs = parsed.map((m: any) => ({ ...m, createdAt: new Date(m.createdAt) }))
+        if (typeof globalThis !== 'undefined') (globalThis as any).__mockChatMessages = msgs
+        return msgs
+      }
+    }
+  } catch {
+    // Non-blocking fallback
+  }
+
+  const defaultSeed: MockChatMessage[] = [
+    {
+      id: 'msg-seed-1',
+      threadId: 'dm_usr_jane_doe_usr_marcus_vance',
+      senderId: 'usr_marcus_vance',
+      senderName: 'Marcus Vance',
+      recipientId: 'usr_jane_doe',
+      recipientName: 'Jane Doe',
+      text: 'Hey love! I reviewed our joint matrimonial vault. Looking great with the 6.8% compounding interest! ❤️',
+      timestamp: '10:15 AM',
+      createdAt: new Date(Date.now() - 3600000 * 2),
+      read: true,
+      reactions: { '❤️': 1 },
+      type: 'text',
+    },
+    {
+      id: 'msg-seed-2',
+      threadId: 'dm_usr_jane_doe_usr_marcus_vance',
+      senderId: 'usr_jane_doe',
+      senderName: 'Jane Doe',
+      recipientId: 'usr_marcus_vance',
+      recipientName: 'Marcus Vance',
+      text: "So proud of our progress together! Let's keep building our generational wealth.",
+      timestamp: '10:18 AM',
+      createdAt: new Date(Date.now() - 3600000),
+      read: true,
+      reactions: { '🚀': 1 },
+      type: 'text',
+    },
+  ]
+
+  if (typeof globalThis !== 'undefined') {
+    ;(globalThis as any).__mockChatMessages = defaultSeed
+  }
+  return defaultSeed
+}
+
+export const chatMessages: MockChatMessage[] = getInitialChatMessages()
+
+function persistChatMessages() {
+  try {
+    if (typeof globalThis !== 'undefined') {
+      ;(globalThis as any).__mockChatMessages = chatMessages
+    }
+    fs.writeFileSync(CHAT_BACKUP_FILE, JSON.stringify(chatMessages, null, 2), 'utf8')
+  } catch {
+    // Non-blocking
+  }
+}
 
 export const depositReminders: MockDepositReminder[] = []
 
@@ -534,7 +607,21 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
       let result = [...store]
       if (args?.where) {
         result = result.filter((item: any) => {
+          // 1. Support Prisma OR conditions
+          if (Array.isArray(args.where.OR)) {
+            const matchesAnyOr = args.where.OR.some((subWhere: any) => {
+              for (const [k, v] of Object.entries(subWhere)) {
+                if (v === undefined) continue
+                if (item[k] !== v) return false
+              }
+              return true
+            })
+            if (!matchesAnyOr) return false
+          }
+
+          // 2. Regular top-level clauses (skip OR)
           for (const [key, value] of Object.entries(args.where)) {
+            if (key === 'OR') continue
             if (value === undefined) continue
             if (typeof value === 'object' && value !== null) {
               if ('in' in (value as any) && Array.isArray((value as any).in)) {
@@ -591,9 +678,10 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
       return (
         store.find((item: any) => {
           for (const [key, value] of Object.entries(args.where)) {
-            if (item[key] === value) return true
+            if (value === undefined) continue
+            if (item[key] !== value) return false
           }
-          return false
+          return true
         }) ?? null
       )
     },
@@ -606,6 +694,9 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
         ...args.data,
       }
       store.unshift(newItem)
+      if ((store as any) === chatMessages) {
+        persistChatMessages()
+      }
       return newItem
     },
 
@@ -615,6 +706,9 @@ function makeDelegate<T extends { id: string }>(store: T[]) {
         throw new Error('Record not found to update')
       }
       Object.assign(existing, args.data, { updatedAt: new Date() })
+      if ((store as any) === chatMessages) {
+        persistChatMessages()
+      }
       return existing
     },
 

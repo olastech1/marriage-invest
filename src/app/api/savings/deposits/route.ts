@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { buildThreadId } from '@/app/api/chat/route'
 
 export const dynamic = 'force-dynamic'
 
@@ -133,7 +134,7 @@ export async function POST(req: NextRequest) {
       await (prisma as any).chatMessage.create({
         data: {
           id: `msg-dep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          threadId: 'spouse',
+          threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
           senderId: currentUserId,
           senderName: currentUserName,
           text: `💰 Just deposited $${numAmount.toLocaleString()} into our ${vaultTitle}!${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% instant cash match! Total added: $${totalAdded.toLocaleString()})` : ''} Note: "${note || 'For our shared goals ❤️'}"`,

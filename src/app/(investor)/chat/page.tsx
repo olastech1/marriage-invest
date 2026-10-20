@@ -412,7 +412,12 @@ export default function UnifiedChatPage() {
           }
         }
         lastMessageCountRef.current = data.messages.length
-        setMessages(data.messages)
+        setMessages((prev) => {
+          const pending = prev.filter(
+            (p) => p.id.startsWith('opt-') && !data.messages.some((m: any) => m.text === p.text && m.senderId === activeUserId)
+          )
+          return [...data.messages, ...pending]
+        })
         if (isInitial) {
           setTimeout(() => scrollToBottom(false), 80)
         }
