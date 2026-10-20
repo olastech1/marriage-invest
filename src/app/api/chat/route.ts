@@ -5,6 +5,7 @@ import {
   buildThreadId,
   createChatMessage,
   getChatDb,
+  getChatStoreStatus,
   isParticipant,
   otherParticipant,
   resolveSpouseId,
@@ -72,7 +73,7 @@ export async function GET(req: NextRequest) {
           online: true,
         }))
 
-      return NextResponse.json({ success: true, users: contacts, currentUserId })
+      return NextResponse.json({ success: true, users: contacts, currentUserId, chatStore: getChatStoreStatus() })
     }
 
     const spouseId = await resolveSpouseId(currentUserId)
@@ -133,6 +134,7 @@ export async function GET(req: NextRequest) {
         conversations: Array.from(threadMap.values()),
         currentUserId,
         spouseId,
+        chatStore: getChatStoreStatus(),
       })
     }
 
@@ -220,6 +222,7 @@ export async function GET(req: NextRequest) {
       messages,
       currentUser,
       spouseId,
+      chatStore: getChatStoreStatus(),
       recipient: {
         id: recipientId,
         name: recipientName,

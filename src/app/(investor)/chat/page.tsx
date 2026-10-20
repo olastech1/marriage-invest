@@ -324,6 +324,10 @@ export default function UnifiedChatPage() {
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
   const lastMessageCountRef = useRef<number>(0)
+  // Messages we sent recently (id -> sent time). Kept on screen until a poll returns them,
+  // so a stale poll response can't make a just-sent message vanish.
+  const recentlySentRef = useRef<Map<string, number>>(new Map())
+  const rememberSent = (id: string) => recentlySentRef.current.set(id, Date.now())
 
   // Play pleasant notification chime
   const playNotificationChime = useCallback(() => {
@@ -382,9 +386,17 @@ export default function UnifiedChatPage() {
         }
         lastMessageCountRef.current = data.messages.length
         setMessages((prev) => {
-          const pending = prev.filter(
-            (p) => p.id.startsWith('opt-') && !data.messages.some((m: any) => m.text === p.text && m.senderId === activeUserId)
-          )
+          const serverIds = new Set(data.messages.map((m: any) => m.id))
+          const now = Date.now()
+          const pending = prev.filter((p) => {
+            if (serverIds.has(p.id)) return false
+            if (p.senderId !== activeUserId || p.recipientId !== activeRecipient.id) return false
+            if (p.id.startsWith('opt-')) {
+              return !data.messages.some((m: any) => m.text === p.text && m.senderId === activeUserId)
+            }
+            const sentAt = recentlySentRef.current.get(p.id)
+            return !!sentAt && now - sentAt < 60_000
+          })
           return [...data.messages, ...pending]
         })
         if (isInitial) {
@@ -476,6 +488,7 @@ export default function UnifiedChatPage() {
 
       const data = await res.json()
       if (data.success && data.message) {
+        rememberSent(data.message.id)
         setMessages((prev) => prev.map((m) => (m.id === optimisticMsg.id ? data.message : m)))
         broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
         fetchConversations()
@@ -579,6 +592,7 @@ export default function UnifiedChatPage() {
       })
       const data = await res.json()
       if (data.success && data.message) {
+        rememberSent(data.message.id)
         setMessages((prev) => [...prev, data.message])
         broadcastChannelRef.current?.postMessage({ type: 'NEW_PROPOSAL' })
         setTimeout(() => scrollToBottom(true), 50)
@@ -610,6 +624,7 @@ export default function UnifiedChatPage() {
       })
       const data = await res.json()
       if (data.success && data.message) {
+        rememberSent(data.message.id)
         setMessages((prev) => [...prev, data.message])
         broadcastChannelRef.current?.postMessage({ type: 'NEW_LOVE_NOTE' })
         setTimeout(() => scrollToBottom(true), 50)

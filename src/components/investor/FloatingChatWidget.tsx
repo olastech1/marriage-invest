@@ -43,6 +43,8 @@ export function FloatingChatWidget({
 
   const [messages, setMessages] = useState<FloatingMessage[]>([])
   const prevCountRef = useRef(0)
+  // Confirmed messages we sent recently (id -> sent time), kept until a poll returns them
+  const recentlySentRef = useRef<Map<string, number>>(new Map())
   // Who the server says we are, and our spouse (resolved server-side from the session)
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
 
@@ -84,9 +86,13 @@ export function FloatingChatWidget({
 
         // Preserve any optimistic messages not yet confirmed by the server
         setMessages((prev) => {
-          const pending = prev.filter(
-            (p) => p.id.startsWith('float-') && !formatted.some((f) => f.text === p.text && f.sender === 'user')
-          )
+          const now = Date.now()
+          const pending = prev.filter((p) => {
+            if (formatted.some((f) => f.id === p.id)) return false
+            if (p.id.startsWith('float-')) return !formatted.some((f) => f.text === p.text && f.sender === 'user')
+            const sentAt = recentlySentRef.current.get(p.id)
+            return !!sentAt && now - sentAt < 60_000
+          })
           return [...formatted, ...pending]
         })
       }
@@ -189,6 +195,7 @@ export function FloatingChatWidget({
 
       const data = await res.json()
       if (data.success && data.message) {
+        recentlySentRef.current.set(data.message.id, Date.now())
         setMessages((prev) =>
           prev.map((m) =>
             m.id === tempId
