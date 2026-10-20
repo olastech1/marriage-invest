@@ -324,3 +324,28 @@ model Notification {
   @@index([userId, read])
   @@map("notifications")
 }
+
+model ChatMessage {
+  id            String   @id @default(cuid())
+  threadId      String
+  senderId      String
+  senderName    String
+  recipientId   String?
+  recipientName String?
+  text          String
+  timestamp     String
+  type          String   @default("text")
+  read          Boolean  @default(false)
+  reactions     Json?
+  proposalData  Json?
+  depositData   Json?
+  loveNoteTitle String?
+  voiceDuration String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([threadId, createdAt])
+  @@index([senderId])
+  @@index([recipientId])
+  @@map("chat_messages")
+}

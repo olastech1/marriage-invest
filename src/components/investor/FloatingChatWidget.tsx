@@ -43,30 +43,25 @@ export function FloatingChatWidget({
 
   const [messages, setMessages] = useState<FloatingMessage[]>([])
   const prevCountRef = useRef(0)
-  const [activePartnerId, setActivePartnerId] = useState<string>('usr_jane_doe')
+  // Who the server says we are, and our spouse (resolved server-side from the session)
+  const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
-      setActivePartnerId(saved)
-    }
-  }, [isOpen])
+  const displayPartnerName = partner?.name || 'Your Spouse'
+  const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+  const partnerRelation = 'Spouse'
 
-  const displayPartnerName = activePartnerId === 'usr_marcus_vance' ? 'Jane Doe' : 'Marcus Vance'
-  const partnerInitials = activePartnerId === 'usr_marcus_vance' ? 'JD' : 'MV'
-  const partnerRelation = activePartnerId === 'usr_marcus_vance' ? 'Wife' : 'Husband'
+  // Only used when signed out (demo mode); the server ignores it for logged-in users
+  const getDemoSenderId = () =>
+    typeof window !== 'undefined' ? localStorage.getItem('union_verify_active_partner') || '' : ''
 
   // Live synchronization with /api/chat?thread=spouse
   const fetchLiveMessages = async () => {
     try {
-      const currentActiveId = typeof window !== 'undefined'
-        ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
-        : 'usr_jane_doe'
-      setActivePartnerId(currentActiveId)
-
-      const res = await fetch(`/api/chat?thread=spouse&senderId=${encodeURIComponent(currentActiveId)}`)
+      const res = await fetch(`/api/chat?thread=spouse&senderId=${encodeURIComponent(getDemoSenderId())}`)
       const data = await res.json()
       if (data.success && Array.isArray(data.messages)) {
+        const currentActiveId = data.currentUser?.id
+        setPartner(data.recipient ? { id: data.recipient.id, name: data.recipient.name } : null)
         const formatted: FloatingMessage[] = data.messages.map((m: any) => ({
           id: m.id,
           sender: m.senderId === currentActiveId ? 'user' : 'partner',
@@ -162,12 +157,9 @@ export function FloatingChatWidget({
     if (!inputText.trim()) return
 
     const textToSend = inputText.trim()
-    const senderId = typeof window !== 'undefined'
-      ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
-      : 'usr_jane_doe'
-    const senderName = senderId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'
-    const recipientId = senderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
-    const recipientName = senderId === 'usr_marcus_vance' ? 'Jane Doe' : 'Marcus Vance'
+    const senderId = getDemoSenderId()
+    const recipientId = partner?.id
+    const recipientName = partner?.name
 
     const tempId = `float-${Date.now()}`
     const newMsg: FloatingMessage = {
@@ -189,7 +181,6 @@ export function FloatingChatWidget({
           threadId: 'spouse',
           text: textToSend,
           senderId,
-          senderName,
           recipientId,
           recipientName,
           type: 'text',

@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import crypto from 'crypto'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createChatMessage } from '@/lib/chat'
 import { Prisma } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
@@ -262,7 +263,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
         // Couple chat message
         try {
-          await (prisma as any).chatMessage.create({
+          await createChatMessage({
             data: {
               id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               threadId: 'spouse',
@@ -324,7 +325,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
         // Couple chat message
         try {
-          await (prisma as any).chatMessage.create({
+          await createChatMessage({
             data: {
               id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               threadId: 'spouse',

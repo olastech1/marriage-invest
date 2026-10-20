@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/db'
+import { createChatMessage } from '@/lib/chat'
 import { getStripeConfig } from '@/lib/stripeConfig'
 
 export async function POST(req: NextRequest) {
@@ -80,7 +81,7 @@ export async function POST(req: NextRequest) {
           }).format(new Date())
 
           try {
-            await (prisma as any).chatMessage.create({
+            await createChatMessage({
               data: {
                 id: `msg-stripe-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
                 threadId: 'spouse',

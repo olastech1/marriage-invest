@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
-import { buildThreadId } from '@/app/api/chat/route'
+import { buildThreadId, createChatMessage } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -56,7 +56,7 @@ export async function POST(
     }).format(now)
 
     // 1. Record directly into real 1-on-1 chat thread
-    const chatMsg = await (prisma as any).chatMessage.create({
+    const chatMsg = await createChatMessage({
       data: {
         id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         threadId,

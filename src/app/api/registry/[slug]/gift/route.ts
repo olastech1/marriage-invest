@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createChatMessage } from '@/lib/chat'
 import { SEED_REGISTRIES, RegistryGift } from '@/types/registry'
 
 export async function POST(
@@ -81,7 +82,7 @@ export async function POST(
 
         // Inject couple chat message celebrating the wedding gift
         const formattedTime = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date())
-        await (prisma as any).chatMessage.create({
+        await createChatMessage({
           data: {
             id: `msg-gift-${Date.now()}`,
             threadId: 'spouse',

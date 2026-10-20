@@ -111,36 +111,9 @@ export default function UnifiedChatPage() {
   const [activeUserName, setActiveUserName] = useState<string>('Jane Doe')
   const [copiedInvite, setCopiedInvite] = useState(false)
 
-  // Initialize current user identity from session, localStorage, or URL parameter (?as=...)
+  // Initialize identity: the logged-in session always wins. The ?as= / localStorage
+  // switch only applies to signed-out demo visitors.
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const asParam = params.get('as')?.toLowerCase()
-      if (asParam === 'marcus' || asParam === 'usr_marcus_vance' || asParam === 'husband') {
-        setActiveUserId('usr_marcus_vance')
-        setActiveUserName('Marcus Vance')
-        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
-        return
-      } else if (asParam === 'jane' || asParam === 'usr_jane_doe' || asParam === 'wife') {
-        setActiveUserId('usr_jane_doe')
-        setActiveUserName('Jane Doe')
-        localStorage.setItem('union_verify_active_partner', 'usr_jane_doe')
-        return
-      }
-    }
-
-    if (session?.user?.id === 'usr_marcus_vance' || session?.user?.name?.toLowerCase().includes('marcus')) {
-      setActiveUserId('usr_marcus_vance')
-      setActiveUserName('Marcus Vance')
-      return
-    }
-
-    if (session?.user?.id === 'usr_jane_doe' || session?.user?.name?.toLowerCase().includes('jane')) {
-      setActiveUserId('usr_jane_doe')
-      setActiveUserName('Jane Doe')
-      return
-    }
-
     if (session?.user?.id) {
       setActiveUserId(session.user.id)
       setActiveUserName(session.user.name || 'Member')
@@ -148,14 +121,13 @@ export default function UnifiedChatPage() {
     }
 
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const asParam = params.get('as')?.toLowerCase()
       const saved = localStorage.getItem('union_verify_active_partner')
-      if (saved === 'usr_marcus_vance') {
+      if (asParam === 'marcus' || asParam === 'usr_marcus_vance' || asParam === 'husband' || (!asParam && saved === 'usr_marcus_vance')) {
         setActiveUserId('usr_marcus_vance')
         setActiveUserName('Marcus Vance')
-        return
-      } else if (saved === 'usr_jane_doe') {
-        setActiveUserId('usr_jane_doe')
-        setActiveUserName('Jane Doe')
+        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
         return
       }
     }
@@ -183,14 +155,12 @@ export default function UnifiedChatPage() {
   // -------------------------------------------------------------------------
   // 2. Chat Recipient & Contact Management
   // -------------------------------------------------------------------------
+  // Empty until the server resolves the user's spouse (or a contact is picked)
   const [activeRecipient, setActiveRecipient] = useState<ChatUser>({
-    id: 'usr_marcus_vance',
-    name: 'Marcus Vance',
-    username: 'marcus-vance',
-    email: 'marcus.vance@unionverify.com',
-    role: 'Husband & Joint Signatory',
-    avatar: 'MV',
-    online: true,
+    id: '',
+    name: 'Your Spouse',
+    avatar: 'YS',
+    online: false,
   })
 
   const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([
@@ -227,6 +197,7 @@ export default function UnifiedChatPage() {
   ])
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
+  const [spouseId, setSpouseId] = useState<string>('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewChatModal, setShowNewChatModal] = useState(false)
   const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
@@ -254,6 +225,7 @@ export default function UnifiedChatPage() {
       const data = await res.json()
       if (data.success && Array.isArray(data.conversations)) {
         setConversations(data.conversations)
+        setSpouseId(data.spouseId || '')
       }
     } catch (err) {
       console.warn('Failed to fetch conversations:', err)
@@ -297,31 +269,24 @@ export default function UnifiedChatPage() {
         online: true,
       })
       setMobileTab('chat')
-    } else {
-      // Default to the other spouse if currently Jane or Marcus
-      if (activeUserId === 'usr_jane_doe') {
-        setActiveRecipient({
-          id: 'usr_marcus_vance',
-          name: 'Marcus Vance',
-          username: 'marcus-vance',
-          email: 'marcus.vance@unionverify.com',
-          role: 'Husband & Joint Signatory',
-          avatar: 'MV',
-          online: true,
-        })
-      } else if (activeUserId === 'usr_marcus_vance') {
-        setActiveRecipient({
-          id: 'usr_jane_doe',
-          name: 'Jane Doe',
-          username: 'jane-doe',
-          email: 'jane.doe@unionverify.com',
-          role: 'Wife & Joint Signatory',
-          avatar: 'JD',
-          online: true,
-        })
-      }
+    } else if (spouseId) {
+      // Default to the user's spouse
+      const spouseConvo = conversations.find((c) => c.otherUserId === spouseId)
+      const spouseContact = availableContacts.find((c) => c.id === spouseId)
+      const spouseName = spouseContact?.name || spouseConvo?.otherUserName || 'Your Spouse'
+      setActiveRecipient((prev) =>
+        prev.id === spouseId
+          ? prev
+          : spouseContact || {
+              id: spouseId,
+              name: spouseName,
+              username: spouseId,
+              avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+              online: true,
+            }
+      )
     }
-  }, [availableContacts, activeUserId])
+  }, [availableContacts, activeUserId, spouseId, conversations])
 
   // Select contact & start/open chat
   const handleSelectContact = (contact: ChatUser) => {
@@ -399,6 +364,10 @@ export default function UnifiedChatPage() {
 
   // Fetch messages for the active thread
   const fetchMessages = useCallback(async (isInitial = false) => {
+    if (!activeRecipient.id) {
+      setMessages([])
+      return
+    }
     try {
       const res = await fetch(
         `/api/chat?thread=${encodeURIComponent(activeThreadId)}&recipientId=${encodeURIComponent(activeRecipient.id)}&senderId=${encodeURIComponent(activeUserId)}`
@@ -462,6 +431,10 @@ export default function UnifiedChatPage() {
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
     if (!inputText.trim()) return
+    if (!activeRecipient.id) {
+      setNudgeBanner('No spouse connected yet — copy your chat link and send it to your spouse to start chatting.')
+      return
+    }
 
     const messageText = inputText.trim()
     setInputText('')
@@ -559,6 +532,7 @@ export default function UnifiedChatPage() {
         body: JSON.stringify({
           messageId: msgId,
           action: 'approve_proposal',
+          senderId: activeUserId,
           approvedBy: activeUserName,
           partnerName: activeUserName,
         }),
@@ -654,6 +628,7 @@ export default function UnifiedChatPage() {
         body: JSON.stringify({
           messageId: msgId,
           action: 'react',
+          senderId: activeUserId,
           reaction: emoji,
         }),
       })
@@ -679,9 +654,7 @@ export default function UnifiedChatPage() {
     )
   })
 
-  const isChattingWithSpouse =
-    (activeUserId === 'usr_jane_doe' && activeRecipient.id === 'usr_marcus_vance') ||
-    (activeUserId === 'usr_marcus_vance' && activeRecipient.id === 'usr_jane_doe')
+  const isChattingWithSpouse = !!spouseId && activeRecipient.id === spouseId
 
   return (
     <div className="h-full flex-1 flex flex-col min-w-0 w-full overflow-hidden">
@@ -712,6 +685,7 @@ export default function UnifiedChatPage() {
             <UserCheck className="w-3.5 h-3.5 text-[#C9A84C]" />
             <span className="text-gray-500 text-[11px]">Chatting as:</span>
             <strong className="text-[#0F1C3F] font-bold">{activeUserName}</strong>
+            {!session?.user?.id && (
             <button
               type="button"
               onClick={handleSwitchPartner}
@@ -720,6 +694,7 @@ export default function UnifiedChatPage() {
             >
               ⇄ Switch to {isMarcus ? 'Jane Doe' : 'Marcus Vance'}
             </button>
+            )}
           </div>
 
           <button
@@ -802,8 +777,7 @@ export default function UnifiedChatPage() {
             ) : (
               filteredContacts.map((contact) => {
                 const isSelected = activeRecipient.id === contact.id
-                const isSpouse = (activeUserId === 'usr_jane_doe' && contact.id === 'usr_marcus_vance') ||
-                                 (activeUserId === 'usr_marcus_vance' && contact.id === 'usr_jane_doe')
+                const isSpouse = !!spouseId && contact.id === spouseId
 
                 return (
                   <div

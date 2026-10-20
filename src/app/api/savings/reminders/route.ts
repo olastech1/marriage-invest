@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendDepositReminderEmail } from '@/lib/email'
-import { buildThreadId } from '@/app/api/chat/route'
+import { createChatMessage } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -106,10 +106,10 @@ export async function POST(req: NextRequest) {
       }).format(now)
 
       try {
-        await (prisma as any).chatMessage.create({
+        await createChatMessage({
           data: {
             id: `sys-remind-${Date.now()}`,
-            threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
+            threadId: 'spouse',
             senderId: 'system_concierge',
             senderName: 'Union Verify Concierge',
             text: `🔔 SYSTEM DEPOSIT REMINDER: ${userName} has sent an official deposit reminder to ${targetPartnerName} for $${numAmount.toLocaleString()} into the ${vaultName}.`,
@@ -125,6 +125,7 @@ export async function POST(req: NextRequest) {
               proposedBy: userName,
             },
           },
+          spouseOf: userId,
         })
       } catch (e) {
         console.warn('Failed to create chat system reminder:', e)

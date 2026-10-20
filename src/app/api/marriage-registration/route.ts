@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { createChatMessage } from '@/lib/chat'
 import bcrypt from 'bcryptjs'
 
 export async function POST(req: Request) {
@@ -127,7 +128,7 @@ export async function POST(req: Request) {
 
     // Inject Official Certificate Notice into Couple Chat
     try {
-      await (prisma as any).chatMessage.create({
+      await createChatMessage({
         data: {
           id: `msg-cert-${Date.now()}`,
           threadId: 'spouse',

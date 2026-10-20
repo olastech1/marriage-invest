@@ -1,181 +1,176 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import {
+  buildThreadId,
+  createChatMessage,
+  getChatDb,
+  isParticipant,
+  otherParticipant,
+  resolveSpouseId,
+} from '@/lib/chat'
 
-// ---------------------------------------------------------------------------
-// Helper: Build a deterministic thread ID for two users (alphabetical sort)
-// ---------------------------------------------------------------------------
-export function buildThreadId(userA: string, userB: string): string {
-  const cleanA = String(userA || 'user1').trim().toLowerCase()
-  const cleanB = String(userB || 'user2').trim().toLowerCase()
-  return `dm_${[cleanA, cleanB].sort().join('_')}`
+const DEMO_NAMES: Record<string, string> = {
+  usr_jane_doe: 'Jane Doe',
+  usr_marcus_vance: 'Marcus Vance',
+  usr_admin: 'Support & Advisor',
+}
+
+// The logged-in user always wins; senderId is only honoured for signed-out demo visitors
+async function resolveCurrentUser(fallbackId?: string | null, fallbackName?: string | null) {
+  const session = await auth()
+  const id = session?.user?.id || fallbackId || 'usr_jane_doe'
+  const name = session?.user?.name || fallbackName || DEMO_NAMES[id] || 'Member'
+  return { id, name }
+}
+
+async function lookupUser(id: string) {
+  if (!id) return null
+  const user =
+    (await prisma.user.findUnique({ where: { id } })) ||
+    (await (prisma.user as any).findFirst({ where: { username: id.toLowerCase() } }))
+  return user as any
+}
+
+function initials(name?: string | null) {
+  return (name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
 // ---------------------------------------------------------------------------
 // GET /api/chat
 // Supports:
-//   - ?users=true            -> returns directory of all platform members to chat with
-//   - ?list=true             -> returns all active conversation threads for current user
-//   - ?thread=<id>&senderId= -> returns messages for a specific thread
-//   - ?recipientId=<id>      -> returns or initializes thread between current user and recipient
+//   - ?users=true                 -> directory of members you can message
+//   - ?list=true                  -> conversation threads for current user
+//   - ?recipientId=<id>           -> messages between current user and recipient
+//   - ?thread=<id>|spouse         -> messages for a thread the user belongs to
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth()
     const { searchParams } = new URL(req.url)
     const threadParam = searchParams.get('thread')
     const recipientIdParam = searchParams.get('recipientId')
     const listConversations = searchParams.get('list') === 'true'
     const listUsers = searchParams.get('users') === 'true'
 
-    const currentUserId = searchParams.get('senderId') || session?.user?.id || 'usr_jane_doe'
+    const currentUser = await resolveCurrentUser(searchParams.get('senderId'))
+    const currentUserId = currentUser.id
+    const chatDb = await getChatDb()
 
-    // ── 1. RETURN USER DIRECTORY (all contacts you can message) ──
+    // ── 1. USER DIRECTORY ──
     if (listUsers) {
-      const allUsers = await prisma.user.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          phone: true,
-        },
-      })
+      const allUsers = await prisma.user.findMany()
+      const contacts = allUsers
+        .filter((u: any) => u.id !== currentUserId)
+        .map((u: any) => ({
+          id: u.id,
+          name: u.name,
+          username: u.username || u.name?.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+          email: u.email,
+          role: u.role,
+          bio: u.bio || `${u.role === 'ADMIN' ? 'Platform Administrator' : 'Verified Member'}`,
+          avatar: initials(u.name),
+          online: true,
+        }))
 
-      const contacts = allUsers.map((u: any) => ({
-        id: u.id,
-        name: u.name,
-        username: u.username || u.name?.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-        email: u.email,
-        role: u.role,
-        bio: u.bio || `${u.role === 'ADMIN' ? 'Platform Administrator' : 'Verified Member'}`,
-        avatar: (u.name || 'UV').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        online: true,
-      }))
-
-      return NextResponse.json({
-        success: true,
-        users: contacts,
-        currentUserId,
-      })
+      return NextResponse.json({ success: true, users: contacts, currentUserId })
     }
 
-    // ── 2. LIST ALL CONVERSATIONS for current user ──
+    const spouseId = await resolveSpouseId(currentUserId)
+
+    // ── 2. CONVERSATION LIST ──
     if (listConversations) {
-      const allMessages = await (prisma as any).chatMessage.findMany({
+      const myMessages = await chatDb.chatMessage.findMany({
+        where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
         orderBy: { createdAt: 'desc' },
+        take: 500,
       })
 
-      // Always include key contacts (Marcus, Jane, Admin) even if 0 messages yet
-      const allUsers = await prisma.user.findMany()
       const threadMap = new Map<string, any>()
-
-      for (const msg of allMessages) {
-        let tid = msg.threadId || ''
-        if (tid === 'spouse') {
-          tid = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
-        }
-        // Check if thread belongs to current user
-        if (tid.startsWith('dm_')) {
-          if (!tid.includes(currentUserId.toLowerCase())) continue
-        }
+      for (const msg of myMessages) {
+        const tid = msg.threadId
+        const otherId = otherParticipant(tid, currentUserId)
+        if (!otherId || otherId === currentUserId.toLowerCase()) continue
 
         if (!threadMap.has(tid)) {
-          // Identify the other participant
-          let otherId = ''
-          if (tid.startsWith('dm_')) {
-            const rawParts = tid.replace('dm_', '').split('_')
-            otherId = rawParts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
-          } else if (tid === 'advisor') {
-            otherId = 'usr_admin'
-          }
-
-          const matchedUser = allUsers.find((u: any) => u.id === otherId || u.username === otherId)
-          const fallbackName = otherId === 'usr_marcus_vance' ? 'Marcus Vance' : (otherId === 'usr_jane_doe' ? 'Jane Doe' : (otherId === 'usr_admin' ? 'Support & Advisor' : otherId))
-
+          const otherName =
+            (msg.senderId === otherId ? msg.senderName : msg.recipientName) ||
+            (await lookupUser(otherId))?.name ||
+            DEMO_NAMES[otherId] ||
+            otherId
           threadMap.set(tid, {
             threadId: tid,
             lastMessage: msg,
             otherUserId: otherId,
-            otherUserName: matchedUser?.name || msg.recipientName || (msg.senderId !== currentUserId ? msg.senderName : fallbackName),
+            otherUserName: otherName,
+            isSpouse: otherId === spouseId,
             unreadCount: 0,
             updatedAt: msg.createdAt,
           })
         }
-
-        // Count unread messages
-        if (!msg.read && msg.senderId !== currentUserId) {
-          const entry = threadMap.get(tid)!
-          if (entry) entry.unreadCount++
+        if (!msg.read && msg.recipientId === currentUserId) {
+          threadMap.get(tid).unreadCount++
         }
       }
 
-      // If spouse thread doesn't exist yet, seed default entry
-      const spouseOtherId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
-      const spouseThreadId = buildThreadId(currentUserId, spouseOtherId)
-      if (!threadMap.has(spouseThreadId) && !threadMap.has('spouse')) {
-        const spouseUser = allUsers.find((u: any) => u.id === spouseOtherId)
-        threadMap.set(spouseThreadId, {
-          threadId: spouseThreadId,
-          lastMessage: {
-            text: 'Mutual matrimonial vault and joint messaging active.',
-            createdAt: new Date(),
-          },
-          otherUserId: spouseOtherId,
-          otherUserName: spouseUser?.name || (spouseOtherId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'),
-          unreadCount: 0,
-          updatedAt: new Date(),
-        })
+      // Always surface the spouse thread, even before the first message
+      if (spouseId) {
+        const spouseThreadId = buildThreadId(currentUserId, spouseId)
+        if (!threadMap.has(spouseThreadId)) {
+          threadMap.set(spouseThreadId, {
+            threadId: spouseThreadId,
+            lastMessage: { text: 'Mutual matrimonial vault and joint messaging active.', createdAt: new Date() },
+            otherUserId: spouseId,
+            otherUserName: (await lookupUser(spouseId))?.name || DEMO_NAMES[spouseId] || spouseId,
+            isSpouse: true,
+            unreadCount: 0,
+            updatedAt: new Date(),
+          })
+        }
       }
 
       return NextResponse.json({
         success: true,
         conversations: Array.from(threadMap.values()),
         currentUserId,
+        spouseId,
       })
     }
 
-    // ── 3. RESOLVE ACTIVE THREAD ID & MESSAGES ──
-    let threadId = threadParam || ''
+    // ── 3. THREAD MESSAGES ──
     let recipientId = recipientIdParam || ''
+    if (!recipientId && threadParam && threadParam !== 'spouse') {
+      recipientId = otherParticipant(threadParam, currentUserId)
+      if (!recipientId) {
+        return NextResponse.json({ success: false, error: 'You are not a participant in this thread' }, { status: 403 })
+      }
+    }
+    if (!recipientId) recipientId = spouseId
 
-    if (!threadId && recipientId) {
-      threadId = buildThreadId(currentUserId, recipientId)
-    } else if (!threadId) {
-      recipientId = currentUserId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
-      threadId = buildThreadId(currentUserId, recipientId)
+    if (!recipientId) {
+      return NextResponse.json({
+        success: true,
+        threadId: null,
+        messages: [],
+        currentUser,
+        recipient: null,
+        spouseId,
+      })
     }
 
-    // Legacy "spouse" alias
-    if (threadId === 'spouse') {
-      threadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
-    }
+    const threadId = buildThreadId(currentUserId, recipientId)
 
-    // If recipientId not explicitly passed, deduce it from threadId
-    if (!recipientId && threadId.startsWith('dm_')) {
-      const parts = threadId.replace('dm_', '').split('_')
-      recipientId = parts.find((p: string) => p.toLowerCase() !== currentUserId.toLowerCase()) || ''
-    }
-
-    const isSpousalThread = threadId === buildThreadId('usr_jane_doe', 'usr_marcus_vance') || threadParam === 'spouse'
-
-    let messages = await (prisma as any).chatMessage.findMany({
-      where: {
-        OR: [
-          { threadId },
-          // Backwards compatibility for legacy 'spouse' thread
-          ...(isSpousalThread ? [{ threadId: 'spouse' }, { threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance') }] : []),
-        ],
-      },
+    let messages = await chatDb.chatMessage.findMany({
+      where: { threadId },
       orderBy: { createdAt: 'asc' },
     })
 
-    // Seed default messages if spousal thread is completely empty
-    if (messages.length === 0 && isSpousalThread) {
-      const seed1 = await (prisma as any).chatMessage.create({
+    // Seed the demo couple's thread so it never looks empty
+    const demoThreadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
+    if (messages.length === 0 && threadId === demoThreadId) {
+      await createChatMessage({
         data: {
           id: 'msg-seed-1',
-          threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
+          threadId: demoThreadId,
           senderId: 'usr_marcus_vance',
           senderName: 'Marcus Vance',
           recipientId: 'usr_jane_doe',
@@ -188,10 +183,10 @@ export async function GET(req: NextRequest) {
           reactions: { '❤️': 1 },
         },
       })
-      const seed2 = await (prisma as any).chatMessage.create({
+      await createChatMessage({
         data: {
           id: 'msg-seed-2',
-          threadId: buildThreadId('usr_jane_doe', 'usr_marcus_vance'),
+          threadId: demoThreadId,
           senderId: 'usr_jane_doe',
           senderName: 'Jane Doe',
           recipientId: 'usr_marcus_vance',
@@ -204,45 +199,33 @@ export async function GET(req: NextRequest) {
           reactions: { '🚀': 1 },
         },
       })
-      messages = [seed1, seed2]
+      messages = await chatDb.chatMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' } })
     }
 
-    // Look up recipient user info
-    let recipientUser = null
-    if (recipientId) {
-      recipientUser = await prisma.user.findUnique({
-        where: { id: recipientId },
-      })
-      if (!recipientUser) {
-        recipientUser = await (prisma.user as any).findFirst({
-          where: { username: recipientId.toLowerCase() },
-        })
+    // Mark messages addressed to me as read
+    for (const msg of messages) {
+      if (!msg.read && msg.recipientId === currentUserId) {
+        await chatDb.chatMessage.update({ where: { id: msg.id }, data: { read: true } })
+        msg.read = true
       }
     }
 
-    // Default recipient fallback if missing
-    if (!recipientUser && recipientId) {
-      recipientUser = {
-        id: recipientId,
-        name: recipientId === 'usr_marcus_vance' ? 'Marcus Vance' : (recipientId === 'usr_jane_doe' ? 'Jane Doe' : recipientId),
-        email: `${recipientId}@unionverify.com`,
-      } as any
-    }
+    const recipientUser = await lookupUser(recipientId)
+    const lastFromRecipient = [...messages].reverse().find((m) => m.senderId === recipientId)
+    const recipientName = recipientUser?.name || lastFromRecipient?.senderName || DEMO_NAMES[recipientId] || recipientId
 
     return NextResponse.json({
       success: true,
       threadId,
-      messages: messages || [],
-      currentUser: {
-        id: currentUserId,
-        name: session?.user?.name || (currentUserId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'),
+      messages,
+      currentUser,
+      spouseId,
+      recipient: {
+        id: recipientId,
+        name: recipientName,
+        email: recipientUser?.email || `${recipientId}@unionverify.com`,
+        avatar: initials(recipientName),
       },
-      recipient: recipientUser ? {
-        id: recipientUser.id,
-        name: recipientUser.name,
-        email: recipientUser.email,
-        avatar: (recipientUser.name || 'UV').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-      } : null,
     })
   } catch (err: any) {
     console.error('[GET /api/chat]', err)
@@ -252,11 +235,10 @@ export async function GET(req: NextRequest) {
 
 // ---------------------------------------------------------------------------
 // POST /api/chat
-// Send a message to ANY user or thread
+// Send a message to another member (defaults to your spouse)
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
-    const session = await auth()
     const body = await req.json()
     const {
       text,
@@ -265,7 +247,7 @@ export async function POST(req: Request) {
       senderName,
       recipientId,
       recipientName,
-      threadId: threadIdOverride,
+      threadId: threadIdParam,
       proposalData,
       loveNoteTitle,
       voiceDuration,
@@ -275,39 +257,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Message content cannot be empty' }, { status: 400 })
     }
 
-    const effectiveSenderId = senderId || session?.user?.id || 'usr_jane_doe'
-    const effectiveSenderName = senderName || session?.user?.name || (effectiveSenderId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe')
+    const sender = await resolveCurrentUser(senderId, senderName)
 
-    // Determine target recipient
-    let effectiveRecipientId = recipientId || ''
-    let threadId = threadIdOverride || ''
-
-    if (threadId === 'spouse') {
-      threadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
-      if (!effectiveRecipientId) {
-        effectiveRecipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
-      }
+    let effectiveRecipientId: string = recipientId || ''
+    if (!effectiveRecipientId && threadIdParam && threadIdParam !== 'spouse') {
+      effectiveRecipientId = otherParticipant(threadIdParam, sender.id)
     }
-
-    if (!effectiveRecipientId && threadId.startsWith('dm_')) {
-      const parts = threadId.replace('dm_', '').split('_')
-      effectiveRecipientId = parts.find((p: string) => p.toLowerCase() !== effectiveSenderId.toLowerCase()) || ''
-    }
-
     if (!effectiveRecipientId) {
-      effectiveRecipientId = effectiveSenderId === 'usr_marcus_vance' ? 'usr_jane_doe' : 'usr_marcus_vance'
+      effectiveRecipientId = await resolveSpouseId(sender.id)
+    }
+    if (!effectiveRecipientId || effectiveRecipientId === sender.id) {
+      return NextResponse.json(
+        { success: false, error: 'No recipient. Share your chat invite link with your spouse to connect.' },
+        { status: 400 },
+      )
     }
 
-    if (!threadId || threadId === 'spouse') {
-      threadId = buildThreadId(effectiveSenderId, effectiveRecipientId)
-    }
-
-    // Determine recipient name
-    let effectiveRecipientName = recipientName || ''
-    if (!effectiveRecipientName) {
-      const recUser = await prisma.user.findUnique({ where: { id: effectiveRecipientId } })
-      effectiveRecipientName = recUser?.name || (effectiveRecipientId === 'usr_marcus_vance' ? 'Marcus Vance' : (effectiveRecipientId === 'usr_jane_doe' ? 'Jane Doe' : 'Member'))
-    }
+    const effectiveRecipientName =
+      recipientName || (await lookupUser(effectiveRecipientId))?.name || DEMO_NAMES[effectiveRecipientId] || 'Member'
 
     const now = new Date()
     const formattedTime = new Intl.DateTimeFormat('en-US', {
@@ -316,13 +283,11 @@ export async function POST(req: Request) {
       hour12: true,
     }).format(now)
 
-    // Save message into persistent ledger (zero AI bots or canned responses)
-    const newMsg = await (prisma as any).chatMessage.create({
+    const newMsg = await createChatMessage({
       data: {
-        id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        threadId,
-        senderId: effectiveSenderId,
-        senderName: effectiveSenderName,
+        threadId: buildThreadId(sender.id, effectiveRecipientId),
+        senderId: sender.id,
+        senderName: sender.name,
         recipientId: effectiveRecipientId,
         recipientName: effectiveRecipientName,
         text: text ? text.trim() : (proposalData ? `Proposed deposit for ${proposalData.goalName}` : (loveNoteTitle || 'Matrimonial Love Note')),
@@ -337,21 +302,19 @@ export async function POST(req: Request) {
       },
     })
 
-    // Create an in-app notification for the recipient
-    if (effectiveRecipientId && effectiveRecipientId !== effectiveSenderId) {
-      try {
-        await prisma.notification.create({
-          data: {
-            userId: effectiveRecipientId,
-            title: `New Message from ${effectiveSenderName}`,
-            message: text ? text.slice(0, 100) : 'You received a new message.',
-            type: 'INFO',
-            link: `/chat?recipientId=${effectiveSenderId}`,
-          },
-        })
-      } catch {
-        // Non-blocking notification
-      }
+    // In-app notification for the recipient
+    try {
+      await prisma.notification.create({
+        data: {
+          userId: effectiveRecipientId,
+          title: `New Message from ${sender.name}`,
+          message: text ? text.slice(0, 100) : 'You received a new message.',
+          type: 'INFO',
+          link: `/chat?recipientId=${encodeURIComponent(sender.id)}`,
+        },
+      })
+    } catch {
+      // Non-blocking notification
     }
 
     return NextResponse.json({ success: true, message: newMsg })
@@ -367,50 +330,43 @@ export async function POST(req: Request) {
 // ---------------------------------------------------------------------------
 export async function PATCH(req: Request) {
   try {
-    const session = await auth()
     const body = await req.json()
-    const { messageId, action, reaction, approvedBy, partnerName } = body
+    const { messageId, action, reaction, approvedBy, partnerName, senderId } = body
 
     if (!messageId) {
       return NextResponse.json({ success: false, error: 'messageId is required' }, { status: 400 })
     }
 
-    const existing = await (prisma as any).chatMessage.findUnique({
-      where: { id: messageId },
-    })
+    const currentUser = await resolveCurrentUser(senderId, approvedBy || partnerName)
+    const chatDb = await getChatDb()
+    const existing = await chatDb.chatMessage.findUnique({ where: { id: messageId } })
 
-    if (!existing) {
+    if (!existing || !isParticipant(existing.threadId, currentUser.id)) {
       return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 })
     }
 
-    // Approve proposal
     if (action === 'approve_proposal') {
-      const approver = approvedBy || session?.user?.name || partnerName || 'User'
-
-      const updated = await (prisma as any).chatMessage.update({
+      const updated = await chatDb.chatMessage.update({
         where: { id: messageId },
         data: {
           proposalData: {
-            ...existing.proposalData,
+            ...((existing.proposalData as any) || {}),
             status: 'approved',
-            approvedBy: approver,
+            approvedBy: currentUser.name,
           },
         },
       })
-
       return NextResponse.json({ success: true, message: updated })
     }
 
-    // Toggle emoji reaction
     if (action === 'react' && reaction) {
-      const currentReactions = { ...(existing.reactions || {}) }
+      const currentReactions: Record<string, number> = { ...((existing.reactions as any) || {}) }
       currentReactions[reaction] = (currentReactions[reaction] || 0) + 1
 
-      const updated = await (prisma as any).chatMessage.update({
+      const updated = await chatDb.chatMessage.update({
         where: { id: messageId },
         data: { reactions: currentReactions },
       })
-
       return NextResponse.json({ success: true, message: updated })
     }
 
