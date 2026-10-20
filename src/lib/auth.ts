@@ -68,13 +68,46 @@ const config: NextAuthConfig = {
         const { email } = parsed.data
         const cleanEmail = email.toLowerCase().trim()
         const isAdmin = cleanEmail.includes('admin')
+        const isMarcus = cleanEmail.includes('marcus')
 
-        // Instant demo authorization - zero backend database required
+        let id = 'usr_jane_doe'
+        let name = 'Jane Doe'
+        let defaultEmail = 'jane.doe@unionverify.com'
+        let role: UserRole = 'INVESTOR'
+
+        if (isAdmin) {
+          id = 'usr_admin'
+          name = 'Platform Administrator'
+          defaultEmail = 'admin@unionverify.com'
+          role = 'ADMIN'
+        } else if (isMarcus) {
+          id = 'usr_marcus_vance'
+          name = 'Marcus Vance'
+          defaultEmail = 'marcus.vance@unionverify.com'
+          role = 'INVESTOR'
+        } else if (cleanEmail.includes('jane')) {
+          id = 'usr_jane_doe'
+          name = 'Jane Doe'
+          defaultEmail = 'jane.doe@unionverify.com'
+          role = 'INVESTOR'
+        } else {
+          const usernamePart = cleanEmail.split('@')[0] || 'investor'
+          const extractedName = usernamePart.replace(/[._-]/g, ' ')
+          const capitalizedName = extractedName
+            .split(' ')
+            .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+            .join(' ')
+          name = capitalizedName || 'Investor'
+          id = `usr_${usernamePart.replace(/[^a-zA-Z0-9]/g, '_')}`
+          defaultEmail = cleanEmail
+        }
+
+        // Instant demo authorization - zero external database dependencies
         return {
-          id: isAdmin ? 'usr_admin' : 'usr_jane_doe',
-          name: isAdmin ? 'Platform Administrator' : 'Jane Doe',
-          email: cleanEmail || (isAdmin ? 'admin@unionverify.com' : 'jane.doe@unionverify.com'),
-          role: (isAdmin ? 'ADMIN' : 'INVESTOR') as UserRole,
+          id,
+          name,
+          email: cleanEmail || defaultEmail,
+          role,
           emailVerified: new Date('2024-01-15'),
           twoFactorEnabled: false,
         }

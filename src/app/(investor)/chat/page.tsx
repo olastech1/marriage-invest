@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   ArrowLeft,
   Check,
+  Copy,
   UserCheck,
   RefreshCw,
   Sparkles,
@@ -71,9 +72,40 @@ export default function MutualChatPage() {
   // Partner Identities (Jane Doe <-> Marcus Vance)
   // -------------------------------------------------------------------------
   const [activeUserId, setActiveUserId] = useState<string>('usr_jane_doe')
+  const [copiedInvite, setCopiedInvite] = useState(false)
 
-  // Set initial identity from session or localStorage
+  // Set initial identity with priority: URL query param (?as=marcus / ?as=jane) -> session -> localStorage
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const asParam = params.get('as')?.toLowerCase()
+      if (asParam === 'marcus' || asParam === 'usr_marcus_vance' || asParam === 'husband') {
+        setActiveUserId('usr_marcus_vance')
+        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
+        return
+      } else if (asParam === 'jane' || asParam === 'usr_jane_doe' || asParam === 'wife') {
+        setActiveUserId('usr_jane_doe')
+        localStorage.setItem('union_verify_active_partner', 'usr_jane_doe')
+        return
+      }
+    }
+
+    if (session?.user?.id === 'usr_marcus_vance' || session?.user?.name?.toLowerCase().includes('marcus')) {
+      setActiveUserId('usr_marcus_vance')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
+      }
+      return
+    }
+
+    if (session?.user?.id === 'usr_jane_doe' || session?.user?.name?.toLowerCase().includes('jane')) {
+      setActiveUserId('usr_jane_doe')
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('union_verify_active_partner', 'usr_jane_doe')
+      }
+      return
+    }
+
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('union_verify_active_partner')
       if (saved === 'usr_marcus_vance' || saved === 'usr_jane_doe') {
@@ -81,11 +113,8 @@ export default function MutualChatPage() {
         return
       }
     }
-    if (session?.user?.id === 'usr_marcus_vance' || session?.user?.name?.includes('Marcus')) {
-      setActiveUserId('usr_marcus_vance')
-    } else {
-      setActiveUserId('usr_jane_doe')
-    }
+
+    setActiveUserId('usr_jane_doe')
   }, [session])
 
   // Derive Current User & Partner Info
@@ -96,13 +125,26 @@ export default function MutualChatPage() {
   const userInitials = isMarcus ? 'MV' : 'JD'
   const advisorName = 'UV Support'
 
-  // Switch Active Partner Toggle
+  // Switch Active Partner Toggle (updates localStorage and URL without refresh)
   const handleSwitchPartner = () => {
     const nextId = isMarcus ? 'usr_jane_doe' : 'usr_marcus_vance'
     setActiveUserId(nextId)
     if (typeof window !== 'undefined') {
       localStorage.setItem('union_verify_active_partner', nextId)
+      const url = new URL(window.location.href)
+      url.searchParams.set('as', nextId === 'usr_marcus_vance' ? 'marcus' : 'jane')
+      window.history.replaceState({}, '', url.toString())
     }
+  }
+
+  // Copy Direct Partner Invite Link for live two-person testing
+  const handleCopyPartnerInvite = () => {
+    if (typeof window === 'undefined') return
+    const partnerParam = isMarcus ? 'jane' : 'marcus'
+    const inviteUrl = `${window.location.origin}/chat?as=${partnerParam}`
+    navigator.clipboard.writeText(inviteUrl)
+    setCopiedInvite(true)
+    setTimeout(() => setCopiedInvite(false), 3500)
   }
 
   // Channels & Active Thread
@@ -310,53 +352,6 @@ export default function MutualChatPage() {
           lastMessageCountRef.current += 1
           broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
           setTimeout(() => scrollToBottom(true), 50)
-
-          // Responsive spousal simulation: Marcus Vance / partner responds
-          const isFromCurrentUser = activeUserId === 'usr_jane_doe' || currentUserName.includes('Jane')
-          if (isFromCurrentUser) {
-            setTimeout(() => {
-              setIsTyping(true)
-              scrollToBottom(true)
-            }, 750)
-
-            setTimeout(async () => {
-              setIsTyping(false)
-              const userLower = messageText.toLowerCase()
-              let replyText = "Got your message babe! Checking our savings vault now ❤️"
-              if (userLower.includes('deposit') || userLower.includes('save') || userLower.includes('match') || userLower.includes('$') || userLower.includes('money')) {
-                replyText = "Awesome love! I will match your deposit in our joint vault right now 💰💍"
-              } else if (userLower.includes('love') || userLower.includes('miss') || userLower.includes('babe') || userLower.includes('kiss')) {
-                replyText = "Love you so much! Excited for our next milestone together ❤️✨"
-              } else if (userLower.includes('goal') || userLower.includes('trip') || userLower.includes('home') || userLower.includes('house')) {
-                replyText = "Yes! We are so close to our goal. Compounding is doing the work! 🏡📈"
-              } else if (userLower.includes('hello') || userLower.includes('hey') || userLower.includes('hi')) {
-                replyText = "Hey love! How is your day going? I'm watching our vault compound right now 🔥"
-              }
-
-              try {
-                const partnerRes = await fetch('/api/chat', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    threadId: 'spouse',
-                    text: replyText,
-                    senderId: 'usr_marcus_vance',
-                    senderName: 'Marcus Vance',
-                    type: 'text',
-                  }),
-                })
-                const partnerData = await partnerRes.json()
-                if (partnerData.success && partnerData.message) {
-                  setSpouseMessages((prev) => [...prev, partnerData.message])
-                  lastMessageCountRef.current += 1
-                  playNotificationChime()
-                  setTimeout(() => scrollToBottom(true), 50)
-                }
-              } catch {
-                // Silently catch
-              }
-            }, 2100)
-          }
         }
       } catch (err) {
         console.error('Failed to send message:', err)
@@ -595,6 +590,26 @@ export default function MutualChatPage() {
             </button>
           </div>
 
+          {/* Copy Partner Invite Link Button */}
+          <button
+            type="button"
+            onClick={handleCopyPartnerInvite}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#C9A84C]/15 hover:bg-[#C9A84C]/25 text-[#0F1C3F] border border-[#C9A84C]/40 transition-all cursor-pointer shadow-2xs"
+            title={`Copy chat invite link for ${partnerName} to test live on another phone or browser`}
+          >
+            {copiedInvite ? (
+              <>
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-emerald-700 font-bold">Partner Link Copied!</span>
+              </>
+            ) : (
+              <>
+                <Copy className="w-3.5 h-3.5 text-[#C9A84C]" />
+                <span>Invite {partnerName}</span>
+              </>
+            )}
+          </button>
+
           {/* Sound Toggle */}
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
@@ -735,6 +750,14 @@ export default function MutualChatPage() {
                 <Share2 className="w-3.5 h-3.5 text-blue-600" />
                 <span>My Public Bio & Chat Link</span>
               </Link>
+              <button
+                type="button"
+                onClick={handleCopyPartnerInvite}
+                className="w-full py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 font-bold text-[11px] transition-colors border border-purple-200 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Share2 className="w-3.5 h-3.5 text-purple-600" />
+                <span>{copiedInvite ? '✓ Partner Link Copied!' : `Invite ${partnerName} to Chat`}</span>
+              </button>
             </div>
 
             {/* Matrimonial Covenant Snapshot Card */}
@@ -805,6 +828,15 @@ export default function MutualChatPage() {
                   >
                     Switch to {partnerName}
                   </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyPartnerInvite}
+                    className="text-purple-600 font-semibold hover:underline flex items-center gap-0.5"
+                    title={`Copy direct invite link for ${partnerName} to chat live`}
+                  >
+                    {copiedInvite ? '✓ Copied' : `Invite ${partnerName}`}
+                  </button>
                 </div>
               </div>
             </div>
@@ -858,6 +890,25 @@ export default function MutualChatPage() {
                 Joint Vault: <strong className="text-emerald-700 font-bold">$24,750.00</strong> compounding at <strong>6.8% APY</strong> · 50/50 Mutual Rights
               </p>
             </div>
+
+            {/* Partner Invite Copied Alert Banner */}
+            {copiedInvite && (
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center justify-between gap-2 shadow-sm animate-in fade-in-50 slide-in-from-top-2 duration-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                  <span>
+                    Partner invite link copied to clipboard! Send this link to {partnerName} (or open in another browser) to test live two-person chat.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCopiedInvite(false)}
+                  className="text-emerald-700 hover:text-emerald-950 p-1 rounded-lg hover:bg-emerald-100/60"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
 
             {/* Instant Nudge Feedback Banner */}
             {nudgeBanner && (

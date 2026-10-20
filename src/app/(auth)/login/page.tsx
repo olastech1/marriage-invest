@@ -121,6 +121,32 @@ function LoginForm() {
     }
   }
 
+  const handleQuickLogin = async (email: string) => {
+    setServerError(null)
+    setIsSubmitting(true)
+    setFields({ email, password: 'Password123!' })
+    try {
+      const response = await signIn('credentials', {
+        email: email.toLowerCase().trim(),
+        password: 'Password123!',
+        redirect: false,
+      })
+
+      if (response?.error) {
+        setServerError(resolveError(response.error) ?? AUTH_ERRORS.Default)
+        return
+      }
+
+      const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
+      router.push(callbackUrl)
+      router.refresh()
+    } catch {
+      setServerError(AUTH_ERRORS.Default)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   return (
     <>
       {/* Heading */}
@@ -275,6 +301,31 @@ function LoginForm() {
           )}
           {isSubmitting ? 'Signing in…' : 'Sign in'}
         </button>
+
+        {/* Instant Multi-Device Testing Shortcuts */}
+        <div className="pt-3 border-t border-slate-200/60 space-y-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center">
+            One-Tap Testing Sign-In (Multiplayer)
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('jane.doe@unionverify.com')}
+              disabled={isSubmitting}
+              className="py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all text-center cursor-pointer shadow-2xs"
+            >
+              <span>👩 Login as Jane</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleQuickLogin('marcus.vance@unionverify.com')}
+              disabled={isSubmitting}
+              className="py-2.5 px-3 rounded-xl border border-[#C9A84C]/40 bg-[#C9A84C]/10 hover:bg-[#C9A84C]/20 text-[#0F1C3F] text-xs font-bold flex items-center justify-center gap-1.5 transition-all text-center cursor-pointer shadow-2xs"
+            >
+              <span>👨 Login as Marcus</span>
+            </button>
+          </div>
+        </div>
 
         {/* Security / Encryption Note */}
         <div className="pt-3 flex items-center justify-center gap-1.5 text-xs text-slate-400">

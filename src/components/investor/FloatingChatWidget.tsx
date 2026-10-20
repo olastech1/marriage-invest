@@ -141,10 +141,16 @@ export function FloatingChatWidget({
     e.preventDefault()
     if (!inputText.trim()) return
 
+    const textToSend = inputText.trim()
+    const activePartnerId = typeof window !== 'undefined'
+      ? localStorage.getItem('union_verify_active_partner') || 'usr_jane_doe'
+      : 'usr_jane_doe'
+    const activePartnerName = activePartnerId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe'
+
     const newMsg: FloatingMessage = {
       id: `float-${Date.now()}`,
       sender: 'user',
-      text: inputText.trim(),
+      text: textToSend,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     }
 
@@ -157,38 +163,20 @@ export function FloatingChatWidget({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         threadId: 'spouse',
-        text: inputText.trim(),
-        senderId: 'usr_jane_doe',
-        senderName: 'Jane Doe',
+        text: textToSend,
+        senderId: activePartnerId,
+        senderName: activePartnerName,
         type: 'text',
       }),
-    }).catch(() => {})
-
-    setTimeout(() => {
-      setIsTyping(true)
-    }, 800)
-
-    setTimeout(() => {
-      setIsTyping(false)
-      const responses = [
-        'Got it, darling! Loving our joint portfolio growth! 🥂',
-        'Noted! I just checked the dashboard, looking great! ❤️',
-        'Sounds perfect. Joint vault balance updated on my end too.',
-        '100% on board! Sending you love today! ✨',
-      ]
-      const chosen = responses[Math.floor(Math.random() * responses.length)]
-      const replyMsg: FloatingMessage = {
-        id: `float-reply-${Date.now()}`,
-        sender: 'partner',
-        text: chosen,
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      }
-      setMessages((prev) => [...prev, replyMsg])
-      playChime()
-      if (!isOpen) {
-        setUnreadCount((c) => c + 1)
-      }
-    }, 2400)
+    })
+      .then(() => {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('union_verify_chat')
+          bc.postMessage({ type: 'NEW_MESSAGE' })
+          bc.close()
+        }
+      })
+      .catch(() => {})
   }
 
   function handleOpenWidget() {
