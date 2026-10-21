@@ -10,6 +10,7 @@ import {
   otherParticipant,
   resolveSpouseId,
 } from '@/lib/chat'
+import { getReciprocationStatus } from '@/lib/reciprocation'
 
 const DEMO_NAMES: Record<string, string> = {
   usr_jane_doe: 'Jane Doe',
@@ -223,6 +224,13 @@ export async function GET(req: NextRequest) {
       currentUser,
       spouseId,
       chatStore: getChatStoreStatus(),
+      reciprocation:
+        recipientId === spouseId
+          ? await getReciprocationStatus(currentUserId).then((r) => ({
+              owedByMe: r.owedByMe,
+              pendingMessageId: r.pending?.messageId || null,
+            }))
+          : null,
       recipient: {
         id: recipientId,
         name: recipientName,

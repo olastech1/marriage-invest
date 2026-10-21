@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendDepositReminderEmail } from '@/lib/email'
-import { createChatMessage } from '@/lib/chat'
+import { createChatMessage, resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
 const DEFAULT_SPOUSE_EMAIL = ''
-const DEFAULT_SPOUSE_NAME = 'Your Partner'
+const DEFAULT_SPOUSE_NAME = 'your spouse'
 
 export async function GET() {
   try {
@@ -46,8 +46,8 @@ export async function POST(req: NextRequest) {
       amount = 500,
       targetPartnerName = DEFAULT_SPOUSE_NAME,
       targetEmail = DEFAULT_SPOUSE_EMAIL,
-      vaultName = 'Mutual Spousal Contribution Vault',
-      note = 'Remember our monthly deposit to accelerate our joint compounding vault! ❤️',
+      vaultName = 'your joint vault',
+      note = '',
       frequency = 'MONTHLY',
       dayOfWeek,
       dayOfMonth = 1,
@@ -80,17 +80,17 @@ export async function POST(req: NextRequest) {
       try {
         await prisma.notification.create({
           data: {
-            userId: userId || 'usr_jane_doe',
-            title: `⏰ Deposit Reminder from ${userName}`,
-            message: `${userName} scheduled a reminder to deposit $${numAmount.toLocaleString()} into your joint ${vaultName}. Keep your covenant strong!`,
+            userId: (await resolveSpouseId(userId)) || userId,
+            title: `Deposit reminder from ${userName}`,
+            message: `${userName} reminded you to deposit $${numAmount.toLocaleString()} into ${vaultName}.`,
             type: 'ALERT',
-            link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
+            link: `/save?amount=${numAmount}`,
             category: 'PARTNER_CHANGE',
             requiresAction: true,
             attended: false,
             amount: numAmount,
             partnerName: userName,
-            actionLabel: `View in Chat & Deposit ($${numAmount.toLocaleString()})`,
+            actionLabel: `Deposit $${numAmount.toLocaleString()}`,
           } as any,
         })
       } catch (e) {
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
             threadId: 'spouse',
             senderId: 'system_concierge',
             senderName: 'Union Verify Concierge',
-            text: `🔔 SYSTEM DEPOSIT REMINDER: ${userName} has sent an official deposit reminder to ${targetPartnerName} for $${numAmount.toLocaleString()} into the ${vaultName}.`,
+            text: `${userName} sent ${targetPartnerName} a reminder to deposit $${numAmount.toLocaleString()} into ${vaultName}.`,
             timestamp: formattedTime,
             createdAt: now,
             read: false,

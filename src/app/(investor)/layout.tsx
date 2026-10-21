@@ -269,7 +269,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
           </div>
 
           {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages, hidden on /chat) */}
-          <FloatingChatWidget partnerName="Your Partner" />
+          <FloatingChatWidget />
         </main>
       </div>
     </div>

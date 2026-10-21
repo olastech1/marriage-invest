@@ -28,11 +28,7 @@ interface FloatingMessage {
   amount?: number
 }
 
-export function FloatingChatWidget({
-  partnerName = 'Marcus Vance',
-}: {
-  partnerName?: string
-}) {
+export function FloatingChatWidget() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -330,7 +326,7 @@ export function FloatingChatWidget({
                     {(m.type === 'proposal' || m.type === 'deposit_alert' || m.type === 'system_reminder') && (
                       <div className="mt-2 pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold text-[#C9A84C]">
-                          {m.type === 'deposit_alert' ? 'Compounding Vault' : 'Rule 4.2 Obligation'}
+                          {m.type === 'deposit_alert' ? 'Vault deposit' : 'Reminder'}
                         </span>
                         <Link
                           href={m.amount ? `/save?match=${m.amount}` : '/save'}
@@ -355,7 +351,7 @@ export function FloatingChatWidget({
                 <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" />
                 <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                <span className="ml-1">{partnerName} is typing…</span>
+                <span className="ml-1">{displayPartnerName} is typing…</span>
               </div>
             )}
             <div ref={messagesEndRef} />

@@ -1,5 +1,6 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { getReciprocationStatus } from '@/lib/reciprocation'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Decimal } from '@prisma/client/runtime/library'
@@ -98,7 +99,7 @@ export default async function DashboardPage() {
     userAcknowledgments,
     marriageAudit,
     allPendingWithdrawals,
-    latestReciprocationLog,
+    reciprocation,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -143,13 +144,7 @@ export default async function DashboardPage() {
       where: { status: 'PENDING' },
       select: { id: true, amount: true, adminNote: true, userId: true },
     }),
-    prisma.auditLog.findFirst({
-      where: {
-        userId,
-        action: { in: ['RECIPROCATION_OBLIGATION_CREATED', 'RECIPROCATION_OBLIGATION_FULFILLED'] },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
+    getReciprocationStatus(userId),
   ])
 
   // ── compute real stats (strictly excluding demo deposits & investments) ─
@@ -223,11 +218,9 @@ export default async function DashboardPage() {
   })
 
   // Pending compulsory spousal reciprocation check
-  const hasPendingReciprocation = Boolean(
-    latestReciprocationLog && latestReciprocationLog.action === 'RECIPROCATION_OBLIGATION_CREATED'
-  )
-  const pendingRecipAmount = Number((latestReciprocationLog?.after as any)?.amount || 500)
-  const pendingDepositorName = (latestReciprocationLog?.after as any)?.depositorName || 'Your Partner'
+  const hasPendingReciprocation = !!reciprocation.pending
+  const pendingRecipAmount = reciprocation.pending?.amount ?? 0
+  const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your spouse'
 
   return (
     <div className="space-y-6">
@@ -254,7 +247,7 @@ export default async function DashboardPage() {
       <UrgentNotificationCenter
         initialNotifications={notifications as any}
         currentUserName={currentUser.name || 'Investor'}
-        partnerName="Your Partner"
+        partnerName={reciprocation.spouseName || 'Your spouse'}
       />
 
       {/* ── Compulsory Spousal Reciprocation Due Banner ───────────────── */}
@@ -267,20 +260,19 @@ export default async function DashboardPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-widest bg-rose-200/80 text-rose-900 px-2.5 py-0.5 rounded-full">
-                  Compulsory Reciprocation · Rule 4.2
+                  Match Needed
                 </span>
-                <span className="text-xs text-rose-700 font-semibold">Vault Parity Incomplete</span>
               </div>
               <h3 className="text-base font-bold text-rose-950">
-                {pendingDepositorName} Deposited ${pendingRecipAmount.toLocaleString()} — Your Reciprocal Match is Required
+                {pendingDepositorName} deposited — you have ${pendingRecipAmount.toLocaleString()} left to match
               </h3>
               <p className="text-xs text-rose-900/80 leading-relaxed max-w-2xl">
-                Under your Spousal Financial Covenant, every deposit into your joint vault is compulsory to match. Joint vault withdrawals remain locked until parity is restored.
+                Match your spouse&apos;s deposits to keep your joint vault balanced. Joint withdrawals stay locked until it&apos;s matched.
               </p>
             </div>
           </div>
           <Link
-            href="/save"
+            href={`/save?match=${pendingRecipAmount}`}
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors flex-shrink-0"
           >
             Match ${pendingRecipAmount.toLocaleString()} Now

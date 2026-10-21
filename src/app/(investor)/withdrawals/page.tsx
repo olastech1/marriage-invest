@@ -325,7 +325,7 @@ export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
   const [eligibleInvestments, setEligibleInvestments] = useState<ActiveInvestment[]>([])
   const [pendingPartnerApprovals, setPendingPartnerApprovals] = useState<PendingPartnerApproval[]>([])
-  const [partnerName, setPartnerName] = useState('Marcus Vance')
+  const [partnerName, setPartnerName] = useState('your spouse')
   const [selectedInvestmentId, setSelectedInvestmentId] = useState('')
   const [amount, setAmount] = useState('1000')
   const [bankName, setBankName] = useState('')
@@ -390,7 +390,7 @@ export default function WithdrawalsPage() {
     }
     if (!isSolo && hasPendingReciprocation) {
       setError(
-        `Withdrawal locked: Under Spousal Covenant Rule 4.2, you must reciprocate ${pendingReciprocation?.depositorName || partnerName}'s deposit of $${Number(pendingReciprocation?.amount || 500).toLocaleString()} before withdrawing joint funds.`
+        `Withdrawal locked: match ${pendingReciprocation?.depositorName || partnerName}'s deposit first ($${Number(pendingReciprocation?.amount || 0).toLocaleString()} left to match).`
       )
       return
     }
@@ -540,7 +540,7 @@ export default function WithdrawalsPage() {
             <div className="space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-widest bg-black/30 px-2.5 py-0.5 rounded-full text-amber-200">
-                  Covenant Lock Active · Rule 4.2
+                  Match needed first
                 </span>
                 <span className="text-xs text-red-100 font-semibold">Deposit Parity Incomplete</span>
               </div>
@@ -548,15 +548,15 @@ export default function WithdrawalsPage() {
                 Joint Vault Withdrawals Locked — Reciprocation Required
               </h3>
               <p className="text-xs text-red-100 leading-relaxed max-w-xl">
-                {pendingReciprocation?.depositorName || partnerName} deposited ${Number(pendingReciprocation?.amount || 500).toLocaleString()} into the joint vault. Under your Spousal Covenant, you must reciprocate with a matching contribution before joint capital can be liquidated.
+                {pendingReciprocation?.depositorName || partnerName} deposited into your joint vault. Match ${Number(pendingReciprocation?.amount || 0).toLocaleString()} to unlock joint withdrawals.
               </p>
             </div>
           </div>
           <Link
-            href="/save"
+            href={`/save?match=${Number(pendingReciprocation?.amount || 0)}`}
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all flex-shrink-0 transform hover:scale-105"
           >
-            Go to Save &amp; Match ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+            Match ${Number(pendingReciprocation?.amount || 0).toLocaleString()} now
             <ArrowRight size={14} />
           </Link>
         </div>

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createChatMessage } from '@/lib/chat'
+import { createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { getCoupleDeposits, getSpouseName } from '@/lib/reciprocation'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,46 +10,15 @@ export async function GET() {
   try {
     const session = await auth()
     const currentUserId = session?.user?.id || 'usr_jane_doe'
-    const currentUserName = session?.user?.name || 'Investor'
-
-    // Fetch deposit transactions
-    const rawTransactions = await prisma.transaction.findMany({
-      where: {
-        type: 'DEPOSIT',
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 50,
-    })
-
-    const deposits = rawTransactions.map((tx: any) => {
-      const isFromPartner = tx.userId === 'usr_marcus_vance' || tx.metadata?.depositorName === 'Your Partner'
-      const depositorName = tx.metadata?.depositorName || (isFromPartner ? 'Your Partner' : currentUserName)
-      const isPending = tx.status === 'PENDING' || tx.metadata?.status === 'PENDING_MATCH'
-
-      return {
-        id: tx.id,
-        reference: tx.reference,
-        amount: Number(tx.amount),
-        depositorName,
-        isCurrentUser: !isFromPartner,
-        vaultTitle: tx.description || 'Mutual Spousal Contribution Vault',
-        status: isPending ? 'PENDING_MATCH' : 'APPROVED',
-        statusLabel: isPending ? 'Pending Partner Match' : 'Approved & Compounding',
-        canRemind: isPending || isFromPartner,
-        partnerEmail: '',
-        partnerName: 'Your Partner',
-        createdAt: tx.createdAt,
-        metadata: tx.metadata || {},
-      }
-    })
+    const deposits = await getCoupleDeposits(currentUserId)
 
     return NextResponse.json({
       success: true,
       deposits,
       summary: {
-        totalDeposited: deposits.reduce((sum: number, d: any) => sum + d.amount, 0),
-        approvedCount: deposits.filter((d: any) => d.status === 'APPROVED').length,
-        pendingCount: deposits.filter((d: any) => d.status === 'PENDING_MATCH').length,
+        totalDeposited: deposits.reduce((sum, d) => sum + d.amount, 0),
+        approvedCount: deposits.filter((d) => d.status === 'APPROVED').length,
+        pendingCount: deposits.filter((d) => d.status === 'PENDING_MATCH').length,
       },
     })
   } catch (error: any) {
@@ -62,13 +32,14 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     const currentUserId = session?.user?.id || 'usr_jane_doe'
     const currentUserName = session?.user?.name || 'Investor'
-    const partnerName = 'Your Partner'
+    const spouseId = await resolveSpouseId(currentUserId)
+    const partnerName = spouseId ? await getSpouseName(spouseId) : 'your spouse'
 
     const body = await req.json()
     const {
       amount,
       applyBonus = false,
-      vaultTitle = 'Mutual Spousal Contribution Vault',
+      vaultTitle = 'Joint Vault',
       note = '',
       isReciprocalMatch = false,
     } = body
@@ -137,7 +108,9 @@ export async function POST(req: NextRequest) {
           threadId: 'spouse',
           senderId: currentUserId,
           senderName: currentUserName,
-          text: `💰 Just deposited $${numAmount.toLocaleString()} into our ${vaultTitle}!${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% instant cash match! Total added: $${totalAdded.toLocaleString()})` : ''} Note: "${note || 'For our shared goals ❤️'}"`,
+          text: isReciprocalMatch
+            ? `Matched ${partnerName}'s deposit with $${numAmount.toLocaleString()}.`
+            : `Deposited $${numAmount.toLocaleString()} into our joint vault.${bonusAmount > 0 ? ` +$${bonusAmount.toLocaleString()} cash match credited.` : ''}${note ? ` Note: "${note}"` : ''}`,
           timestamp: formattedTime,
           createdAt: new Date(),
           read: false,
@@ -157,48 +130,44 @@ export async function POST(req: NextRequest) {
             reference,
             isReciprocalMatch,
           },
-          reactions: { '💰': 1, '🔥': 1, '❤️': 1 },
+          reactions: {},
         },
       })
     } catch (chatErr) {
       console.warn('Failed to inject chat message for deposit:', chatErr)
     }
 
-    // 4. Create persistent UNATTENDED disturbing notification for the partner!
-    // Stays on their dashboard until attended to! Links to chat with direct match context.
-    await prisma.notification.create({
-      data: {
-        userId: currentUserId, // visible in current session dashboard
-        title: `🚨 Partner Action: $${numAmount.toLocaleString()} Deposited by ${currentUserName}`,
-        message: `${currentUserName} contributed $${numAmount.toLocaleString()} to your Joint Vault${bonusAmount > 0 ? ` (+ earned an instant $${bonusAmount.toLocaleString()} 10% cash match!)` : ''}. Note: "${note || 'For our shared goals ❤️'}". Covenant Rule 4.2 requires equal partner attendance & match.`,
-        type: 'ALERT',
-        read: false,
-        link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
-        category: 'PARTNER_DEPOSIT',
-        requiresAction: true,
-        attended: false,
-        amount: numAmount,
-        partnerName: currentUserName,
-        actionLabel: `Match in Chat ($${numAmount.toLocaleString()})`,
-        metadata: {
-          transactionId: transaction.id,
-          reference,
-          bonusMatch: bonusAmount,
-          chatThread: 'spouse',
-        },
-      } as any,
-    })
+    // 4. Ask the spouse to match (only for regular deposits)
+    if (spouseId && !isReciprocalMatch) {
+      await prisma.notification.create({
+        data: {
+          userId: spouseId,
+          title: `${currentUserName} deposited $${numAmount.toLocaleString()}`,
+          message: `${currentUserName} added $${numAmount.toLocaleString()} to your joint vault${note ? `: "${note}"` : '.'} Match it to keep your vault balanced.`,
+          type: 'ALERT',
+          read: false,
+          link: `/save?match=${numAmount}`,
+          category: 'PARTNER_DEPOSIT',
+          requiresAction: true,
+          attended: false,
+          amount: numAmount,
+          partnerName: currentUserName,
+          actionLabel: `Match $${numAmount.toLocaleString()}`,
+          metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount },
+        } as any,
+      })
+    }
 
     // 5. Also create celebratory notification for the depositor if 10% bonus was earned
     if (bonusAmount > 0) {
       await prisma.notification.create({
         data: {
           userId: currentUserId,
-          title: `🎁 +$${bonusAmount.toLocaleString()} 10% Bonus Match Credited!`,
-          message: `Congratulations! Your deposit of $${numAmount.toLocaleString()} earned an instant $${bonusAmount.toLocaleString()} 10% match. Total credited: $${totalAdded.toLocaleString()}.`,
+          title: `+$${bonusAmount.toLocaleString()} cash match credited`,
+          message: `Your deposit of $${numAmount.toLocaleString()} earned a $${bonusAmount.toLocaleString()} match. Total credited: $${totalAdded.toLocaleString()}.`,
           type: 'SUCCESS',
           read: false,
-          link: '/chat?thread=spouse',
+          link: '/save',
           category: 'BONUS_MATCH',
           requiresAction: false,
           attended: true,

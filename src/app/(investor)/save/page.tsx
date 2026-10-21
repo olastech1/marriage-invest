@@ -100,7 +100,6 @@ function SavePageContent() {
   const { data: session } = useSession()
   const searchParams = useSearchParams()
   const currentUserName = session?.user?.name || 'Investor'
-  const partnerName = 'Your Partner'
   const partnerEmail = ''
   const partnerPhone = ''
 
@@ -123,7 +122,7 @@ function SavePageContent() {
   // Spousal Reciprocation Covenant State
   const [reciprocationData, setReciprocationData] = useState<any>(null)
   const [isReciprocalMatch, setIsReciprocalMatch] = useState(false)
-  const [simulatingPartner, setSimulatingPartner] = useState(false)
+  const partnerName: string = reciprocationData?.partnerName || 'your spouse'
 
   // Sync with URL query parameters (?bonus=10percent, ?match=500, ?amount=250, ?checkout_success=true)
   useEffect(() => {
@@ -184,7 +183,9 @@ function SavePageContent() {
       const res = await fetch('/api/savings/reciprocation')
       const data = await res.json()
       if (data) {
-        setReciprocationData(data)
+        const dueDate = data.pendingReciprocation?.dueDate
+        const hoursLeft = dueDate ? Math.ceil((new Date(dueDate).getTime() - Date.now()) / 3600000) : null
+        setReciprocationData({ ...data, hoursLeft })
       }
     } catch (err) {
       console.error('Failed to load reciprocation data', err)
@@ -233,36 +234,31 @@ function SavePageContent() {
       .catch(() => {})
   }, [loadReciprocation, loadDeposits, loadReminders])
 
+  // Returning from Stripe Checkout: record the paid deposit (no-op if the webhook already did)
+  useEffect(() => {
+    const sessionId = searchParams?.get('session_id')
+    if (searchParams?.get('checkout_success') !== 'true' || !sessionId) return
+    fetch('/api/payments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.success) setError(data.error || 'Could not confirm your card payment.')
+        loadReciprocation()
+        loadDeposits()
+      })
+      .catch(() => setError('Could not confirm your card payment.'))
+  }, [searchParams, loadReciprocation, loadDeposits])
+
   const handleOneClickReciprocate = () => {
-    const targetAmount = reciprocationData?.pendingReciprocation?.amount || 500
+    const targetAmount = reciprocationData?.pendingReciprocation?.amount
+    if (!targetAmount) return
     setSaveAmount(String(targetAmount))
     setBeneficiary('JOINT')
     setIsReciprocalMatch(true)
     document.getElementById('save-deposit-form')?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const handleSimulatePartnerDeposit = async () => {
-    setSimulatingPartner(true)
-    setError('')
-    try {
-      const res = await fetch('/api/savings/reciprocation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'simulate_partner_deposit',
-          amount: 500,
-          partnerNote: 'I just saved $500 for our trip to Italy! Under our Spousal Covenant, you must match this deposit ❤️',
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to simulate partner deposit')
-      await loadReciprocation()
-      await loadDeposits()
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setSimulatingPartner(false)
-    }
   }
 
   // -------------------------------------------------------------------------
@@ -364,12 +360,11 @@ function SavePageContent() {
 
       setVaultPrincipal((prev) => prev + totalCredited)
       setSuccess(true)
-      if (calculatedBonus > 0) {
-        setSuccessMessage(`✓ Deposit added with +$${calculatedBonus.toFixed(2)} 10% Cash Match! Total credited: $${totalCredited.toFixed(2)}. Your partner has been alerted and will see this deposit on their dashboard until attended to.`)
-      } else if (isReciprocalMatch || reciprocationData?.hasPendingReciprocation) {
-        setSuccessMessage(`✓ Spousal Reciprocation Fulfilled! You matched ${partnerName}'s deposit with $${numSaveAmount.toLocaleString()}. Both partners are in full financial parity and vault withdrawals are unlocked!`)
+      const bonusNote = calculatedBonus > 0 ? ` +$${calculatedBonus.toFixed(2)} cash match credited (total $${totalCredited.toFixed(2)}).` : ''
+      if (isReciprocalMatch || reciprocationData?.hasPendingReciprocation) {
+        setSuccessMessage(`✓ You matched ${partnerName}'s deposit with $${numSaveAmount.toLocaleString()}.${bonusNote}`)
       } else {
-        setSuccessMessage(`Savings added! Under Spousal Covenant Rule 4.2, ${partnerName} has been alerted and must reciprocate with an equal match.`)
+        setSuccessMessage(`✓ Deposit of $${numSaveAmount.toLocaleString()} added.${bonusNote} ${partnerName} has been notified in your couple chat.`)
       }
       setIsReciprocalMatch(false)
       await loadReciprocation()
@@ -640,7 +635,7 @@ function SavePageContent() {
                 {hasPendingReciprocation ? (
                   <>
                     <Zap size={13} className="fill-white" />
-                    Compulsory Reciprocation Active · Rule 4.2
+                    Match needed
                   </>
                 ) : (
                   <>
@@ -658,7 +653,7 @@ function SavePageContent() {
             {hasPendingReciprocation ? (
               <>
                 <h3 className="text-xl sm:text-2xl font-black text-[#0F1C3F]">
-                  {pendingReciprocation?.depositorName || partnerName} Deposited ${Number(pendingReciprocation?.amount || 500).toLocaleString()} — Your Reciprocation is Compulsory
+                  {pendingReciprocation?.depositorName || partnerName} Deposited ${Number(pendingReciprocation?.amount || 0).toLocaleString()} — Your Reciprocation is Compulsory
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                   Under your Spousal Financial Covenant, every deposit made into the vault requires mandatory partner reciprocation within 48 hours to preserve parity.
@@ -672,7 +667,7 @@ function SavePageContent() {
                 <div className="flex items-center gap-3 pt-1 text-xs text-amber-900 font-bold flex-wrap">
                   <span className="flex items-center gap-1 bg-amber-100/80 px-2.5 py-1 rounded-lg">
                     <Clock size={13} className="text-amber-700" />
-                    Covenant Window: 41h remaining
+                    {reciprocationData?.hoursLeft > 0 ? `${reciprocationData.hoursLeft}h left to match` : 'Match overdue'}
                   </span>
                   <span className="flex items-center gap-1 bg-rose-100/80 text-rose-800 px-2.5 py-1 rounded-lg">
                     <Lock size={13} className="text-rose-700" />
@@ -700,18 +695,9 @@ function SavePageContent() {
                 className="px-6 py-3.5 rounded-2xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-black text-xs sm:text-sm shadow-lg flex items-center justify-center gap-2 transition-all transform hover:scale-105 active:scale-95"
               >
                 <Sparkles size={15} className="text-[#C9A84C]" />
-                Reciprocate & Match ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+                Reciprocate & Match ${Number(pendingReciprocation?.amount || 0).toLocaleString()}
               </button>
             )}
-            <button
-              type="button"
-              disabled={simulatingPartner}
-              onClick={handleSimulatePartnerDeposit}
-              className="px-4 py-2.5 rounded-xl border border-gray-300 hover:border-[#C9A84C] bg-white text-gray-700 font-bold text-xs hover:bg-gray-50 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <RefreshCw size={12} className={simulatingPartner ? 'animate-spin' : ''} />
-              {simulatingPartner ? 'Simulating...' : `Simulate ${partnerName} Depositing $500`}
-            </button>
           </div>
         </div>
       </div>
@@ -850,7 +836,7 @@ function SavePageContent() {
                   <label className="text-xs font-bold text-gray-700 uppercase tracking-wider">Amount to Save (USD)</label>
                   {hasPendingReciprocation && (
                     <span className="text-[11px] font-bold text-amber-700">
-                      Match Required: ${Number(pendingReciprocation?.amount || 500).toLocaleString()}
+                      Match Required: ${Number(pendingReciprocation?.amount || 0).toLocaleString()}
                     </span>
                   )}
                 </div>
@@ -1144,7 +1130,7 @@ function SavePageContent() {
             <PiggyBank className="w-10 h-10 text-slate-300 mx-auto" />
             <h4 className="text-sm font-bold text-gray-700">No deposits found in this view</h4>
             <p className="text-xs text-gray-400 max-w-sm mx-auto">
-              Make your first contribution above, or simulate {partnerName} making a deposit to trigger the spousal reciprocation protocol.
+              Make your first contribution above. Deposits from you and {partnerName} will appear here.
             </p>
           </div>
         ) : (
@@ -1202,7 +1188,7 @@ function SavePageContent() {
                     {item.status === 'PENDING_MATCH' ? (
                       <button
                         type="button"
-                        onClick={() => handleSendNudge(item.amount, `Reminder: Spousal match of $${item.amount.toLocaleString()} is due under Rule 4.2.`, item.id)}
+                        onClick={() => handleSendNudge(item.amount, `Reminder: please match my $${item.amount.toLocaleString()} deposit.`, item.id)}
                         disabled={isNudging || isReminded}
                         className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                           isReminded

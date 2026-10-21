@@ -198,6 +198,8 @@ export default function UnifiedChatPage() {
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
+  // What I still owe my spouse, and which of their deposits to show the Match button on
+  const [reciprocation, setReciprocation] = useState<{ owedByMe: number; pendingMessageId: string | null } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewChatModal, setShowNewChatModal] = useState(false)
   const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
@@ -389,6 +391,7 @@ export default function UnifiedChatPage() {
           if (nearBottom) setTimeout(() => scrollToBottom(true), 60)
         }
         lastMessageCountRef.current = data.messages.length
+        setReciprocation(data.reciprocation || null)
         setMessages((prev) => {
           const serverIds = new Set(data.messages.map((m: any) => m.id))
           const now = Date.now()
@@ -1152,6 +1155,15 @@ export default function UnifiedChatPage() {
                           <p className="text-gray-800 text-xs leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                             {msg.text}
                           </p>
+                          {reciprocation && reciprocation.owedByMe > 0 && reciprocation.pendingMessageId === msg.id && (
+                            <Link
+                              href={`/save?match=${reciprocation.owedByMe}`}
+                              className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                            >
+                              <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
+                              Match ${reciprocation.owedByMe.toLocaleString()} now
+                            </Link>
+                          )}
                           {msg.depositData?.bonusMatch ? (
                             <p className="text-[11px] font-semibold text-emerald-700">
                               +${Number(msg.depositData.bonusMatch).toLocaleString()} instant cash match

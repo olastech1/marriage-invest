@@ -4,7 +4,8 @@ import Stripe from 'stripe'
 import crypto from 'crypto'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { createChatMessage } from '@/lib/chat'
+import { createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { getSpouseName } from '@/lib/reciprocation'
 import { Prisma } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
@@ -236,7 +237,8 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
 
     // Spousal Reciprocation Protocol
     if (isSave || !isSolo) {
-      const partnerName = parsed.data.partnerName || 'Marcus Vance'
+      const spouseId = await resolveSpouseId(userId)
+      const partnerName = spouseId ? await getSpouseName(spouseId) : (parsed.data.partnerName || 'your spouse')
       const userName = session?.user?.name || 'Investor'
 
       const formattedTime = new Intl.DateTimeFormat('en-US', {
@@ -261,15 +263,15 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           },
         }).catch(console.error)
 
-        // Couple chat message
-        try {
+        // Couple chat message (vault saves get their card from /api/savings/deposits)
+        if (!isSave) try {
           await createChatMessage({
             data: {
               id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               threadId: 'spouse',
               senderId: userId,
               senderName: userName,
-              text: `🎉 Spousal Covenant Reciprocated! I matched ${partnerName}'s deposit with $${amount.toLocaleString()} into our vault. Both spouses are in 100% financial parity! 🥂`,
+              text: `Matched ${partnerName}'s deposit with $${amount.toLocaleString()}.`,
               timestamp: formattedTime,
               createdAt: new Date(),
               read: false,
@@ -288,7 +290,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
                 depositorName: userName,
                 isReciprocalMatch: true,
               },
-              reactions: { '🥂': 2, '❤️': 2, '🎉': 2 },
+              reactions: {},
             },
           })
         } catch (chatErr) {
@@ -298,8 +300,8 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
         await prisma.notification.create({
           data: {
             userId,
-            title: '✓ Spousal Covenant Reciprocated!',
-            message: `You successfully matched ${partnerName}'s deposit with $${amount.toLocaleString()}! Both spouses are in full financial parity. Vault withdrawals unlocked.`,
+            title: `You matched ${partnerName}'s deposit`,
+            message: `You matched ${partnerName}'s deposit with $${amount.toLocaleString()}.`,
             type: 'SUCCESS',
             link: '/chat?thread=spouse',
           },
@@ -323,15 +325,15 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
           },
         }).catch(console.error)
 
-        // Couple chat message
-        try {
+        // Couple chat message (vault saves get their card from /api/savings/deposits)
+        if (!isSave) try {
           await createChatMessage({
             data: {
               id: `msg-inv-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
               threadId: 'spouse',
               senderId: userId,
               senderName: userName,
-              text: `📈 New deposit of $${amount.toLocaleString()} added to ${invTitle}! Under Covenant Rule 4.2, ${partnerName}'s matching deposit is now active. Let's keep our compounding growth going.`,
+              text: `Invested $${amount.toLocaleString()} in ${invTitle}.`,
               timestamp: formattedTime,
               createdAt: new Date(),
               read: false,
@@ -349,22 +351,24 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
                 depositorName: userName,
                 isReciprocalMatch: false,
               },
-              reactions: { '💰': 1, '🔥': 1 },
+              reactions: {},
             },
           })
         } catch (chatErr) {
           console.warn('Failed to inject chat message for investment:', chatErr)
         }
 
-        await prisma.notification.create({
-          data: {
-            userId,
-            title: '⚡ Reciprocal Match Triggered on Partner',
-            message: `Your deposit of $${amount.toLocaleString()} has triggered a mandatory reciprocal match for ${partnerName} under Spousal Covenant Rule 4.2.`,
-            type: 'INFO',
-            link: `/chat?thread=spouse&action=match&amount=${amount}`,
-          },
-        }).catch(console.error)
+        if (!isSave && spouseId) {
+          await prisma.notification.create({
+            data: {
+              userId: spouseId,
+              title: `${userName} invested $${amount.toLocaleString()}`,
+              message: `${userName} invested $${amount.toLocaleString()} in ${invTitle}. Match it to keep your vault balanced.`,
+              type: 'INFO',
+              link: `/save?match=${amount}`,
+            },
+          }).catch(console.error)
+        }
       }
     }
 

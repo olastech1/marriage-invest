@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { prisma } from '@/lib/db'
-import { createChatMessage } from '@/lib/chat'
+import { recordStripeDeposit } from '@/lib/stripeDeposits'
 import { getStripeConfig } from '@/lib/stripeConfig'
 
 export async function POST(req: NextRequest) {
@@ -72,75 +72,19 @@ export async function POST(req: NextRequest) {
             },
           })
 
-          // Couple chat message
-          const userName = metadata.userName || 'Investor'
-          const formattedTime = new Intl.DateTimeFormat('en-US', {
-            hour: 'numeric',
-            minute: 'numeric',
-            hour12: true,
-          }).format(new Date())
-
-          try {
-            await createChatMessage({
-              data: {
-                id: `msg-stripe-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-                threadId: 'spouse',
-                senderId: userId,
-                senderName: userName,
-                text: `💳 Stripe Card Deposit of $${numAmount.toLocaleString()} completed! Compounding live in our Joint Vault.${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% cash match! Total added: $${totalAdded.toLocaleString()})` : ''}`,
-                timestamp: formattedTime,
-                createdAt: new Date(),
-                read: false,
-                type: 'deposit_alert',
-                proposalData: {
-                  goalName: 'Joint Marriage Savings Vault',
-                  amount: numAmount,
-                  split: '50/50',
-                  status: 'pending',
-                  proposedBy: userName,
-                },
-                depositData: {
-                  amount: numAmount,
-                  bonusMatch: bonusAmount,
-                  vaultTitle: 'Joint Marriage Savings Vault (Stripe)',
-                  depositorName: userName,
-                  reference,
-                },
-                reactions: { '💳': 1, '🔥': 1, '🎉': 1 },
-              },
-            })
-          } catch (chatErr) {
-            console.warn('Failed to inject chat message for stripe deposit:', chatErr)
-          }
-
-          // Persistent partner notification linking to chat
-          await prisma.notification.create({
-            data: {
-              userId,
-              title: `🚨 Partner Action: $${numAmount.toLocaleString()} Deposited by ${userName}`,
-              message: `${userName} completed a $${numAmount.toLocaleString()} deposit via Stripe card${bonusAmount > 0 ? ` (+ earned a $${bonusAmount.toLocaleString()} 10% bonus match!)` : ''}. Covenant Rule 4.2 requires equal partner attendance & match.`,
-              type: 'ALERT',
-              read: false,
-              link: `/chat?thread=spouse&action=match&amount=${numAmount}`,
-              category: 'PARTNER_DEPOSIT',
-              requiresAction: true,
-              attended: false,
-              amount: numAmount,
-              partnerName: userName,
-              actionLabel: `Match in Chat ($${numAmount.toLocaleString()})`,
-            } as any,
-          }).catch(console.error)
+          // Couple chat card + spouse notification (idempotent per checkout session)
+          await recordStripeDeposit(checkoutSession)
 
           // Bonus notification
           if (bonusAmount > 0) {
             await prisma.notification.create({
               data: {
                 userId,
-                title: `🎁 +$${bonusAmount.toLocaleString()} 10% Bonus Match Credited!`,
-                message: `Your Stripe deposit of $${numAmount.toLocaleString()} earned an instant $${bonusAmount.toLocaleString()} match! Total credited: $${totalAdded.toLocaleString()}.`,
+                title: `+$${bonusAmount.toLocaleString()} cash match credited`,
+                message: `Your card deposit of $${numAmount.toLocaleString()} earned a $${bonusAmount.toLocaleString()} match. Total credited: $${totalAdded.toLocaleString()}.`,
                 type: 'SUCCESS',
                 read: false,
-                link: '/chat?thread=spouse',
+                link: '/save',
                 category: 'BONUS_MATCH',
                 requiresAction: false,
                 attended: true,
