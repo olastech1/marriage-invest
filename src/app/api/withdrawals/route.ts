@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
       if (pending) {
         return NextResponse.json(
           {
-            error: `Withdrawal locked: match ${pending.depositorName}'s deposit first ($${pending.amount.toLocaleString()} left to match).`,
+            error: `Withdrawal locked: reciprocate ${pending.depositorName}'s deposit first ($${pending.amount.toLocaleString()}).`,
             reciprocationBlocked: true,
           },
           { status: 400 },

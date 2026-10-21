@@ -444,6 +444,21 @@ export default function UnifiedChatPage() {
     }
   }, [fetchContacts, fetchConversations, fetchMessages])
 
+  // Back from Stripe after reciprocating: record the payment (no-op if the webhook already did)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const sessionId = params.get('session_id')
+    if (params.get('checkout_success') !== 'true' || !sessionId) return
+    window.history.replaceState({}, '', '/chat')
+    fetch('/api/payments/confirm', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then(() => fetchMessages(false))
+      .catch((err) => console.error('Failed to confirm card payment:', err))
+  }, [fetchMessages])
+
   // -------------------------------------------------------------------------
   // 4. Send Message (100% Authentic Human-to-Human, No Bots)
   // -------------------------------------------------------------------------
@@ -1132,7 +1147,7 @@ export default function UnifiedChatPage() {
                     {msg.type && msg.type !== 'text' && msg.type !== 'love_note' && !(msg.type === 'proposal' && msg.proposalData) && (() => {
                       const kind =
                         msg.type === 'deposit_alert'
-                          ? { label: msg.depositData?.isReciprocalMatch ? 'Deposit Matched' : 'Vault Deposit', Icon: PiggyBank, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
+                          ? { label: msg.depositData?.isReciprocalMatch ? 'Reciprocated' : 'Vault Deposit', Icon: PiggyBank, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
                           : msg.type === 'system_reminder' || msg.type === 'reminder'
                             ? { label: 'Deposit Reminder', Icon: Bell, tone: 'border-amber-200 bg-amber-50/60 text-amber-700' }
                             : msg.type === 'certificate'
@@ -1156,13 +1171,15 @@ export default function UnifiedChatPage() {
                             {msg.text}
                           </p>
                           {reciprocation && reciprocation.owedByMe > 0 && reciprocation.pendingMessageId === msg.id && (
-                            <a
-                              href="/pay/match"
-                              className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
-                            >
-                              <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
-                              Match ${reciprocation.owedByMe.toLocaleString()} now
-                            </a>
+                            <form method="post" action="/pay/match">
+                              <button
+                                type="submit"
+                                className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                              >
+                                <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
+                                Reciprocate ${reciprocation.owedByMe.toLocaleString()}
+                              </button>
+                            </form>
                           )}
                           {msg.depositData?.bonusMatch ? (
                             <p className="text-[11px] font-semibold text-emerald-700">

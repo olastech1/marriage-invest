@@ -37,7 +37,7 @@ export async function recordStripeDeposit(checkoutSession: Stripe.Checkout.Sessi
       senderId: userId,
       senderName: userName,
       text: isReciprocalMatch
-        ? `Matched ${spouseName}'s deposit with $${amount.toLocaleString()} (card payment).`
+        ? `Reciprocated ${spouseName}'s deposit with $${amount.toLocaleString()} (card payment).`
         : `Deposited $${amount.toLocaleString()} into our joint vault by card.${bonusAmount > 0 ? ` +$${bonusAmount.toLocaleString()} cash match credited.` : ''}${note && note !== 'Joint Matrimonial Contribution' ? ` Note: "${note}"` : ''}`,
       timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
       createdAt: new Date(),
@@ -61,7 +61,7 @@ export async function recordStripeDeposit(checkoutSession: Stripe.Checkout.Sessi
         data: {
           userId: spouseId,
           title: `${userName} deposited $${amount.toLocaleString()}`,
-          message: `${userName} added $${amount.toLocaleString()} to your joint vault by card. Match it to keep your vault balanced.`,
+          message: `${userName} added $${amount.toLocaleString()} to your joint vault by card. Reciprocate from your couple chat.`,
           type: 'ALERT',
           read: false,
           link: '/pay/match',
@@ -70,7 +70,7 @@ export async function recordStripeDeposit(checkoutSession: Stripe.Checkout.Sessi
           attended: false,
           amount,
           partnerName: userName,
-          actionLabel: `Match $${amount.toLocaleString()}`,
+          actionLabel: `Reciprocate $${amount.toLocaleString()}`,
         } as any,
       })
       .catch(console.error)

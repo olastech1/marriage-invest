@@ -260,25 +260,27 @@ export default async function DashboardPage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-widest bg-rose-200/80 text-rose-900 px-2.5 py-0.5 rounded-full">
-                  Match Needed
+                  Reciprocation Needed
                 </span>
               </div>
               <h3 className="text-base font-bold text-rose-950">
-                {pendingDepositorName} deposited — you have ${pendingRecipAmount.toLocaleString()} left to match
+                {pendingDepositorName} deposited — reciprocate ${pendingRecipAmount.toLocaleString()}
               </h3>
               <p className="text-xs text-rose-900/80 leading-relaxed max-w-2xl">
-                Match your spouse&apos;s deposits to keep your joint vault balanced. Joint withdrawals stay locked until it&apos;s matched.
+                Joint withdrawals stay locked until you reciprocate.
               </p>
             </div>
           </div>
-          {/* Plain <a>: /pay/match redirects straight to the Stripe payment page */}
-          <a
-            href="/pay/match"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors flex-shrink-0"
-          >
-            Match ${pendingRecipAmount.toLocaleString()} Now
-            <ArrowRight size={14} />
-          </a>
+          {/* One tap: /pay/match goes to Stripe, or records it directly when Stripe isn't set up */}
+          <form method="post" action="/pay/match" className="flex-shrink-0">
+            <button
+              type="submit"
+              className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors cursor-pointer"
+            >
+              Reciprocate ${pendingRecipAmount.toLocaleString()}
+              <ArrowRight size={14} />
+            </button>
+          </form>
         </div>
       )}
 

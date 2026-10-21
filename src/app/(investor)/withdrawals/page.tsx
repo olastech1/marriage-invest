@@ -390,7 +390,7 @@ export default function WithdrawalsPage() {
     }
     if (!isSolo && hasPendingReciprocation) {
       setError(
-        `Withdrawal locked: match ${pendingReciprocation?.depositorName || partnerName}'s deposit first ($${Number(pendingReciprocation?.amount || 0).toLocaleString()} left to match).`
+        `Withdrawal locked: reciprocate ${pendingReciprocation?.depositorName || partnerName}'s deposit first ($${Number(pendingReciprocation?.amount || 0).toLocaleString()}).`
       )
       return
     }
@@ -552,13 +552,15 @@ export default function WithdrawalsPage() {
               </p>
             </div>
           </div>
-          <a
-            href="/pay/match"
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all flex-shrink-0 transform hover:scale-105"
-          >
-            Match ${Number(pendingReciprocation?.amount || 0).toLocaleString()} now
-            <ArrowRight size={14} />
-          </a>
+          <form method="post" action="/pay/match" className="flex-shrink-0">
+            <button
+              type="submit"
+              className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all transform hover:scale-105 cursor-pointer"
+            >
+              Reciprocate ${Number(pendingReciprocation?.amount || 0).toLocaleString()}
+              <ArrowRight size={14} />
+            </button>
+          </form>
         </div>
       )}
 

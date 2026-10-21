@@ -667,7 +667,7 @@ function SavePageContent() {
                 <div className="flex items-center gap-3 pt-1 text-xs text-amber-900 font-bold flex-wrap">
                   <span className="flex items-center gap-1 bg-amber-100/80 px-2.5 py-1 rounded-lg">
                     <Clock size={13} className="text-amber-700" />
-                    {reciprocationData?.hoursLeft > 0 ? `${reciprocationData.hoursLeft}h left to match` : 'Match overdue'}
+                    {reciprocationData?.hoursLeft > 0 ? `${reciprocationData.hoursLeft}h left to reciprocate` : 'Reciprocation overdue'}
                   </span>
                   <span className="flex items-center gap-1 bg-rose-100/80 text-rose-800 px-2.5 py-1 rounded-lg">
                     <Lock size={13} className="text-rose-700" />

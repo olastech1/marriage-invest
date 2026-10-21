@@ -331,12 +331,14 @@ export function FloatingChatWidget() {
                           {m.type === 'deposit_alert' ? 'Vault deposit' : 'Reminder'}
                         </span>
                         {pendingMatch && pendingMatch.owedByMe > 0 && pendingMatch.pendingMessageId === m.id && (
-                          <a
-                            href="/pay/match"
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30"
-                          >
-                            Match ${pendingMatch.owedByMe.toLocaleString()} →
-                          </a>
+                          <form method="post" action="/pay/match">
+                            <button
+                              type="submit"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30 cursor-pointer"
+                            >
+                              Reciprocate ${pendingMatch.owedByMe.toLocaleString()}
+                            </button>
+                          </form>
                         )}
                       </div>
                     )}

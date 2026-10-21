@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { createChatMessage, resolveSpouseId } from '@/lib/chat'
-import { getCoupleDeposits, getSpouseName } from '@/lib/reciprocation'
+import { getCoupleDeposits } from '@/lib/reciprocation'
+import { recordVaultDeposit } from '@/lib/vaultDeposits'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,159 +29,23 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    const currentUserId = session?.user?.id || 'usr_jane_doe'
-    const currentUserName = session?.user?.name || 'Investor'
-    const spouseId = await resolveSpouseId(currentUserId)
-    const partnerName = spouseId ? await getSpouseName(spouseId) : 'your spouse'
-
     const body = await req.json()
-    const {
-      amount,
-      applyBonus = false,
-      vaultTitle = 'Joint Vault',
-      note = '',
-      isReciprocalMatch = false,
-    } = body
-
-    const numAmount = Number(amount)
-    if (!numAmount || numAmount <= 0) {
+    const amount = Number(body.amount)
+    if (!amount || amount <= 0) {
       return NextResponse.json({ success: false, error: 'Valid deposit amount is required.' }, { status: 400 })
     }
 
-    // 10% Cash Match Bonus calculation
-    const bonusAmount = applyBonus ? Math.round(numAmount * 0.10 * 100) / 100 : 0
-    const totalAdded = numAmount + bonusAmount
-    const reference = `DEP-${Date.now().toString(36).toUpperCase()}`
-
-    // 1. Create Transaction
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId: currentUserId,
-        type: 'DEPOSIT',
-        amount: totalAdded as any,
-        fee: 0 as any,
-        netAmount: totalAdded as any,
-        status: 'COMPLETED',
-        reference,
-        description: `${vaultTitle} Deposit ($${numAmount.toLocaleString()})${bonusAmount > 0 ? ` + 10% Cash Match ($${bonusAmount.toLocaleString()})` : ''}`,
-        metadata: {
-          depositorName: currentUserName,
-          baseAmount: numAmount,
-          bonusMatch: bonusAmount,
-          bonusApplied: applyBonus,
-          note,
-          status: 'APPROVED',
-        },
-      },
+    const result = await recordVaultDeposit({
+      userId: session?.user?.id || 'usr_jane_doe',
+      userName: session?.user?.name || 'Investor',
+      amount,
+      applyBonus: !!body.applyBonus,
+      vaultTitle: body.vaultTitle,
+      note: body.note,
+      isReciprocalMatch: !!body.isReciprocalMatch,
     })
 
-    // 2. Create Audit Log
-    await prisma.auditLog.create({
-      data: {
-        userId: currentUserId,
-        action: 'SPOUSAL_VAULT_DEPOSIT_RECORDED',
-        entity: 'SavingsVault',
-        after: {
-          depositorName: currentUserName,
-          amount: numAmount,
-          bonusMatch: bonusAmount,
-          totalAdded,
-          reference,
-          note,
-          isReciprocalMatch,
-        },
-      },
-    }).catch(console.error)
-
-    // 3. Create synchronized couple chat message for this deposit!
-    const formattedTime = new Intl.DateTimeFormat('en-US', {
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: true,
-    }).format(new Date())
-
-    try {
-      await createChatMessage({
-        data: {
-          id: `msg-dep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          threadId: 'spouse',
-          senderId: currentUserId,
-          senderName: currentUserName,
-          text: isReciprocalMatch
-            ? `Matched ${partnerName}'s deposit with $${numAmount.toLocaleString()}.`
-            : `Deposited $${numAmount.toLocaleString()} into our joint vault.${bonusAmount > 0 ? ` +$${bonusAmount.toLocaleString()} cash match credited.` : ''}${note ? ` Note: "${note}"` : ''}`,
-          timestamp: formattedTime,
-          createdAt: new Date(),
-          read: false,
-          type: 'deposit_alert',
-          proposalData: {
-            goalName: vaultTitle,
-            amount: numAmount,
-            split: '50/50 Equal Match',
-            status: isReciprocalMatch ? 'approved' : 'pending',
-            proposedBy: currentUserName,
-          },
-          depositData: {
-            amount: numAmount,
-            bonusMatch: bonusAmount,
-            vaultTitle,
-            depositorName: currentUserName,
-            reference,
-            isReciprocalMatch,
-          },
-          reactions: {},
-        },
-      })
-    } catch (chatErr) {
-      console.warn('Failed to inject chat message for deposit:', chatErr)
-    }
-
-    // 4. Ask the spouse to match (only for regular deposits)
-    if (spouseId && !isReciprocalMatch) {
-      await prisma.notification.create({
-        data: {
-          userId: spouseId,
-          title: `${currentUserName} deposited $${numAmount.toLocaleString()}`,
-          message: `${currentUserName} added $${numAmount.toLocaleString()} to your joint vault${note ? `: "${note}"` : '.'} Match it to keep your vault balanced.`,
-          type: 'ALERT',
-          read: false,
-          link: '/pay/match',
-          category: 'PARTNER_DEPOSIT',
-          requiresAction: true,
-          attended: false,
-          amount: numAmount,
-          partnerName: currentUserName,
-          actionLabel: `Match $${numAmount.toLocaleString()}`,
-          metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount },
-        } as any,
-      })
-    }
-
-    // 5. Also create celebratory notification for the depositor if 10% bonus was earned
-    if (bonusAmount > 0) {
-      await prisma.notification.create({
-        data: {
-          userId: currentUserId,
-          title: `+$${bonusAmount.toLocaleString()} cash match credited`,
-          message: `Your deposit of $${numAmount.toLocaleString()} earned a $${bonusAmount.toLocaleString()} match. Total credited: $${totalAdded.toLocaleString()}.`,
-          type: 'SUCCESS',
-          read: false,
-          link: '/save',
-          category: 'BONUS_MATCH',
-          requiresAction: false,
-          attended: true,
-        } as any,
-      })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Deposit processed successfully.',
-      transaction,
-      baseAmount: numAmount,
-      bonusAmount,
-      totalAdded,
-    })
+    return NextResponse.json({ success: true, message: 'Deposit processed successfully.', ...result })
   } catch (error: any) {
     console.error('[POST /api/savings/deposits]', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
