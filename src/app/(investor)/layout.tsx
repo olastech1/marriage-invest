@@ -228,7 +228,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
   const title = pageTitle(pathname)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-dvh overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} unread={unread} />
@@ -244,9 +244,9 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         </div>
       )}
 
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden min-h-0">
         {/* Top bar: page title + notifications */}
-        <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:px-8 lg:py-2.5">
+        <header className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:px-8 lg:py-2.5">
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={() => setMenuOpen(true)}
@@ -284,7 +284,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         <main
           className={`flex-1 min-w-0 ${
             isChat
-              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px)] lg:h-[calc(100vh-53px)]'
+              ? 'overflow-hidden flex flex-col p-0 min-h-0'
               : 'overflow-y-auto overflow-x-hidden relative'
           }`}
         >
