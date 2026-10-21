@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
-// Public member profile by username. Only shows what the member chose to share.
+// Public member profile by username: only this member's own details, as they chose to share them.
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params
@@ -15,8 +14,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       return NextResponse.json({ success: false, error: 'Member not found' }, { status: 404 })
     }
 
-    const spouseId = await resolveSpouseId(user.id)
-    const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { name: true } }) : null
     const socials = (user.socials as Record<string, string> | null) || {}
 
     return NextResponse.json({
@@ -42,7 +39,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
           linkedin: socials.linkedin || '',
           website: socials.website || '',
         },
-        spouse: spouse ? { name: spouse.name } : null,
       },
     })
   } catch (error: any) {

@@ -11,11 +11,9 @@ import {
   Phone,
   Send,
   CheckCircle2,
-  Copy,
   Check,
   Share2,
   ExternalLink,
-  ArrowRight,
   X,
   Globe,
   UserX,
@@ -32,7 +30,6 @@ interface PublicProfile {
   publicChatEnabled: boolean
   contact: { email: string | null; phone: string | null; whatsapp: string }
   socials: { instagram: string; tiktok: string; twitter: string; linkedin: string; website: string }
-  spouse: { name: string } | null
 }
 
 function handle(value: string) {
@@ -155,7 +152,6 @@ export default function UserPublicProfilePage() {
 
   const primaryName = profile.name
   const firstName = primaryName.split(' ')[0]
-  const spouseName = profile.spouse?.name || null
   const email = profile.contact.email
   const phone = profile.contact.phone
   const whatsappDigits = (profile.contact.whatsapp || '').replace(/[^0-9]/g, '')
@@ -212,29 +208,19 @@ export default function UserPublicProfilePage() {
           )}
 
           {/* Avatars */}
-          <div className="flex items-center justify-center -space-x-3 my-2">
+          <div className="flex items-center justify-center my-2">
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] p-0.5 shadow-xl">
               <div className="w-full h-full rounded-full bg-[#0F1C3F] flex items-center justify-center font-bold text-2xl text-white">
                 {profile.avatar || primaryName.slice(0, 2).toUpperCase()}
               </div>
             </div>
 
-            {spouseName && (
-              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-slate-400 via-white to-slate-300 p-0.5 shadow-xl">
-                <div className="w-full h-full rounded-full bg-[#162752] flex items-center justify-center font-bold text-lg text-[#C9A84C]">
-                  {spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Name & details */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{primaryName}</h1>
             <p className="text-xs text-gray-400 mt-1">@{profile.username}</p>
-            {spouseName && (
-              <p className="text-xs sm:text-sm text-[#C9A84C] font-semibold mt-1">Partner of {spouseName}</p>
-            )}
             {profile.bio && (
               <p className="text-xs text-gray-300 max-w-sm mx-auto mt-3 leading-relaxed whitespace-pre-line">
                 {profile.bio}
@@ -258,15 +244,6 @@ export default function UserPublicProfilePage() {
                 <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
                 <span>Message {firstName}</span>
               </button>
-              <div className="text-center text-[11px] text-gray-400">
-                Have an account?{' '}
-                <Link
-                  href={`/chat?recipientId=${profile.userId}&name=${encodeURIComponent(primaryName)}`}
-                  className="text-[#C9A84C] hover:underline"
-                >
-                  Open in chat →
-                </Link>
-              </div>
             </div>
           )}
         </div>
@@ -398,33 +375,6 @@ export default function UserPublicProfilePage() {
           </div>
         )}
 
-        {/* Join CTA */}
-        <Link
-          href="/register"
-          className="w-full p-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all flex items-center justify-between group"
-        >
-          <div className="text-left">
-            <h4 className="text-sm font-bold text-white group-hover:text-[#C9A84C] transition-colors">
-              Create your own Union Verify account
-            </h4>
-            <p className="text-[11px] text-gray-400">Save and invest together with your partner</p>
-          </div>
-          <ArrowRight size={16} className="text-gray-500 group-hover:text-[#C9A84C] transition-colors" />
-        </Link>
-
-        {/* Share bar */}
-        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between text-xs text-gray-400">
-          <span className="text-[11px]">
-            Profile link: <code className="text-[#C9A84C]">/u/{profile.username}</code>
-          </span>
-          <button
-            onClick={handleCopyLink}
-            className="text-[11px] font-bold text-[#C9A84C] hover:text-[#e2c77d] transition-colors flex items-center gap-1"
-          >
-            {copiedLink ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-            <span>{copiedLink ? 'Copied' : 'Copy'}</span>
-          </button>
-        </div>
 
         <div className="text-center pt-4">
           <p className="text-[10px] text-gray-500">
