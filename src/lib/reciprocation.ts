@@ -43,7 +43,14 @@ function noteFromText(text: string): string {
 export async function getSpouseName(spouseId: string, fallback?: string): Promise<string> {
   if (!spouseId) return ''
   const user = (await prisma.user.findUnique({ where: { id: spouseId } })) as { name?: string } | null
-  return user?.name || fallback || spouseId
+  if (user?.name) return user.name
+  // Members who signed in but aren't in the user store: use the name on their own chat messages
+  const db = await getChatDb()
+  const lastSent = await db.chatMessage.findFirst({
+    where: { senderId: spouseId },
+    orderBy: { createdAt: 'desc' },
+  })
+  return lastSent?.senderName || fallback || 'your spouse'
 }
 
 export async function getReciprocationStatus(userId: string): Promise<ReciprocationStatus> {
