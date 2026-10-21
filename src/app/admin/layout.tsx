@@ -32,10 +32,8 @@ export default async function AdminLayout({
     redirect('/dashboard')
   }
 
-  const role = session.user.role as AdminRole
-
   return (
-    <AdminShell user={session.user} role={role}>
+    <AdminShell user={session.user}>
       {children}
     </AdminShell>
   )

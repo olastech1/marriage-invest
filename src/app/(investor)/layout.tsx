@@ -14,116 +14,172 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronRight,
   Award,
   PiggyBank,
-  HeartHandshake,
   MessageSquareHeart,
-  MessageSquare,
-  Heart,
-  Gift,
-  User,
+  TrendingUp,
   Share2,
+  ExternalLink,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 import NotificationBellDropdown from '@/components/investor/NotificationBellDropdown'
 
 // ---------------------------------------------------------------------------
-// Nav items
+// Navigation (every item stays inside the member area)
 // ---------------------------------------------------------------------------
 type NavItem = { href: string; label: string; icon: typeof LayoutDashboard }
+type NavGroup = { title: string | null; items: NavItem[] }
 
-const navItems: NavItem[] = [
-  { href: '/dashboard',     label: 'Dashboard',              icon: LayoutDashboard },
-  { href: '/registry',      label: 'Wedding Registry',       icon: Gift },
-  { href: '/chat',          label: 'Spouse Chat',            icon: MessageSquareHeart },
-  { href: '/certificate',   label: 'Marriage Certificate',   icon: Award },
-  { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
-  { href: '/community',     label: 'Community Giving',       icon: Heart },
-  { href: '/portfolio',     label: 'Portfolio',              icon: Briefcase },
-  { href: '/solo',          label: 'Solo Invest',            icon: User },
-  { href: '/transactions',  label: 'Transactions',           icon: ArrowLeftRight },
-  { href: '/save',          label: 'Save',                   icon: PiggyBank },
-  { href: '/withdrawals',   label: 'Withdrawals',            icon: ArrowUpFromLine },
-  { href: '/my-documents',  label: 'Documents',              icon: FileText },
-  { href: '/settings',      label: 'Settings',               icon: Settings },
+const NAV_GROUPS: NavGroup[] = [
+  { title: null, items: [{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard }] },
+  {
+    title: 'Money',
+    items: [
+      { href: '/save', label: 'Joint vault', icon: PiggyBank },
+      { href: '/withdrawals', label: 'Withdrawals', icon: ArrowUpFromLine },
+      { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
+    ],
+  },
+  {
+    title: 'Investing',
+    items: [
+      { href: '/portfolio', label: 'My portfolio', icon: Briefcase },
+      { href: '/solo', label: 'Browse investments', icon: TrendingUp },
+    ],
+  },
+  {
+    title: 'Together',
+    items: [
+      { href: '/chat', label: 'Spouse chat', icon: MessageSquareHeart },
+      { href: '/certificate', label: 'Union & certificate', icon: Award },
+    ],
+  },
+  {
+    title: 'Account',
+    items: [
+      { href: '/my-documents', label: 'Documents', icon: FileText },
+      { href: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
 ]
 
+// Phone tab bar: the four most-used places plus "More" (opens the full menu)
+const TABS: NavItem[] = [
+  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
+  { href: '/save', label: 'Vault', icon: PiggyBank },
+  { href: '/chat', label: 'Chat', icon: MessageSquareHeart },
+  { href: '/portfolio', label: 'Invest', icon: Briefcase },
+]
 
-// ---------------------------------------------------------------------------
-// Sidebar
-// ---------------------------------------------------------------------------
-function Sidebar({
-  pathname,
-  user,
-  publicBioUrl,
-  onClose,
-}: {
-  pathname: string
-  user: { name?: string | null; email?: string | null }
-  publicBioUrl: string | null
-  onClose?: () => void
-}) {
-  // The public bio link only exists once the member has picked a username
-  const items: NavItem[] = publicBioUrl
-    ? [...navItems.slice(0, -1), { href: publicBioUrl, label: 'My Public Bio', icon: Share2 }, navItems[navItems.length - 1]]
-    : navItems
+// Pages reached from inside other pages, mapped to the menu item they belong to
+const PAGE_TITLES: Record<string, string> = {
+  '/payment/complete': 'Payment',
+  '/savings': 'Joint vault',
+  '/deposits': 'Joint vault',
+}
 
-  const initials = (user.name ?? 'IN')
+function isActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(href + '/')
+}
+
+function pageTitle(pathname: string): string {
+  for (const group of NAV_GROUPS) {
+    for (const item of group.items) if (isActive(pathname, item.href)) return item.label
+  }
+  return PAGE_TITLES[pathname] || 'Member area'
+}
+
+function initialsOf(name?: string | null) {
+  return (name ?? 'Member')
     .split(' ')
     .slice(0, 2)
     .map((w) => w[0])
     .join('')
     .toUpperCase()
+}
 
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+      {count > 9 ? '9+' : count}
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar (desktop, and the "More" drawer on phones)
+// ---------------------------------------------------------------------------
+function Sidebar({
+  pathname,
+  user,
+  publicBioUrl,
+  unread,
+  onClose,
+}: {
+  pathname: string
+  user: { name?: string | null; email?: string | null }
+  publicBioUrl: string | null
+  unread: number
+  onClose?: () => void
+}) {
   return (
     <aside className="flex h-full w-64 flex-col bg-[#0F1C3F] text-white">
-      {/* Logo */}
       <div className="flex items-center justify-between border-b border-white/10 px-6 py-5">
-        <div className="flex items-center gap-2">
+        <Link href="/dashboard" onClick={onClose} className="flex items-center gap-2">
           <span className="text-[#C9A84C] text-xl font-bold tracking-tight">Union</span>
           <span className="text-white text-xl font-light tracking-tight">Verify</span>
-        </div>
+        </Link>
         {onClose && (
-          <button
-            onClick={onClose}
-            className="rounded p-1 text-white/60 hover:text-white lg:hidden"
-            aria-label="Close menu"
-          >
+          <button onClick={onClose} className="rounded p-1 text-white/60 hover:text-white lg:hidden" aria-label="Close menu">
             <X size={20} />
           </button>
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {items.map((item) => {
-          const { href, label, icon: Icon } = item
-          const active = pathname === href || pathname.startsWith(href + '/')
-          return (
-            <Link
-              key={href}
-              href={href}
-              onClick={onClose}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-[#C9A84C]/20 text-[#C9A84C]'
-                  : 'text-white/70 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <Icon size={18} className={active ? 'text-[#C9A84C]' : 'text-white/50 group-hover:text-white'} />
-              <span className="truncate">{label}</span>
-              {active && <ChevronRight size={14} className="ml-auto text-[#C9A84C]" />}
-            </Link>
-          )
-        })}
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5" aria-label="Member navigation">
+        {NAV_GROUPS.map((group) => (
+          <div key={group.title ?? 'home'} className="space-y-0.5">
+            {group.title && (
+              <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-white/40">{group.title}</p>
+            )}
+            {group.items.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onClose}
+                  aria-current={active ? 'page' : undefined}
+                  className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    active ? 'bg-[#C9A84C]/20 text-[#C9A84C]' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                  }`}
+                >
+                  <Icon size={18} className={active ? 'text-[#C9A84C]' : 'text-white/50 group-hover:text-white'} />
+                  <span className="truncate">{label}</span>
+                  {href === '/chat' && <UnreadBadge count={unread} />}
+                </Link>
+              )
+            })}
+            {group.title === 'Account' && publicBioUrl && (
+              <Link
+                href={publicBioUrl}
+                onClick={onClose}
+                className="group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <Share2 size={18} className="text-white/50 group-hover:text-white" />
+                <span className="truncate">Public profile</span>
+                <ExternalLink size={13} className="ml-auto text-white/40" />
+              </Link>
+            )}
+          </div>
+        ))}
       </nav>
 
-      {/* User footer */}
       <div className="border-t border-white/10 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-sm font-bold text-[#0F1C3F]">
-            {initials}
+            {initialsOf(user.name)}
           </div>
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-white">{user.name ?? 'Member'}</p>
@@ -146,13 +202,13 @@ function Sidebar({
 // Layout
 // ---------------------------------------------------------------------------
 export default function InvestorLayout({ children }: { children: React.ReactNode }) {
-  const sessionContext = useSession()
-  const session = sessionContext?.data
+  const { data: session } = useSession()
   const pathname = usePathname()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   const [publicBioUrl, setPublicBioUrl] = useState<string | null>(null)
+  const [unread, setUnread] = useState(0)
 
-  // The member's own public bio URL (null until they choose a username)
+  // The member's own public profile URL (null until they choose a username)
   useEffect(() => {
     fetch('/api/user/profile')
       .then((res) => (res.ok ? res.json() : null))
@@ -160,102 +216,86 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
       .catch(() => setPublicBioUrl(null))
   }, [])
 
-  // Close mobile sidebar on route change
+  // Unread chat messages, for the Chat badge
   useEffect(() => {
-    setSidebarOpen(false)
+    const load = () =>
+      fetch('/api/chat?list=true')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          const total = (data?.conversations || []).reduce((sum: number, c: { unreadCount?: number }) => sum + (c.unreadCount || 0), 0)
+          setUnread(total)
+        })
+        .catch(() => {})
+    load()
+    const timer = setInterval(load, 20000)
+    return () => clearInterval(timer)
   }, [pathname])
 
-  const user = session?.user || {
-    name: null,
-    email: '',
-  }
+  const user = session?.user || { name: null, email: '' }
+  const isChat = pathname === '/chat'
+  const title = pageTitle(pathname)
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} />
+        <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} unread={unread} />
       </div>
 
-      {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 z-40 flex lg:hidden">
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setSidebarOpen(false)}
-          />
-          {/* Drawer */}
+      {/* Phone "More" drawer */}
+      {menuOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
           <div className="relative z-50 flex h-full w-64 shadow-2xl">
-            <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} onClose={() => setSidebarOpen(false)} />
+            <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} unread={unread} onClose={() => setMenuOpen(false)} />
           </div>
         </div>
       )}
 
-      {/* Main content area */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="rounded-lg p-2 text-slate-600 hover:bg-slate-100"
-            aria-label="Open menu"
-          >
-            <Menu size={22} />
-          </button>
-          <div className="flex items-center gap-1">
-            <span className="text-[#0F1C3F] font-bold tracking-tight">Union</span>
-            <span className="text-[#C9A84C] font-bold tracking-tight">Verify</span>
+        {/* Top bar: page title + notifications */}
+        <header className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 lg:px-8 lg:py-2.5">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="rounded-lg p-2 -ml-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+              aria-label="Open menu"
+            >
+              <Menu size={22} />
+            </button>
+            <h1 className="truncate text-base font-bold text-[#0F1C3F] lg:text-sm lg:font-semibold lg:text-slate-500">{title}</h1>
           </div>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1.5 lg:gap-3">
             <NotificationBellDropdown />
             <Link
               href="/chat"
-              className="relative p-1.5 rounded-lg text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors"
-              title="Spouse Chat"
+              className="relative hidden lg:flex p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors items-center gap-1.5 text-xs font-bold"
             >
-              <MessageSquare size={19} />
+              <MessageSquareHeart size={17} />
+              <span>Spouse chat</span>
+              {unread > 0 && <span className="h-2 w-2 rounded-full bg-rose-500" aria-label={`${unread} unread`} />}
             </Link>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]">
-              {(user.name ?? 'IN')
-                .split(' ')
-                .slice(0, 2)
-                .map((w) => w[0])
-                .join('')
-                .toUpperCase()}
-            </div>
-          </div>
-        </header>
-
-        {/* Desktop top header bar */}
-        <header className="hidden lg:flex items-center justify-between border-b border-slate-200 bg-white px-8 py-2.5">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Member Area</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <NotificationBellDropdown />
             <Link
-              href="/chat"
-              className="relative p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
-              title="Spouse Chat"
+              href="/settings"
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]"
+              aria-label="Account settings"
             >
-              <MessageSquare size={17} />
-              <span>Spouse Chat</span>
+              {initialsOf(user.name)}
             </Link>
           </div>
         </header>
 
-        {/* Page content */}
+        {/* Page content (bottom padding leaves room for the phone tab bar) */}
         <main
           className={`flex-1 min-w-0 ${
-            pathname === '/chat'
-              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px)] lg:h-[calc(100vh-53px)]'
-              : 'overflow-y-auto overflow-x-hidden relative'
+            isChat
+              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px-64px)] lg:h-[calc(100vh-53px)]'
+              : 'overflow-y-auto overflow-x-hidden relative pb-20 lg:pb-0'
           }`}
         >
           <div
             className={
-              pathname === '/chat'
+              isChat
                 ? 'flex-1 h-full w-full flex flex-col min-w-0 p-0 sm:p-3 lg:p-4 max-w-7xl mx-auto'
                 : 'mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-5 sm:py-6 w-full min-w-0'
             }
@@ -263,9 +303,44 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             {children}
           </div>
 
-          {/* Floating spouse chat (bottom-right on every member page except /chat) */}
+          {/* Floating spouse chat (desktop; phones use the Chat tab) */}
           <FloatingChatWidget />
         </main>
+
+        {/* Phone tab bar */}
+        <nav
+          className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
+          aria-label="Main"
+        >
+          <div className="grid grid-cols-5 h-16">
+            {TABS.map(({ href, label, icon: Icon }) => {
+              const active = isActive(pathname, href)
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-current={active ? 'page' : undefined}
+                  className={`relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${
+                    active ? 'text-[#0F1C3F]' : 'text-slate-400'
+                  }`}
+                >
+                  <Icon size={21} className={active ? 'text-[#C9A84C]' : ''} />
+                  {label}
+                  {href === '/chat' && unread > 0 && (
+                    <span className="absolute top-2 right-[calc(50%-18px)] h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
+                  )}
+                </Link>
+              )
+            })}
+            <button
+              onClick={() => setMenuOpen(true)}
+              className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400"
+            >
+              <Menu size={21} />
+              More
+            </button>
+          </div>
+        </nav>
       </div>
     </div>
   )

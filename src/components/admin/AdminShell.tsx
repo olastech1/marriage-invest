@@ -5,46 +5,44 @@ import { usePathname } from 'next/navigation'
 import AdminSidebar from './AdminSidebar'
 import AdminHeader from './AdminHeader'
 
-type AdminRole = 'ADMIN' | 'FINANCE' | 'COMPLIANCE' | 'SUPPORT'
-
 interface AdminShellProps {
   user: { name?: string | null; email?: string | null }
-  role: AdminRole
   children: React.ReactNode
 }
 
-export default function AdminShell({ user, role, children }: AdminShellProps) {
+export default function AdminShell({ user, children }: AdminShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [pendingWithdrawals, setPendingWithdrawals] = useState(0)
   const pathname = usePathname()
 
-  // Close mobile sidebar on route change
+  // Refresh the pending-withdrawals count on navigation (menu links close the drawer themselves)
   useEffect(() => {
-    setMobileOpen(false)
+    fetch('/api/admin/withdrawals')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        const list: { status?: string }[] = data?.withdrawals || []
+        setPendingWithdrawals(list.filter((w) => w.status === 'PENDING').length)
+      })
+      .catch(() => {})
   }, [pathname])
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col lg:flex-row relative w-full overflow-x-hidden">
-      {/* ── Sidebar (handles both Desktop fixed & Mobile off-canvas drawer) ── */}
       <AdminSidebar
-        role={role}
+        pendingWithdrawals={pendingWithdrawals}
         mobileOpen={mobileOpen}
+        onOpenMobile={() => setMobileOpen(true)}
         onCloseMobile={() => setMobileOpen(false)}
       />
 
-      {/* ── Main Content Area ── */}
       <div className="flex-1 flex flex-col min-h-screen lg:pl-64 w-full min-w-0">
-        <AdminHeader
-          user={user}
-          role={role}
-          onMenuClick={() => setMobileOpen(true)}
-        />
+        <AdminHeader user={user} onMenuClick={() => setMobileOpen(true)} />
 
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 w-full min-w-0">
-          {children}
-        </main>
+        {/* Bottom padding leaves room for the phone tab bar */}
+        <main className="flex-1 p-4 pb-24 sm:p-6 sm:pb-24 lg:p-8 w-full min-w-0">{children}</main>
 
-        <footer className="py-4 px-4 sm:px-8 border-t border-gray-200 text-center text-xs text-gray-400">
-          © {new Date().getFullYear()} Union Verify · Admin Portal · All rights reserved
+        <footer className="hidden lg:block py-4 px-8 border-t border-gray-200 text-center text-xs text-gray-400">
+          © {new Date().getFullYear()} Union Verify · Admin
         </footer>
       </div>
     </div>

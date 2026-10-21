@@ -367,7 +367,7 @@ export function FloatingChatWidget() {
         <button
           type="button"
           onClick={handleOpenWidget}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 inline-flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#0F1C3F] text-white shadow-2xl hover:bg-[#17274f] border border-[#C9A84C]/50 transition-all hover:scale-105 active:scale-95 group backdrop-blur-sm"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 hidden lg:inline-flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#0F1C3F] text-white shadow-2xl hover:bg-[#17274f] border border-[#C9A84C]/50 transition-all hover:scale-105 active:scale-95 group backdrop-blur-sm"
           title="Open Spouse Chat"
         >
           <div className="relative flex items-center justify-center">
