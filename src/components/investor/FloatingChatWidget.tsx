@@ -48,6 +48,7 @@ export function FloatingChatWidget() {
   }, [messages.length, isOpen])
   // Who the server says we are, and our spouse (resolved server-side from the session)
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
+  const [pendingMatch, setPendingMatch] = useState<{ owedByMe: number; pendingMessageId: string | null } | null>(null)
 
   const displayPartnerName = partner?.name || 'Your Spouse'
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -65,6 +66,7 @@ export function FloatingChatWidget() {
       if (data.success && Array.isArray(data.messages)) {
         const currentActiveId = data.currentUser?.id
         setPartner(data.recipient ? { id: data.recipient.id, name: data.recipient.name } : null)
+        setPendingMatch(data.reciprocation || null)
         const formatted: FloatingMessage[] = data.messages.map((m: any) => ({
           id: m.id,
           sender: m.senderId === currentActiveId ? 'user' : 'partner',
@@ -328,13 +330,14 @@ export function FloatingChatWidget() {
                         <span className="text-[10px] font-bold text-[#C9A84C]">
                           {m.type === 'deposit_alert' ? 'Vault deposit' : 'Reminder'}
                         </span>
-                        <Link
-                          href={m.amount ? `/save?match=${m.amount}` : '/save'}
-                          onClick={() => setIsOpen(false)}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30"
-                        >
-                          {m.amount ? `Match $${m.amount.toLocaleString()} →` : 'View Vault →'}
-                        </Link>
+                        {pendingMatch && pendingMatch.owedByMe > 0 && pendingMatch.pendingMessageId === m.id && (
+                          <a
+                            href="/pay/match"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30"
+                          >
+                            Match ${pendingMatch.owedByMe.toLocaleString()} →
+                          </a>
+                        )}
                       </div>
                     )}
                   </div>
@@ -359,13 +362,6 @@ export function FloatingChatWidget() {
 
           {/* Quick Reply Bar */}
           <div className="px-3 py-1.5 bg-white border-t border-gray-100 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-            <button
-              type="button"
-              onClick={() => setInputText('Let’s match $250 today! 💰')}
-              className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100 flex-shrink-0"
-            >
-              Match $250
-            </button>
             <button
               type="button"
               onClick={() => setInputText('Love you! ❤️')}

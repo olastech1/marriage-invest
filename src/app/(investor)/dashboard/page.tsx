@@ -271,13 +271,14 @@ export default async function DashboardPage() {
               </p>
             </div>
           </div>
-          <Link
-            href={`/save?match=${pendingRecipAmount}`}
+          {/* Plain <a>: /pay/match redirects straight to the Stripe payment page */}
+          <a
+            href="/pay/match"
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors flex-shrink-0"
           >
             Match ${pendingRecipAmount.toLocaleString()} Now
             <ArrowRight size={14} />
-          </Link>
+          </a>
         </div>
       )}
 

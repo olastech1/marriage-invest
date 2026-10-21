@@ -1156,13 +1156,13 @@ export default function UnifiedChatPage() {
                             {msg.text}
                           </p>
                           {reciprocation && reciprocation.owedByMe > 0 && reciprocation.pendingMessageId === msg.id && (
-                            <Link
-                              href={`/save?match=${reciprocation.owedByMe}`}
+                            <a
+                              href="/pay/match"
                               className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
                             >
                               <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
                               Match ${reciprocation.owedByMe.toLocaleString()} now
-                            </Link>
+                            </a>
                           )}
                           {msg.depositData?.bonusMatch ? (
                             <p className="text-[11px] font-semibold text-emerald-700">

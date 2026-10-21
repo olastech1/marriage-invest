@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
           message: `${currentUserName} added $${numAmount.toLocaleString()} to your joint vault${note ? `: "${note}"` : '.'} Match it to keep your vault balanced.`,
           type: 'ALERT',
           read: false,
-          link: `/save?match=${numAmount}`,
+          link: '/pay/match',
           category: 'PARTNER_DEPOSIT',
           requiresAction: true,
           attended: false,

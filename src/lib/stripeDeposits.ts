@@ -64,7 +64,7 @@ export async function recordStripeDeposit(checkoutSession: Stripe.Checkout.Sessi
           message: `${userName} added $${amount.toLocaleString()} to your joint vault by card. Match it to keep your vault balanced.`,
           type: 'ALERT',
           read: false,
-          link: `/save?match=${amount}`,
+          link: '/pay/match',
           category: 'PARTNER_DEPOSIT',
           requiresAction: true,
           attended: false,

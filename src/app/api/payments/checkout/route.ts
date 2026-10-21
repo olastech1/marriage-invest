@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'
 import { auth } from '@/lib/auth'
-import { getStripeConfig } from '@/lib/stripeConfig'
+import { createCheckoutSession } from '@/lib/checkout'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,13 +26,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Valid amount in USD is required (minimum $1).' }, { status: 400 })
     }
 
-    const config = await getStripeConfig()
-    const secretKey = config.secretKey
-    const isSandbox = config.isPlaceholder || !secretKey
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+    const result = await createCheckoutSession({
+      userId: currentUserId,
+      userName: currentUserName,
+      email: session?.user?.email,
+      amount: numAmount,
+      type,
+      title,
+      description,
+      metadata,
+      successUrl,
+      cancelUrl,
+    })
 
-    // If sandbox mode, return immediate simulation flag
-    if (isSandbox) {
+    // Sandbox mode (no Stripe keys): caller records the deposit directly
+    if (result.sandbox) {
       return NextResponse.json({
         success: true,
         isSandbox: true,
@@ -43,47 +50,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    const stripe = new Stripe(secretKey, {
-      apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
-    })
-
-    const finalSuccessUrl = successUrl || `${appUrl}/save?checkout_success=true&session_id={CHECKOUT_SESSION_ID}&type=${type}`
-    const finalCancelUrl = cancelUrl || `${appUrl}/save?checkout_canceled=true`
-
-    // Create Stripe Checkout Session
-    const checkoutSession = await stripe.checkout.sessions.create({
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            product_data: {
-              name: title,
-              description: description || `Union Verify ${type}`,
-            },
-            unit_amount: Math.round(numAmount * 100),
-          },
-          quantity: 1,
-        },
-      ],
-      mode: 'payment',
-      success_url: finalSuccessUrl,
-      cancel_url: finalCancelUrl,
-      client_reference_id: currentUserId,
-      customer_email: session?.user?.email || undefined,
-      metadata: {
-        userId: currentUserId,
-        userName: currentUserName,
-        type,
-        amount: String(numAmount),
-        ...metadata,
-      },
-    })
-
     return NextResponse.json({
       success: true,
       isSandbox: false,
-      checkoutUrl: checkoutSession.url,
-      sessionId: checkoutSession.id,
+      checkoutUrl: result.url,
+      sessionId: result.sessionId,
     })
   } catch (error: any) {
     console.error('[POST /api/payments/checkout]', error)

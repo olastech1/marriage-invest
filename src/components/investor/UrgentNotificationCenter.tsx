@@ -370,13 +370,19 @@ export default function UrgentNotificationCenter({
                     {/* Action Buttons */}
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-4 border-t border-slate-200/60 mt-3">
                       {notif.link ? (
-                        <Link
-                          href={notif.link}
-                          className="flex-1 rounded-xl bg-[#0F1C3F] px-3 py-2 text-center text-xs font-bold text-white hover:bg-[#1a2f64] transition-colors flex items-center justify-center gap-1.5"
-                        >
-                          {notif.actionLabel || 'Attend Now'}
-                          <ArrowRight size={13} />
-                        </Link>
+                        // /pay/* links redirect to Stripe, so they need a full page load
+                        (() => {
+                          const LinkEl = notif.link.startsWith('/pay/') ? 'a' : Link
+                          return (
+                            <LinkEl
+                              href={notif.link}
+                              className="flex-1 rounded-xl bg-[#0F1C3F] px-3 py-2 text-center text-xs font-bold text-white hover:bg-[#1a2f64] transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              {notif.actionLabel || 'Attend Now'}
+                              <ArrowRight size={13} />
+                            </LinkEl>
+                          )
+                        })()
                       ) : null}
                       <Link
                         href="/chat?thread=spouse"

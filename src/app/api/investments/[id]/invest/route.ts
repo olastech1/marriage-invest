@@ -365,7 +365,7 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
               title: `${userName} invested $${amount.toLocaleString()}`,
               message: `${userName} invested $${amount.toLocaleString()} in ${invTitle}. Match it to keep your vault balanced.`,
               type: 'INFO',
-              link: `/save?match=${amount}`,
+              link: '/pay/match',
             },
           }).catch(console.error)
         }

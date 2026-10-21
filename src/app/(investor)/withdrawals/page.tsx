@@ -552,13 +552,13 @@ export default function WithdrawalsPage() {
               </p>
             </div>
           </div>
-          <Link
-            href={`/save?match=${Number(pendingReciprocation?.amount || 0)}`}
+          <a
+            href="/pay/match"
             className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all flex-shrink-0 transform hover:scale-105"
           >
             Match ${Number(pendingReciprocation?.amount || 0).toLocaleString()} now
             <ArrowRight size={14} />
-          </Link>
+          </a>
         </div>
       )}
 
