@@ -15,6 +15,16 @@ import { buildThreadId, getChatDb, resolveSpouseId } from '@/lib/chat'
 
 const MATCH_WINDOW_MS = 48 * 3600 * 1000
 
+/**
+ * Only deposits actually paid through Stripe count (their reference is the
+ * Stripe PaymentIntent or Checkout Session id). Cards from before real
+ * payments existed are history only and never create or settle a balance.
+ */
+function isPaidDeposit(deposit: { amount?: unknown; reference?: unknown }): boolean {
+  const ref = String(deposit.reference || '')
+  return Number(deposit.amount) > 0 && (ref.startsWith('pi_') || ref.startsWith('cs_'))
+}
+
 export interface PendingReciprocation {
   messageId: string
   depositorName: string
@@ -78,9 +88,9 @@ export async function getReciprocationStatus(userId: string): Promise<Reciprocat
   const history: ReciprocationStatus['history'] = []
 
   for (const msg of messages) {
-    const deposit = (msg.depositData || {}) as { amount?: number; isReciprocalMatch?: boolean }
-    const amount = Number(deposit.amount) || 0
-    if (amount <= 0) continue
+    const deposit = (msg.depositData || {}) as { amount?: number; isReciprocalMatch?: boolean; reference?: string }
+    if (!isPaidDeposit(deposit)) continue
+    const amount = Number(deposit.amount)
     const fromMe = msg.senderId === userId
     const fromSpouse = msg.senderId === spouseId
     if (!fromMe && !fromSpouse) continue
@@ -168,7 +178,7 @@ export async function getCoupleDeposits(userId: string): Promise<CoupleDeposit[]
   const matchCredit: Record<string, number> = {}
   const rows = messages
     .map((msg) => ({ msg, deposit: (msg.depositData || {}) as Record<string, any> }))
-    .filter(({ msg, deposit }) => Number(deposit.amount) > 0 && (msg.senderId === userId || msg.senderId === spouseId))
+    .filter(({ msg, deposit }) => isPaidDeposit(deposit) && (msg.senderId === userId || msg.senderId === spouseId))
 
   for (const { msg, deposit } of rows) {
     if (deposit.isReciprocalMatch) matchCredit[msg.senderId] = (matchCredit[msg.senderId] || 0) + Number(deposit.amount)
