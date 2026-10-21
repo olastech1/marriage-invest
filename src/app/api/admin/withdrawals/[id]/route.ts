@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
-import { Prisma } from '@prisma/client'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -28,22 +27,29 @@ export async function PATCH(req: NextRequest, { params }: Params) {
     if (!withdrawal) {
       return NextResponse.json({ error: 'Withdrawal request not found' }, { status: 404 })
     }
+    if (withdrawal.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: `This request has already been ${withdrawal.status.toLowerCase()}.` },
+        { status: 409 },
+      )
+    }
 
     if (action === 'approve') {
       const txnRef = `TXN-WD-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
 
       await prisma.$transaction(async (tx) => {
-        // Update request status
-        await tx.withdrawalRequest.update({
-          where: { id },
+        // Update request status (only if still pending, so it cannot be approved twice)
+        const updated = await tx.withdrawalRequest.updateMany({
+          where: { id, status: 'PENDING' },
           data: {
             status: 'APPROVED',
             approvedById: session.user.id,
             approvedAt: new Date(),
             processedAt: new Date(),
-            adminNote: adminNote || 'Approved by financial officer',
+            adminNote: adminNote || null,
           },
         })
+        if (updated.count === 0) throw new Error('ALREADY_DECIDED')
 
         // Create negative or withdrawal transaction record
         await tx.transaction.create({
@@ -56,7 +62,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             netAmount: withdrawal.netAmount,
             status: 'COMPLETED',
             reference: txnRef,
-            description: `Contractual withdrawal from investment`,
+            description: 'Withdrawal from investment',
             processedAt: new Date(),
           },
         })
@@ -81,7 +87,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         data: {
           status: 'REJECTED',
           rejectedAt: new Date(),
-          adminNote: adminNote || 'Rejected per compliance policy',
+          adminNote: adminNote || null,
         },
       })
 
@@ -98,6 +104,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ success: true, message: 'Withdrawal rejected' })
     }
   } catch (error) {
+    if (error instanceof Error && error.message === 'ALREADY_DECIDED') {
+      return NextResponse.json({ error: 'This request has already been decided.' }, { status: 409 })
+    }
     console.error('[PATCH /api/admin/withdrawals/[id]]', error)
     return NextResponse.json({ error: 'Failed to process decision' }, { status: 500 })
   }

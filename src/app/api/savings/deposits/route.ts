@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getCoupleDeposits } from '@/lib/reciprocation'
-import { recordVaultDeposit } from '@/lib/vaultDeposits'
+import { PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,29 +27,36 @@ export async function GET() {
   }
 }
 
+// POST /api/savings/deposits { amount, note?, isReciprocalMatch? }
+// Starts a Stripe Checkout for a joint-vault deposit; it is recorded only once paid.
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
     const body = await req.json()
-    const amount = Number(body.amount)
-    if (!amount || amount <= 0) {
-      return NextResponse.json({ success: false, error: 'Valid deposit amount is required.' }, { status: 400 })
+    const amount = Math.round(Number(body.amount) * 100) / 100
+    if (!(amount >= 10)) {
+      return NextResponse.json({ success: false, error: 'The minimum deposit is $10.' }, { status: 400 })
     }
 
-    const result = await recordVaultDeposit({
-      userId,
-      userName: session?.user?.name || 'Member',
+    const checkoutUrl = await startPayment({
+      purpose: 'VAULT_DEPOSIT',
       amount,
-      applyBonus: !!body.applyBonus,
-      vaultTitle: body.vaultTitle,
-      note: body.note,
-      isReciprocalMatch: !!body.isReciprocalMatch,
+      userId,
+      userName: session.user.name || 'Member',
+      email: session.user.email,
+      title: 'Joint vault deposit',
+      description: `Deposit into your Union Verify joint vault`,
+      payload: { note: String(body.note || '').slice(0, 200), isReciprocalMatch: !!body.isReciprocalMatch },
+      origin: req.nextUrl.origin,
+      cancelPath: '/save',
     })
-
-    return NextResponse.json({ success: true, message: 'Deposit processed successfully.', ...result })
+    return NextResponse.json({ success: true, checkoutUrl })
   } catch (error: any) {
+    if (error instanceof PaymentsNotConfiguredError) {
+      return NextResponse.json({ success: false, error: error.message }, { status: 503 })
+    }
     console.error('[POST /api/savings/deposits]', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }

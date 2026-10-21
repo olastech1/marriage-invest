@@ -188,3 +188,13 @@ export function escapeHtml(value: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+/**
+ * Investment opportunity rates are stored as a fraction (0.068 = 6.8% a year).
+ * Formats one for display, e.g. "6.8%".
+ */
+export function formatAnnualRate(rate: number | string | { toString(): string }): string {
+  const value = Number(rate)
+  if (!Number.isFinite(value)) return '—'
+  return `${(value * 100).toFixed(2).replace(/\.?0+$/, '')}%`
+}

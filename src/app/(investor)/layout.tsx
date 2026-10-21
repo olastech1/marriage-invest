@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useSession, signOut } from 'next-auth/react'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   LayoutDashboard,
   Briefcase,
   ArrowLeftRight,
-  ArrowDownToLine,
   ArrowUpFromLine,
   FileText,
   Settings,
@@ -21,9 +20,7 @@ import {
   HeartHandshake,
   MessageSquareHeart,
   MessageSquare,
-  Users,
   Heart,
-  Flame,
   Gift,
   User,
   Share2,
@@ -34,25 +31,23 @@ import NotificationBellDropdown from '@/components/investor/NotificationBellDrop
 // ---------------------------------------------------------------------------
 // Nav items
 // ---------------------------------------------------------------------------
-const navItems = [
+type NavItem = { href: string; label: string; icon: typeof LayoutDashboard }
+
+const navItems: NavItem[] = [
   { href: '/dashboard',     label: 'Dashboard',              icon: LayoutDashboard },
-  { href: '/quests',        label: 'Daily Quests',           icon: Flame, badge: 'Streak' },
-  { href: '/registry',      label: 'Wedding Registry',       icon: Gift, badge: 'Gifts' },
-  { href: '/chat',          label: 'Mutual Chat',            icon: MessageSquareHeart, badge: 'Live' },
-  { href: '/savings',       label: 'Marriage Savings',       icon: PiggyBank },
+  { href: '/registry',      label: 'Wedding Registry',       icon: Gift },
+  { href: '/chat',          label: 'Spouse Chat',            icon: MessageSquareHeart },
   { href: '/certificate',   label: 'Marriage Certificate',   icon: Award },
   { href: '/get-married',   label: 'Get Married (Register)', icon: HeartHandshake },
-  { href: '/friends',       label: 'Friends & Fanbase',      icon: Users, badge: 'New' },
-  { href: '/community',     label: 'Community Giving',       icon: Heart, badge: 'Impact' },
+  { href: '/community',     label: 'Community Giving',       icon: Heart },
   { href: '/portfolio',     label: 'Portfolio',              icon: Briefcase },
-  { href: '/solo',          label: 'Solo Invest',            icon: User, badge: 'New' },
+  { href: '/solo',          label: 'Solo Invest',            icon: User },
   { href: '/transactions',  label: 'Transactions',           icon: ArrowLeftRight },
   { href: '/save',          label: 'Save',                   icon: PiggyBank },
   { href: '/withdrawals',   label: 'Withdrawals',            icon: ArrowUpFromLine },
   { href: '/my-documents',  label: 'Documents',              icon: FileText },
-  { href: '/u/jane-doe',    label: 'My Public Bio & Chat',   icon: Share2, badge: 'Bio' },
   { href: '/settings',      label: 'Settings',               icon: Settings },
-] as const
+]
 
 
 // ---------------------------------------------------------------------------
@@ -61,12 +56,19 @@ const navItems = [
 function Sidebar({
   pathname,
   user,
+  publicBioUrl,
   onClose,
 }: {
   pathname: string
   user: { name?: string | null; email?: string | null }
+  publicBioUrl: string | null
   onClose?: () => void
 }) {
+  // The public bio link only exists once the member has picked a username
+  const items: NavItem[] = publicBioUrl
+    ? [...navItems.slice(0, -1), { href: publicBioUrl, label: 'My Public Bio', icon: Share2 }, navItems[navItems.length - 1]]
+    : navItems
+
   const initials = (user.name ?? 'IN')
     .split(' ')
     .slice(0, 2)
@@ -95,9 +97,8 @@ function Sidebar({
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const { href, label, icon: Icon } = item
-          const badge = 'badge' in item ? (item as unknown as { badge?: string }).badge : undefined
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
@@ -112,11 +113,6 @@ function Sidebar({
             >
               <Icon size={18} className={active ? 'text-[#C9A84C]' : 'text-white/50 group-hover:text-white'} />
               <span className="truncate">{label}</span>
-              {badge && !active && (
-                <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#C9A84C] text-[#0F1C3F] uppercase tracking-wide">
-                  {badge}
-                </span>
-              )}
               {active && <ChevronRight size={14} className="ml-auto text-[#C9A84C]" />}
             </Link>
           )
@@ -130,7 +126,7 @@ function Sidebar({
             {initials}
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-white">{user.name ?? 'Investor'}</p>
+            <p className="truncate text-sm font-medium text-white">{user.name ?? 'Member'}</p>
             <p className="truncate text-xs text-white/50">{user.email ?? ''}</p>
           </div>
         </div>
@@ -152,10 +148,17 @@ function Sidebar({
 export default function InvestorLayout({ children }: { children: React.ReactNode }) {
   const sessionContext = useSession()
   const session = sessionContext?.data
-  const status = sessionContext?.status ?? 'loading'
-  const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [publicBioUrl, setPublicBioUrl] = useState<string | null>(null)
+
+  // The member's own public bio URL (null until they choose a username)
+  useEffect(() => {
+    fetch('/api/user/profile')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setPublicBioUrl(data?.user?.publicBioUrl ?? null))
+      .catch(() => setPublicBioUrl(null))
+  }, [])
 
   // Close mobile sidebar on route change
   useEffect(() => {
@@ -163,16 +166,15 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
   }, [pathname])
 
   const user = session?.user || {
-    name: 'Investor',
+    name: null,
     email: '',
-    role: 'INVESTOR' as const,
   }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
-        <Sidebar pathname={pathname} user={user} />
+        <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} />
       </div>
 
       {/* Mobile sidebar overlay */}
@@ -185,7 +187,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
           />
           {/* Drawer */}
           <div className="relative z-50 flex h-full w-64 shadow-2xl">
-            <Sidebar pathname={pathname} user={user} onClose={() => setSidebarOpen(false)} />
+            <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} onClose={() => setSidebarOpen(false)} />
           </div>
         </div>
       )}
@@ -210,10 +212,9 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             <Link
               href="/chat"
               className="relative p-1.5 rounded-lg text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors"
-              title="Mutual Chat"
+              title="Spouse Chat"
             >
               <MessageSquare size={19} />
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             </Link>
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]">
               {(user.name ?? 'IN')
@@ -229,23 +230,17 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         {/* Desktop top header bar */}
         <header className="hidden lg:flex items-center justify-between border-b border-slate-200 bg-white px-8 py-2.5">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Joint Portfolio Portal</span>
-            <span className="text-slate-300">·</span>
-            <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              6.8% APY Vault Active
-            </span>
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Member Area</span>
           </div>
           <div className="flex items-center gap-3">
             <NotificationBellDropdown />
             <Link
               href="/chat"
               className="relative p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-bold"
-              title="Mutual Chat"
+              title="Spouse Chat"
             >
               <MessageSquare size={17} />
-              <span>Partner Chat</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Spouse Chat</span>
             </Link>
           </div>
         </header>
@@ -268,7 +263,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             {children}
           </div>
 
-          {/* Floating Mutual Chat Dock (positioned at bottom-right across dashboard pages, hidden on /chat) */}
+          {/* Floating spouse chat (bottom-right on every member page except /chat) */}
           <FloatingChatWidget />
         </main>
       </div>

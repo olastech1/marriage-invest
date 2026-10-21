@@ -11,10 +11,6 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
-  AlertCircle,
-  Sparkles,
-  Lock,
-  ExternalLink,
 } from 'lucide-react'
 import type { AccountRating } from '@/lib/rating'
 import { formatCurrency } from '@/lib/utils'
@@ -97,13 +93,10 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C]">
-                Fiduciary Account Rating
+                Account Rating
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
                 Score: {rating.score} / 100
-              </span>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                Verified Real Capital Only
               </span>
             </div>
             <h2 className="text-xl sm:text-2xl font-bold text-[#0F1C3F] tracking-tight">
@@ -119,13 +112,13 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
         <div className="flex sm:flex-col items-center sm:items-end justify-between gap-1 flex-shrink-0 bg-gray-50/80 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border sm:border-0 border-gray-200">
           <div className="text-left sm:text-right">
             <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
-              Settled Real Deposits
+              Completed deposits
             </span>
             <span className="text-base sm:text-lg font-bold text-[#0F1C3F]">
               {formatCurrency(rating.realDepositedAmount)}
             </span>
             <span className="text-[10px] text-gray-400 block">
-              Demo allocations strictly excluded
+              Demo entries not counted
             </span>
           </div>
           {rating.nextTier && (
@@ -146,10 +139,10 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-gray-400 block">
-              Documents Accumulated
+              Checklist done
             </span>
             <span className="text-sm font-bold text-[#0F1C3F]">
-              {rating.documentCount} of {rating.totalAvailableDocuments} Documents
+              {rating.documentCount} of {rating.totalAvailableDocuments} items
             </span>
           </div>
         </div>
@@ -160,10 +153,10 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-gray-400 block">
-              Matrimonial Covenant
+              Marriage registration
             </span>
             <span className="text-sm font-bold text-[#0F1C3F]">
-              {rating.hasMarriageCovenant ? 'Solemnized & Docketed' : 'Not Yet Registered'}
+              {rating.hasMarriageCovenant ? 'Registered' : 'Not registered yet'}
             </span>
           </div>
         </div>
@@ -174,10 +167,10 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-gray-400 block">
-              Legal Identity Status
+              Identity
             </span>
             <span className="text-sm font-bold text-[#0F1C3F]">
-              {rating.isIdentityVerified ? 'KYC Verified' : 'Standard Verification'}
+              {rating.isIdentityVerified ? 'Verified' : 'Not verified yet'}
             </span>
           </div>
         </div>
@@ -190,7 +183,7 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
             onClick={() => setExpanded(!expanded)}
             className="inline-flex items-center gap-2 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
           >
-            <span>{expanded ? 'Hide Document Portfolio Breakdown' : 'View Document Portfolio Breakdown & Requirements'}</span>
+            <span>{expanded ? 'Hide checklist' : 'View checklist'}</span>
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
 
@@ -198,7 +191,7 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
             href="/my-documents"
             className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
           >
-            <span>Open Document Vault</span>
+            <span>Open Documents</span>
             <ArrowRight className="w-3.5 h-3.5 text-[#C9A84C]" />
           </Link>
         </div>
@@ -225,11 +218,11 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
                       <p className="text-xs font-bold text-gray-900 truncate">{item.label}</p>
                       {item.met ? (
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md flex-shrink-0">
-                          Accumulated
+                          Done
                         </span>
                       ) : (
                         <span className="text-[10px] font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md flex-shrink-0">
-                          Required
+                          To do
                         </span>
                       )}
                     </div>
@@ -241,23 +234,9 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
               ))}
             </div>
 
-            {/* Fiduciary Perks Callout */}
-            <div className="p-4 rounded-xl bg-[#0F1C3F] text-white space-y-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#C9A84C]" />
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#C9A84C]">
-                  {rating.tier} Tier Matrimonial Entitlements
-                </h4>
-              </div>
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-300">
-                {rating.perks.map((p, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#C9A84C]" />
-                    <span>{p}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <p className="text-[11px] text-gray-400">
+              The rating only reflects this checklist. It does not change your rates, limits or access.
+            </p>
           </div>
         )}
       </div>

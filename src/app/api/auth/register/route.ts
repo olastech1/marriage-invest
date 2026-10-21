@@ -91,6 +91,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { id: true, name: true, email: true },
     })
 
+    // If a partner already registered your union with this email, link the two accounts
+    const invitedBy = await prisma.marriageRegistration.findFirst({
+      where: { partner2Email: normalizedEmail },
+      orderBy: { createdAt: 'desc' },
+      select: { userId: true },
+    })
+    if (invitedBy) {
+      const inviter = await prisma.user.findUnique({ where: { id: invitedBy.userId }, select: { spouseId: true } })
+      if (inviter && !inviter.spouseId) {
+        await prisma.user.update({ where: { id: invitedBy.userId }, data: { spouseId: user.id } })
+        await prisma.user.update({ where: { id: user.id }, data: { spouseId: invitedBy.userId } })
+      }
+    }
+
     return NextResponse.json(
       {
         message: 'Account created. You can sign in now.',

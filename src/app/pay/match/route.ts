@@ -1,62 +1,50 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { createCheckoutSession } from '@/lib/checkout'
+import { PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 import { getReciprocationStatus } from '@/lib/reciprocation'
-import { recordVaultDeposit } from '@/lib/vaultDeposits'
 
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
 // /pay/match — one tap to reciprocate the spouse's deposit.
-// The amount always comes from the server (what the user still owes).
-//
-//   POST (Reciprocate button): Stripe payment page if Stripe is configured,
-//        otherwise records the reciprocation immediately and returns to chat.
-//   GET  (plain links, e.g. notifications): Stripe payment page if configured,
-//        otherwise the chat, where the Reciprocate button is. Never records.
+// Opens Stripe Checkout for exactly what the signed-in user still owes (the
+// amount always comes from the server, never from the link). The
+// reciprocation is recorded only after the payment succeeds.
 // ---------------------------------------------------------------------------
-async function reciprocate(req: NextRequest, allowDirectRecord: boolean) {
+async function reciprocate(req: NextRequest) {
   const origin = req.nextUrl.origin
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat')}`, 303)
   }
 
-  const userId = session.user.id
-  const userName = session.user.name || 'Member'
-  const { owedByMe, spouseName } = await getReciprocationStatus(userId)
+  const { owedByMe, spouseName } = await getReciprocationStatus(session.user.id)
   if (owedByMe <= 0) return NextResponse.redirect(`${origin}/chat`, 303)
 
   try {
-    const checkout = await createCheckoutSession({
-      userId,
-      userName,
-      email: session.user.email,
+    const checkoutUrl = await startPayment({
+      purpose: 'VAULT_DEPOSIT',
       amount: owedByMe,
-      type: 'DEPOSIT',
+      userId: session.user.id,
+      userName: session.user.name || 'Member',
+      email: session.user.email,
       title: `Reciprocate ${spouseName}'s deposit`,
       description: `Joint vault reciprocation for ${spouseName}`,
-      metadata: { isReciprocalMatch: 'true', applyBonus: 'false', beneficiary: 'JOINT', partnerName: spouseName },
-      successUrl: `${origin}/chat?checkout_success=true&session_id={CHECKOUT_SESSION_ID}`,
-      cancelUrl: `${origin}/chat`,
+      payload: { isReciprocalMatch: true },
+      origin,
+      cancelPath: '/chat',
     })
-    if (!checkout.sandbox && checkout.url) return NextResponse.redirect(checkout.url, 303)
+    return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {
-    console.error('[/pay/match] Stripe checkout failed', error)
-    return NextResponse.redirect(`${origin}/chat`, 303)
+    if (!(error instanceof PaymentsNotConfiguredError)) console.error('[/pay/match]', error)
+    return NextResponse.redirect(`${origin}/chat?payment=unavailable`, 303)
   }
-
-  // No Stripe configured
-  if (allowDirectRecord) {
-    await recordVaultDeposit({ userId, userName, amount: owedByMe, isReciprocalMatch: true })
-  }
-  return NextResponse.redirect(`${origin}/chat`, 303)
 }
 
 export function GET(req: NextRequest) {
-  return reciprocate(req, false)
+  return reciprocate(req)
 }
 
 export function POST(req: NextRequest) {
-  return reciprocate(req, true)
+  return reciprocate(req)
 }

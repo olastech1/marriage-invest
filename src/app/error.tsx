@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, RefreshCw, Home, ArrowLeft } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 
 export default function RootError({
   error,
@@ -52,9 +52,9 @@ export default function RootError({
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold uppercase tracking-wider">
             Union Verify
           </div>
-          <h1 className="text-2xl font-black text-[#0F1C3F]">Temporary Navigation Notice</h1>
+          <h1 className="text-2xl font-black text-[#0F1C3F]">Something went wrong</h1>
           <p className="text-xs text-slate-500 leading-relaxed">
-            The page encountered a brief transition update. A quick refresh will load the latest verified state.
+            This page failed to load. Reloading usually fixes it.
           </p>
         </div>
 

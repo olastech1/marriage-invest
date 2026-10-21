@@ -2,15 +2,10 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import {
-  TrendingUp,
-  Plus,
-  DollarSign,
-  Calendar,
-  Layers,
-  CheckCircle2,
-} from 'lucide-react'
+import { formatAnnualRate, formatCurrency } from '@/lib/utils'
+import CreateOpportunityForm from '@/components/admin/CreateOpportunityForm'
+import OpportunityStatusSelect from '@/components/admin/OpportunityStatusSelect'
+import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,36 +15,47 @@ export default async function AdminInvestmentsPage() {
     redirect('/login?callbackUrl=/admin/investments')
   }
 
+  const isAdmin = session.user.role === 'ADMIN'
+  let loadError = false
   let opportunities: any[] = []
   try {
     opportunities = await prisma.investmentOpportunity.findMany({
       include: {
-        investments: true,
-        documents: true,
+        _count: { select: { investments: true, documents: true } },
       },
       orderBy: { createdAt: 'desc' },
     })
-  } catch {
-    // DB offline
+  } catch (error) {
+    console.error('[admin/investments]', error)
+    loadError = true
   }
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Investment Opportunity Management</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Investment Opportunities</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Configure fund offerings, funding targets, contractual tenures, and return projections.
+            Members can only invest in opportunities created here with status Active.
           </p>
         </div>
+        {isAdmin && <CreateOpportunityForm />}
       </div>
+
+      {loadError && <LoadErrorBanner />}
+
+      {!loadError && opportunities.length === 0 && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-sm text-gray-500">
+          No investment opportunities yet.{isAdmin && ' Use "New Opportunity" to create one.'}
+        </div>
+      )}
 
       {/* Opportunities List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {opportunities.map((opp) => {
           const funded = Number(opp.fundedAmount)
           const target = Number(opp.targetAmount)
-          const pct = Math.min(100, Math.round((funded / target) * 100))
+          const pct = target > 0 ? Math.min(100, Math.round((funded / target) * 100)) : 0
 
           return (
             <div
@@ -61,9 +67,13 @@ export default async function AdminInvestmentsPage() {
                   <h3 className="text-base font-bold text-[#0F1C3F] leading-snug">
                     {opp.title}
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A84C]/15 text-[#C9A84C]">
-                    {opp.status}
-                  </span>
+                  {isAdmin ? (
+                    <OpportunityStatusSelect id={opp.id} status={opp.status} />
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#C9A84C]/15 text-[#C9A84C]">
+                      {opp.status}
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs text-gray-500 mb-4 line-clamp-2">
@@ -88,11 +98,11 @@ export default async function AdminInvestmentsPage() {
                   <div>
                     <span className="text-gray-400 block text-[11px]">Projected Return</span>
                     <span className="font-bold text-emerald-700">
-                      {(Number(opp.annualReturnRate) * 100).toFixed(1)}% p.a.
+                      {formatAnnualRate(opp.annualReturnRate)} p.a.
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[11px]">Tenure</span>
+                    <span className="text-gray-400 block text-[11px]">Term</span>
                     <span className="font-semibold text-gray-900">{opp.termMonths} Months</span>
                   </div>
                   <div>
@@ -100,8 +110,8 @@ export default async function AdminInvestmentsPage() {
                     <span className="font-semibold text-gray-900">{formatCurrency(Number(opp.minAmount))}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[11px]">Investors</span>
-                    <span className="font-semibold text-gray-900">{opp.investments.length}</span>
+                    <span className="text-gray-400 block text-[11px]">Investments</span>
+                    <span className="font-semibold text-gray-900">{opp._count.investments}</span>
                   </div>
                 </div>
               </div>
@@ -114,7 +124,7 @@ export default async function AdminInvestmentsPage() {
                   Public View →
                 </Link>
                 <span className="text-[11px] text-gray-400">
-                  {opp.documents.length} Docs Attached
+                  {opp._count.documents} Docs Attached
                 </span>
               </div>
             </div>

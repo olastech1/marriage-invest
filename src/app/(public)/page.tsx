@@ -1,23 +1,19 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { auth } from '@/lib/auth'
+import { getSettings } from '@/lib/settings'
 import { formatCurrency } from '@/lib/utils'
 import {
-  Shield,
   Lock,
   ArrowRight,
   CheckCircle2,
-  FileText,
-  HelpCircle,
   TrendingUp,
   Users,
   Award,
   Heart,
   Mail,
   FileCheck,
-  CreditCard,
-  Download,
-  Sparkles,
   Check,
   PiggyBank,
 } from 'lucide-react'
@@ -25,55 +21,13 @@ import {
 export const metadata: Metadata = {
   title: 'Union Verify — Marriage Investment Platform',
   description:
-    'The premier Marriage Investment Platform. One partner registers, invites their spouse, signs the digital Marriage Certificate, and unlocks shared high-yield USD investments.',
+    'A joint savings and investment platform for couples. One partner registers, invites their spouse, both sign a Union Verify certificate, and you save and invest together in USD.',
 }
 
 export const dynamic = 'force-dynamic'
 
-const FALLBACK_OPPORTUNITIES = [
-  {
-    id: 'f1',
-    slug: 'matrimonial-prime-yield-fund-i',
-    title: 'Matrimonial Prime Yield Fund I',
-    shortDescription: 'Senior-secured credit portfolio supporting verified wedding event venues & prime hospitality assets.',
-    status: 'ACTIVE',
-    annualReturnRate: 0.108,
-    fundedAmount: 320000,
-    targetAmount: 500000,
-    minAmount: 1000,
-    termMonths: 24,
-    distributionType: 'QUARTERLY',
-  },
-  {
-    id: 'f2',
-    slug: 'marital-homestead-growth-notes-v',
-    title: 'Marital Homestead Growth Notes V',
-    shortDescription: 'First-lien residential acquisition notes tailored for married couples entering long-term property ownership.',
-    status: 'ACTIVE',
-    annualReturnRate: 0.084,
-    fundedAmount: 512000,
-    targetAmount: 800000,
-    minAmount: 2500,
-    termMonths: 36,
-    distributionType: 'MONTHLY',
-  },
-  {
-    id: 'f3',
-    slug: 'enduring-union-balanced-portfolio',
-    title: 'Enduring Union Balanced Portfolio',
-    shortDescription: 'Multi-asset liquidity fund providing capital preservation with balanced dividend yields.',
-    status: 'ACTIVE',
-    annualReturnRate: 0.069,
-    fundedAmount: 195000,
-    targetAmount: 300000,
-    minAmount: 500,
-    termMonths: 12,
-    distributionType: 'ANNUAL',
-  },
-]
-
 export default async function HomePage() {
-  let opportunities: any[] = []
+  let opportunities: Awaited<ReturnType<typeof prisma.investmentOpportunity.findMany>> = []
   try {
     opportunities = await prisma.investmentOpportunity.findMany({
       where: {
@@ -86,9 +40,15 @@ export default async function HomePage() {
     // Database offline or build-time prerendering fallback
   }
 
-  if (!opportunities || opportunities.length === 0) {
-    opportunities = FALLBACK_OPPORTUNITIES
+  let vaultApy: number | null = null
+  try {
+    vaultApy = (await getSettings()).vaultApy
+  } catch {
+    // Settings unavailable: hide the rate rather than guess it
   }
+
+  const session = await auth().catch(() => null)
+  const certificateHref = session?.user ? '/certificate' : '/register'
 
   return (
     <div className="bg-white min-h-screen">
@@ -101,16 +61,16 @@ export default async function HomePage() {
           {/* Eyebrow Pill */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#C9A84C]/15 border border-[#C9A84C]/30 text-[#0F1C3F] text-xs font-bold uppercase tracking-wider mb-6">
             <Heart className="w-3.5 h-3.5 text-[#C9A84C] fill-[#C9A84C]" />
-            The World&apos;s First Marriage Investment Platform
+            Joint Savings &amp; Investing for Couples
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-[#0F1C3F] tracking-tight leading-[1.15] mb-6">
             Invest in Your Marriage. <br className="hidden sm:inline" />
-            <span className="text-[#C9A84C]">Build Generational Wealth As One.</span>
+            <span className="text-[#C9A84C]">Save and Invest Together.</span>
           </h1>
 
           <p className="text-base sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-            One partner registers and invites their spouse. Together, both partners digitally sign your official <strong>Marriage Investment Certificate</strong>. Settle your registration fee to unlock and download your certified legal bond, then deploy shared capital into high-yield USD funds.
+            One partner registers and invites their spouse. Both partners digitally sign your <strong>Union Verify certificate</strong>, pay the registration and certificate fees to download it, and then save and invest together in USD.
           </p>
 
           {/* Hero CTAs */}
@@ -125,7 +85,7 @@ export default async function HomePage() {
               href="#certificate"
               className="w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base font-semibold text-[#0F1C3F] bg-white border-2 border-gray-300 rounded-xl hover:bg-gray-50 active:scale-95 transition-all"
             >
-              View Certificate
+              See Example Certificate
             </Link>
           </div>
 
@@ -151,49 +111,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── METRICS BAR ── */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8 text-center divide-y md:divide-y-0 md:divide-x divide-gray-100">
-            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
-              <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                6.8%
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-gray-500">
-                APY Joint Vault Rate
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
-              <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                680+
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Certificates Issued
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
-              <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                50/50
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Joint Beneficial Rights
-              </span>
-            </div>
-
-            <div className="flex flex-col items-center justify-center pt-4 md:pt-0">
-              <span className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] tracking-tight mb-1">
-                $0
-              </span>
-              <span className="text-xs sm:text-sm font-medium text-gray-500">
-                Registry Gifting Fees
-              </span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── THE 5-STEP PARTNER JOURNEY ── */}
       <section id="how-it-works" className="bg-gray-50 py-20 border-y border-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -205,7 +122,7 @@ export default async function HomePage() {
               How Marriage Investment Works
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed">
-              Designed from the ground up for marital unity. Our seamless five-step process guarantees dual legal consent, mutual asset protection, and financial prosperity.
+              Five steps from sign-up to saving and investing together. Both partners take part at every step.
             </p>
           </div>
 
@@ -215,35 +132,35 @@ export default async function HomePage() {
                 step: '01',
                 title: 'First Partner Registers',
                 description:
-                  'One spouse opens the marriage account with email, name, and basic contact verification in under two minutes.',
+                  'One spouse creates an account with their name, email and phone number.',
                 icon: Users,
               },
               {
                 step: '02',
                 title: 'Invite Your Spouse',
                 description:
-                  'Send a direct, encrypted digital invite to your partner to connect their identity to the joint investment bond.',
+                  'Send your partner an invitation link so they can create their own account and join you.',
                 icon: Mail,
               },
               {
                 step: '03',
                 title: 'Sign Joint Certificate',
                 description:
-                  'Both spouses review the legal matrimonial investment agreement and record their verified digital signatures.',
+                  'Both spouses review the certificate and add their digital signatures.',
                 icon: FileCheck,
               },
               {
                 step: '04',
-                title: 'Pay Fiduciary Fees',
+                title: 'Pay Certificate Fees',
                 description:
-                  'Complete the $500 marriage registration fee and $500 official certificate fee to legally docket and download your certified gold-trimmed document.',
+                  'Pay the $500 registration fee and $500 certificate fee to remove the watermark and download your certificate.',
                 icon: Lock,
               },
               {
                 step: '05',
                 title: 'Deploy & Earn Together',
                 description:
-                  'Deposit joint capital into institutional USD yield funds with contractual monthly or quarterly distributions.',
+                  'Save in a joint vault or invest in the opportunities listed on the platform. Returns are not guaranteed.',
                 icon: TrendingUp,
               },
             ].map((s, i) => {
@@ -276,17 +193,17 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── THE OFFICIAL MARRIAGE INVESTMENT CERTIFICATE SHOWCASE ── */}
+      {/* ── EXAMPLE CERTIFICATE SHOWCASE ── */}
       <section id="certificate" className="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-16">
           <span className="text-[#C9A84C] text-xs font-bold uppercase tracking-wider block mb-2">
-            Matrimonial Fiduciary Seal
+            Example Certificate
           </span>
           <h2 className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] mb-4">
-            The Official Marriage Investment Certificate
+            The Union Verify Certificate
           </h2>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Your physical and digital proof of joint commitment. Both partners sign digitally, and payment of the $500 registration fee and $500 certificate fee seals your legal status, unlocks full PDF downloads, and activates joint portfolio funding.
+            A digital certificate both partners sign on Union Verify. Paying the $500 registration fee and $500 certificate fee removes the watermark and unlocks the PDF download. It is a Union Verify platform document, not a government-issued marriage certificate.
           </p>
         </div>
 
@@ -308,7 +225,7 @@ export default async function HomePage() {
                     $500 REGISTRATION / $500 CERTIFICATE
                   </span>
                   <span className="text-[10px] text-gray-600 font-medium">
-                    PAY FEES TO UNLOCK HIGH-RES PDF & GOLD SEAL
+                    EXAMPLE · PAY FEES TO UNLOCK THE PDF
                   </span>
                 </div>
               </div>
@@ -325,28 +242,25 @@ export default async function HomePage() {
               </div>
 
               <span className="text-[10px] font-serif font-bold uppercase tracking-[0.25em] text-[#0F1C3F]/70 block mb-1">
-                Union Verify · Official Certificate Registry
+                Union Verify · Example
               </span>
 
               <h3 className="text-xl sm:text-3xl font-serif font-bold text-[#0F1C3F] tracking-tight mb-2">
                 Certificate of Marriage Investment
               </h3>
 
-              <p className="text-xs font-serif italic text-gray-600 mb-6">
-                Official Covenant of Shared Wealth & Mutual Survivorship
-              </p>
 
               {/* Names Mockup */}
               <div className="my-6 py-4 border-y border-[#C9A84C]/30 max-w-lg mx-auto">
                 <div className="flex items-center justify-center gap-4 text-center">
                   <div className="flex-1">
                     <span className="text-[9px] uppercase font-bold text-gray-400 block">First Spouse</span>
-                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Amélie Laurent</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Partner One</span>
                   </div>
                   <span className="text-[#C9A84C] font-serif text-lg font-bold">&</span>
                   <div className="flex-1">
                     <span className="text-[9px] uppercase font-bold text-gray-400 block">Second Spouse</span>
-                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Sebastian Laurent</span>
+                    <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Partner Two</span>
                   </div>
                 </div>
               </div>
@@ -354,7 +268,7 @@ export default async function HomePage() {
               {/* Dual Signature Stems */}
               <div className="grid grid-cols-3 gap-4 max-w-md mx-auto items-end pt-2 text-[10px]">
                 <div className="border-t border-gray-400 pt-1">
-                  <p className="font-serif italic text-sm text-[#0F1C3F]">Amélie Laurent</p>
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">Partner One</p>
                   <span className="text-gray-500 font-bold uppercase">Partner 1</span>
                 </div>
 
@@ -362,11 +276,10 @@ export default async function HomePage() {
                   <div className="w-14 h-14 rounded-full border-2 border-[#C9A84C] bg-gradient-to-tr from-[#C9A84C] to-[#edd998] flex items-center justify-center text-[#0F1C3F] shadow-sm">
                     <Award className="w-6 h-6" />
                   </div>
-                  <span className="text-[8px] font-mono text-gray-500 mt-1">SEAL #CH-98420</span>
                 </div>
 
                 <div className="border-t border-gray-400 pt-1">
-                  <p className="font-serif italic text-sm text-[#0F1C3F]">Sebastian Laurent</p>
+                  <p className="font-serif italic text-sm text-[#0F1C3F]">Partner Two</p>
                   <span className="text-gray-500 font-bold uppercase">Partner 2</span>
                 </div>
               </div>
@@ -386,16 +299,13 @@ export default async function HomePage() {
               </h4>
 
               <p className="text-xs text-gray-300 leading-relaxed mb-6">
-                The $500 registration fee covers your application review and identity verification, while the $500 certificate fee permanently certifies your 50/50 joint ownership rights on the Union Verify registry.
+                Both fees are paid once, together ($1,000) or separately. Until they are paid, your certificate is shown as a watermarked preview.
               </p>
 
               <div className="space-y-3 mb-6">
                 {[
-                  'Removes all watermarks instantly',
-                  'Unlocks high-resolution printable PDF',
-                  'Permanent blockchain/ledger registration',
-                  'Enables mutual fund deposit & withdrawals',
-                  'Dual survivorship beneficial rights',
+                  'Removes the watermark',
+                  'Unlocks the printable PDF download',
                 ].map((feat, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-xs text-gray-200">
                     <Check className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
@@ -408,7 +318,7 @@ export default async function HomePage() {
                 href="/get-married"
                 className="w-full py-3.5 px-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-md flex items-center justify-center gap-2 text-center"
               >
-                Get Married & Register ($500)
+                Register Your Union ($500)
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -420,25 +330,24 @@ export default async function HomePage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
               <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] block mb-1">
-                Equal Legal & Fiduciary Protection
+                All Couples Welcome
               </span>
               <h3 className="text-xl font-bold text-[#0F1C3F]">
-                Full Recognition for All Marriages & Partnership Types
+                Every Kind of Union
               </h3>
             </div>
             <p className="text-xs sm:text-sm text-gray-500 max-w-lg leading-relaxed">
-              Union Verify provides full 50/50 capital custody and equal joint rights across all recognized union types, with transparent digital documentation and dual-signature protection.
+              Union Verify works the same way for every couple: both partners sign, and both partners can see the joint account.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
             {[
               { label: 'Gay Marriage', sub: 'Husband & Husband', badge: 'Same-Sex', color: 'text-indigo-600 bg-indigo-50 border-indigo-100' },
               { label: 'Lesbian Marriage', sub: 'Wife & Wife', badge: 'Same-Sex', color: 'text-rose-600 bg-rose-50 border-rose-100' },
               { label: 'Civil Marriage', sub: 'Husband & Wife', badge: 'Opposite-Sex', color: 'text-emerald-600 bg-emerald-50 border-emerald-100' },
               { label: 'Civil Union', sub: 'Partner & Partner', badge: 'Registered', color: 'text-blue-600 bg-blue-50 border-blue-100' },
               { label: 'Domestic Union', sub: 'Partner & Partner', badge: 'Cohabitation', color: 'text-amber-600 bg-amber-50 border-amber-100' },
-              { label: 'Life Covenant', sub: 'Spouse & Spouse', badge: 'Universal', color: 'text-purple-600 bg-purple-50 border-purple-100' },
             ].map((u, i) => (
               <div key={i} className={`p-3.5 rounded-xl border transition-all hover:shadow-sm ${u.color}`}>
                 <span className="text-[10px] font-extrabold uppercase tracking-wider block mb-1 opacity-80">
@@ -466,10 +375,10 @@ export default async function HomePage() {
                 For Couples Who Have Never Married
               </div>
               <h3 className="text-2xl sm:text-3xl font-serif font-bold text-white mb-3">
-                Get Married Online & Solemnize Your Legal Union
+                Register Your Union Online
               </h3>
               <p className="text-xs sm:text-sm text-gray-300 leading-relaxed mb-6">
-                Never been married before? Complete your online marriage registration together. Both partners sign digitally and receive a certified marriage certificate with full 50/50 joint wealth rights and access to the compounding savings vault.
+                Not married yet? Complete the online registration together. Both partners sign digitally and receive a Union Verify certificate (not a government-issued marriage certificate) and access to the joint savings vault.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
@@ -479,7 +388,7 @@ export default async function HomePage() {
                   </div>
                   <div>
                     <span className="block text-xs font-bold text-white">Marriage Registration Fee</span>
-                    <span className="text-[11px] text-gray-400">Application review, identity check & official docketing</span>
+                    <span className="text-[11px] text-gray-400">Paid once when you register your union</span>
                   </div>
                 </div>
 
@@ -488,8 +397,8 @@ export default async function HomePage() {
                     $500
                   </div>
                   <div>
-                    <span className="block text-xs font-bold text-white">Certified Certificate Fee</span>
-                    <span className="text-[11px] text-gray-400">24K gold embossed seal, lifetime PDF & physical archival print</span>
+                    <span className="block text-xs font-bold text-white">Certificate Fee</span>
+                    <span className="text-[11px] text-gray-400">Removes the watermark and unlocks the PDF download</span>
                   </div>
                 </div>
               </div>
@@ -500,11 +409,11 @@ export default async function HomePage() {
                 href="/get-married"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-lg shadow-[#C9A84C]/20 text-center"
               >
-                Get Married Online ($500)
+                Register Online ($500)
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <span className="text-[11px] text-gray-400 text-center">
-                All-inclusive package available for $1,000
+                Or pay both fees together: $1,000
               </span>
             </div>
           </div>
@@ -512,6 +421,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── INVESTMENT OPPORTUNITIES PREVIEW ── */}
+      {opportunities.length > 0 && (
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
           <div>
@@ -519,7 +429,7 @@ export default async function HomePage() {
               Joint Capital Opportunities
             </span>
             <h2 className="text-2xl sm:text-3xl font-bold text-[#0F1C3F]">
-              Current Marriage Investment Funds
+              Current Investment Opportunities
             </h2>
           </div>
           <Link
@@ -627,6 +537,7 @@ export default async function HomePage() {
           })}
         </div>
       </section>
+      )}
 
       {/* ── MARRIAGE SAVINGS VAULT SHOWCASE ── */}
       <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -635,14 +546,14 @@ export default async function HomePage() {
             <div className="lg:col-span-7 space-y-4">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
                 <PiggyBank className="w-3.5 h-3.5" />
-                New: Marriage Savings Vaults · 6.8% APY
+                Marriage Savings Vaults
               </div>
               <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white tracking-tight leading-tight">
                 Save Together for Life Milestones. <br />
-                <span className="text-[#C9A84C]">Both Spouses Contribute. 100% Shared.</span>
+                <span className="text-[#C9A84C]">Both Spouses Contribute.</span>
               </h2>
               <p className="text-sm text-gray-300 leading-relaxed max-w-xl">
-                Whether you’re saving for a home down payment, family education fund, or an anniversary dream vacation, Union Verify lets both spouses deposit separately or split 50/50 while earning daily compounding 6.8% APY.
+                Whether you’re saving for a home down payment, an education fund or an anniversary trip, both spouses can deposit separately or split a deposit 50/50, and both can see every contribution.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -651,12 +562,15 @@ export default async function HomePage() {
                   <span className="text-xs font-semibold text-white">Both Partners Save</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
-                  <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">High-Yield Interest</span>
-                  <span className="text-xs font-semibold text-white">6.8% APY Compounding</span>
+                  <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">Current Vault Rate</span>
+                  <span className="text-xs font-semibold text-white">
+                    {vaultApy !== null ? `${vaultApy}% APY` : 'Shown in your dashboard'}
+                  </span>
+                  <span className="text-[10px] text-gray-400 block mt-0.5">Variable, not guaranteed</span>
                 </div>
                 <div className="p-3.5 rounded-xl bg-white/5 border border-white/10">
                   <span className="text-[10px] uppercase font-bold text-[#C9A84C] block">Shared Milestones</span>
-                  <span className="text-xs font-semibold text-white">Equal 50/50 Rights</span>
+                  <span className="text-xs font-semibold text-white">One Goal, Two Savers</span>
                 </div>
               </div>
 
@@ -668,7 +582,7 @@ export default async function HomePage() {
                   Start Marriage Savings
                 </Link>
                 <Link
-                  href="/certificate"
+                  href={certificateHref}
                   className="px-6 py-3.5 rounded-xl bg-white/10 border border-white/20 text-white font-semibold text-sm text-center hover:bg-white/15 transition-colors"
                 >
                   View Certificate & Vaults
@@ -682,8 +596,8 @@ export default async function HomePage() {
                 <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase">
                   Real Estate Vault
                 </span>
-                <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5" /> 6.8% APY
+                <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 text-[10px] font-bold uppercase">
+                  Example
                 </span>
               </div>
 
@@ -710,7 +624,7 @@ export default async function HomePage() {
 
               <div className="p-3 rounded-xl bg-gray-50 text-xs text-gray-600 flex items-center justify-between">
                 <span>Recent Deposit:</span>
-                <span className="font-semibold text-emerald-700">+$400 (50/50 Joint Match)</span>
+                <span className="font-semibold text-emerald-700">+$400 (split 50/50)</span>
               </div>
             </div>
           </div>
@@ -728,7 +642,7 @@ export default async function HomePage() {
               Frequently Asked Questions
             </h2>
             <p className="text-xs sm:text-sm text-gray-500">
-              Clear answers regarding partner invitations, certificate signing, marriage registration and certificate fees, and joint investments.
+              Answers about partner invitations, certificate signing, fees and joint investments.
             </p>
           </div>
 
@@ -736,23 +650,23 @@ export default async function HomePage() {
             {[
               {
                 q: 'How does one partner invite their spouse?',
-                a: 'Once the primary partner creates an account, they can enter their spouse’s name and email in their dashboard or share a secure invitation link. The partner clicks the link, connects their login credentials, and is immediately directed to review and co-sign the Marriage Investment Certificate.',
+                a: 'Once the first partner creates an account, they can enter their spouse’s name and email on the certificate page and share the invitation link. The partner opens the link, creates their own account, and can then review and co-sign the certificate.',
               },
               {
                 q: 'What are the fees for marriage registration and certificates?',
-                a: 'The $500 marriage registration fee covers your online application review, identity verification, background check, and official digital registry docketing. The $500 certificate issuance fee validates your authenticated digital seal, removes all watermarks, unlocks high-resolution PDF downloads, and authorizes 50/50 mutual investment access. Couples can also select the $1,000 all-inclusive package at checkout.',
+                a: 'There is a $500 registration fee and a $500 certificate fee, which can be paid together ($1,000) at checkout. Paying them removes the watermark from your certificate and unlocks the PDF download.',
               },
               {
-                q: 'Do both partners need to sign the certificate before investing?',
-                a: 'Yes. To protect both spouses and maintain complete legal transparency, both digital signatures are required along with certificate payment before capital can be deposited into active marriage investment funds.',
+                q: 'Do both partners need to sign the certificate?',
+                a: 'Yes. The certificate is only complete once both partners have signed it.',
               },
               {
                 q: 'What currency does Union Verify operate in?',
-                a: 'All platform transactions, investments, distributions, and certificate registry fees are denominated strictly in United States Dollars (USD $).',
+                a: 'All platform transactions, investments, distributions and fees are in United States Dollars (USD).',
               },
               {
                 q: 'How are returns and distributions distributed between spouses?',
-                a: 'Distributions are credited to the joint account ledger according to the fund schedule (monthly or quarterly). Both partners enjoy equal 50/50 beneficial entitlement and complete ledger visibility.',
+                a: 'Distributions, if any, are credited to the joint account according to each opportunity’s schedule. Both partners can see the joint account. Returns are not guaranteed and you can lose money.',
               },
             ].map((faq, i) => (
               <details
@@ -774,90 +688,6 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="bg-[#0F1C3F] text-white pt-16 pb-12 border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
-            <div className="space-y-4">
-              <span className="text-xl font-bold text-white tracking-tight">
-                Union <span className="text-[#C9A84C]">Verify</span>
-              </span>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                The institutional-grade marriage investment platform facilitating transparent, joint wealth creation for couples.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Marriage Platform
-              </h4>
-              <ul className="space-y-2 text-xs text-gray-400">
-                <li>
-                  <Link href="#certificate" className="hover:text-white transition-colors">
-                    Marriage Certificate
-                  </Link>
-                </li>
-                <li>
-                  <Link href="#how-it-works" className="hover:text-white transition-colors">
-                    Partner Invite Process
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/investments" className="hover:text-white transition-colors">
-                    Investment Opportunities
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/documents" className="hover:text-white transition-colors">
-                    Offer Document Library
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Corporate & Legal
-              </h4>
-              <ul className="space-y-2 text-xs text-gray-400">
-                <li>
-                  <Link href="/about" className="hover:text-white transition-colors">
-                    About Us
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/terms" className="hover:text-white transition-colors">
-                    Terms & Joint Covenant
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/privacy" className="hover:text-white transition-colors">
-                    Privacy Policy
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/contact" className="hover:text-white transition-colors">
-                    Compliance Contact
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider mb-4">
-                Fiduciary Compliance
-              </h4>
-              <p className="text-xs text-gray-400 leading-relaxed">
-                Union Verify operates in compliance with relevant US financial registry and joint asset ownership guidelines. Capital at risk.
-              </p>
-            </div>
-          </div>
-
-          <div className="pt-8 border-t border-white/10 text-center text-xs text-gray-500">
-            © {new Date().getFullYear()} Union Verify. All rights reserved. Marriage Investment Platform.
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

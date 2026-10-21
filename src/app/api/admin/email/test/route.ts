@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { auth } from '@/lib/auth'
+import { escapeHtml } from '@/lib/utils'
 
 const PASSWORD_MASK = '••••••••'
 
@@ -12,7 +13,8 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      host: process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
+      configured: Boolean(process.env.SMTP_HOST),
+      host: process.env.SMTP_HOST || '',
       port: process.env.SMTP_PORT || '465',
       encryption: (process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT) ? 'SSL/TLS' : 'STARTTLS',
       user: process.env.SMTP_USER || '',
@@ -20,7 +22,6 @@ export async function GET() {
       pass: process.env.SMTP_PASS ? PASSWORD_MASK : '',
       fromEmail: process.env.EMAIL_FROM || 'support@unionverify.com',
       fromName: process.env.EMAIL_FROM_NAME || 'Union Verify',
-      testRecipient: 'support@unionverify.com',
     })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      host = process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
+      host = process.env.SMTP_HOST || '',
       port = Number(process.env.SMTP_PORT || 465),
       user = process.env.SMTP_USER || '',
       pass: rawPass,
@@ -71,22 +72,17 @@ export async function POST(req: NextRequest) {
     // 2. If test email requested and recipient provided, send a clean verification email
     if (sendTest && toEmail) {
       const formattedDate = new Date().toUTCString()
-      const textAlternative = `Welcome to Union Verify!
+      const textAlternative = `Union Verify test email
 
-This test message confirms that transactional emails from Union Verify are working correctly.
+This message was sent from the Union Verify admin settings to check that outgoing email works.
 
-Your joint savings and investment account is active and protected by bank-grade security.
-
-Visit Union Verify: https://unionverify.com
-If you have any questions, our support team is available at support@unionverify.com.
-
-© ${new Date().getFullYear()} Union Verify. All rights reserved.`
+Sent: ${formattedDate}`
 
       const info = await transporter.sendMail({
         from: `"${fromName}" <${fromEmail}>`,
         to: toEmail,
         replyTo: fromEmail,
-        subject: 'Welcome to Union Verify — Account Verification',
+        subject: 'Union Verify test email',
         text: textAlternative,
         html: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
@@ -96,26 +92,14 @@ If you have any questions, our support team is available at support@unionverify.
             </div>
             
             <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
-              <h2 style="font-size: 18px; font-weight: 700; color: #0F1C3F; margin: 0 0 10px;">Account Verification Test</h2>
-              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0 0 16px;">
-                This message confirms that transactional communication for your <strong>Union Verify</strong> investor account is successfully authenticated and delivered.
+              <h2 style="font-size: 18px; font-weight: 700; color: #0F1C3F; margin: 0 0 10px;">Test email</h2>
+              <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0;">
+                This message was sent from the Union Verify admin settings to check that outgoing email works. Sender: ${escapeHtml(fromEmail)}.
               </p>
-              <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 12px 16px;">
-                <p style="font-size: 13px; font-weight: 600; color: #065f46; margin: 0;">✓ Authenticated Delivery Confirmed</p>
-                <p style="font-size: 12px; color: #047857; margin: 4px 0 0;">Sender: ${fromEmail} &middot; Verified via Amazon SES</p>
-              </div>
-            </div>
-
-            <div style="text-align: center; margin-bottom: 28px;">
-              <a href="https://unionverify.com/dashboard" style="display: inline-block; padding: 12px 28px; background-color: #0F1C3F; color: #ffffff; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px;">
-                Access Your Dashboard &rarr;
-              </a>
             </div>
 
             <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5;">
-              <p style="margin: 0;">Union Verify &middot; Joint Savings & Investment Platform</p>
-              <p style="margin: 4px 0 0;">Timestamp: ${formattedDate}</p>
-              <p style="margin: 8px 0 0;">&copy; ${new Date().getFullYear()} Union Verify. All rights reserved.</p>
+              <p style="margin: 0;">Sent: ${formattedDate}</p>
             </div>
           </div>
         `,
@@ -127,14 +111,16 @@ If you have any questions, our support team is available at support@unionverify.
 
       return NextResponse.json({
         success: true,
-        message: `SMTP verified successfully! Test email delivered to ${toEmail}. Message ID: ${info.messageId}`,
+        message: `The SMTP server accepted the test email for ${toEmail}. Message ID: ${info.messageId}`,
         messageId: info.messageId,
       })
     }
 
     return NextResponse.json({
       success: true,
-      message: `SMTP Server on ${host}:${port} responded with 250 OK. Authentication successful for ${user}.`,
+      message: user
+        ? `Connected to ${host}:${port} and logged in as ${user}.`
+        : `Connected to ${host}:${port} (no login used).`,
     })
   } catch (error: any) {
     console.error('SMTP verification failed:', error)

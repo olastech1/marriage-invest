@@ -12,6 +12,7 @@
  */
 
 import Link from 'next/link'
+import { formatAnnualRate } from '@/lib/utils'
 import type { InvestmentOpportunity, RiskLevel, OpportunityStatus, DistributionType } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
@@ -55,10 +56,6 @@ function fmtCurrency(value: string | number): string {
   }).format(n)
 }
 
-function fmtPercent(value: string | number): string {
-  const n = typeof value === 'string' ? parseFloat(value) : value
-  return `${n.toFixed(2)}%`
-}
 
 function fundingPercent(funded: string, target: string): number {
   const f = parseFloat(funded)
@@ -226,7 +223,7 @@ export default function InvestmentCard({ opportunity }: InvestmentCardProps) {
           />
           <MetricCell
             label="Proj. Annual Rate"
-            value={fmtPercent(opportunity.annualReturnRate)}
+            value={formatAnnualRate(opportunity.annualReturnRate)}
             sublabel="Projected"
             highlight
           />

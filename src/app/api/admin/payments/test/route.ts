@@ -25,15 +25,14 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Check if placeholder
     if (secretKey.includes('placeholder')) {
-      return NextResponse.json({
-        success: true,
-        isSandbox: true,
-        livemode: false,
-        message: 'Sandbox Simulation Mode verified. Mock transactions, instant compounding, and partner notifications are active.',
-        details: 'To connect real credit cards and bank processing, replace the placeholder with a valid Stripe Secret Key (sk_test_... or sk_live_...).',
-      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'The configured Stripe key is a placeholder, so no payments can be taken. Enter a real Stripe secret key (sk_test_... or sk_live_...).',
+        },
+        { status: 400 }
+      )
     }
 
     // Initialize Stripe client
@@ -58,7 +57,7 @@ export async function POST(req: NextRequest) {
         amount: b.amount / 100,
         currency: b.currency.toUpperCase(),
       })),
-      message: `✓ Stripe API Handshake Successful! Connected in ${balance.livemode ? 'Live Production' : 'Test Mode'}.`,
+      message: `Stripe accepted the key. Mode: ${balance.livemode ? 'live' : 'test'}.`,
     })
   } catch (error: any) {
     console.error('[POST /api/admin/payments/test]', error)

@@ -5,13 +5,9 @@ import Link from 'next/link'
 import {
   Bell,
   X,
-  Sparkles,
   Zap,
   CheckCircle2,
-  AlertTriangle,
   ArrowRight,
-  Clock,
-  Check,
   MessageSquareHeart,
 } from 'lucide-react'
 
@@ -20,6 +16,9 @@ export default function NotificationBellDropdown() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unattendedCount, setUnattendedCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  // Deposit match promo, only when an admin has turned it on
+  const [bonusActive, setBonusActive] = useState(false)
+  const [bonusRate, setBonusRate] = useState(0)
 
   const loadNotifications = async () => {
     try {
@@ -28,6 +27,8 @@ export default function NotificationBellDropdown() {
       if (data.success) {
         setNotifications(data.notifications || [])
         setUnattendedCount(data.unattendedCount || 0)
+        setBonusActive(Boolean(data.bonusActive))
+        setBonusRate(Number(data.bonusRate) || 0)
       }
     } catch (e) {
       console.warn('Failed to fetch notifications in bell', e)
@@ -66,7 +67,7 @@ export default function NotificationBellDropdown() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors"
-        title="Disturbing Action Center & Partner Notifications"
+        title="Notifications"
       >
         <Bell size={20} />
         {unattendedCount > 0 && (
@@ -88,7 +89,7 @@ export default function NotificationBellDropdown() {
             <div className="flex items-center justify-between bg-[#0F1C3F] p-4 text-white">
               <div className="flex items-center gap-2">
                 <Bell size={16} className="text-[#C9A84C]" />
-                <h3 className="text-sm font-bold">Urgent Action Center</h3>
+                <h3 className="text-sm font-bold">Notifications</h3>
                 {unattendedCount > 0 && (
                   <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[10px] font-black text-white">
                     {unattendedCount} pending
@@ -103,29 +104,31 @@ export default function NotificationBellDropdown() {
               </button>
             </div>
 
-            {/* 10% Bonus Match Callout Mini-Banner */}
-            <div className="bg-gradient-to-r from-amber-500 to-[#C9A84C] p-3 text-[#0F1C3F] flex items-center justify-between text-xs font-bold">
-              <span className="flex items-center gap-1.5">
-                <Zap size={14} className="fill-[#0F1C3F]" />
-                10% Cash Match Flash Boost Active!
-              </span>
-              <Link
-                href="/save?bonus=10percent"
-                onClick={() => setIsOpen(false)}
-                className="rounded-lg bg-[#0F1C3F] text-white px-2 py-1 text-[10px] font-black hover:bg-[#1a2f64] transition-colors"
-              >
-                Claim Now
-              </Link>
-            </div>
+            {/* Deposit match promo (only while an admin has it switched on) */}
+            {bonusActive && bonusRate > 0 && (
+              <div className="bg-gradient-to-r from-amber-500 to-[#C9A84C] p-3 text-[#0F1C3F] flex items-center justify-between text-xs font-bold">
+                <span className="flex items-center gap-1.5">
+                  <Zap size={14} className="fill-[#0F1C3F]" />
+                  {Math.round(bonusRate * 1000) / 10}% cash match on deposits
+                </span>
+                <Link
+                  href="/save"
+                  onClick={() => setIsOpen(false)}
+                  className="rounded-lg bg-[#0F1C3F] text-white px-2 py-1 text-[10px] font-black hover:bg-[#1a2f64] transition-colors"
+                >
+                  Deposit
+                </Link>
+              </div>
+            )}
 
             {/* Notification List */}
             <div className="divide-y divide-slate-100 overflow-y-auto flex-1">
               {urgentItems.length === 0 ? (
                 <div className="p-8 text-center space-y-2">
                   <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
-                  <p className="text-xs font-bold text-slate-800">No Urgent Pending Actions</p>
+                  <p className="text-xs font-bold text-slate-800">Nothing needs your attention</p>
                   <p className="text-[11px] text-slate-500">
-                    Whenever your partner deposits or makes changes, you will be notified here until attended to.
+                    When your spouse makes a deposit, it will show up here.
                   </p>
                 </div>
               ) : (
@@ -133,7 +136,7 @@ export default function NotificationBellDropdown() {
                   <div key={item.id} className="p-3.5 space-y-2 bg-rose-50/30 hover:bg-rose-50/50 transition-colors">
                     <div className="flex items-start justify-between gap-2">
                       <span className="rounded-full bg-rose-600 px-2 py-0.5 text-[9px] font-black uppercase text-white">
-                        Action Required
+                        Needs action
                       </span>
                       <span className="text-[10px] text-slate-400">
                         {new Date(item.createdAt).toLocaleDateString()}
@@ -146,19 +149,25 @@ export default function NotificationBellDropdown() {
                     <div className="flex items-center justify-between pt-1 gap-2 flex-wrap">
                       <div className="flex items-center gap-2">
                         {item.link ? (
-                          <Link
-                            href={item.link}
-                            onClick={() => setIsOpen(false)}
-                            className="text-[11px] font-bold text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
-                          >
-                            {item.actionLabel || 'Attend Now'} <ArrowRight size={11} />
-                          </Link>
+                          // /pay/* links redirect to Stripe, so they need a full page load
+                          (() => {
+                            const LinkEl = item.link.startsWith('/pay/') ? 'a' : Link
+                            return (
+                              <LinkEl
+                                href={item.link}
+                                onClick={() => setIsOpen(false)}
+                                className="text-[11px] font-bold text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
+                              >
+                                {item.actionLabel || 'Open'} <ArrowRight size={11} />
+                              </LinkEl>
+                            )
+                          })()
                         ) : null}
                         <Link
                           href="/chat?thread=spouse"
                           onClick={() => setIsOpen(false)}
                           className="text-[10px] font-bold text-slate-500 hover:text-[#0F1C3F] flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200"
-                          title="Discuss this action with your partner in chat"
+                          title="Discuss this with your spouse in chat"
                         >
                           <MessageSquareHeart size={11} className="text-[#C9A84C]" />
                           Chat
@@ -169,7 +178,7 @@ export default function NotificationBellDropdown() {
                         disabled={loading}
                         className="rounded-md bg-white border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-700 hover:bg-slate-50"
                       >
-                        ✓ Mark Attended
+                        Mark done
                       </button>
                     </div>
                   </div>
@@ -192,7 +201,7 @@ export default function NotificationBellDropdown() {
                 onClick={() => setIsOpen(false)}
                 className="text-slate-600 hover:text-[#0F1C3F] hover:underline"
               >
-                Dashboard Action Center →
+                Dashboard →
               </Link>
             </div>
           </div>

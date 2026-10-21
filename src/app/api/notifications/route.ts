@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { resolveSpouseId } from '@/lib/chat'
+import { getSettings } from '@/lib/settings'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
     const session = await auth()
     const userId = session?.user?.id
@@ -18,10 +19,13 @@ export async function GET(req: NextRequest) {
       take: 50,
     })
 
-    // Filter disturbing alerts: requiresAction === true and attended !== true
+    // Alerts that still need the member to act on them
     const disturbingAlerts = allNotifs.filter((n) => n.requiresAction && !n.attended)
     const unreadCount = allNotifs.filter((n) => !n.read).length
     const unattendedCount = disturbingAlerts.length
+
+    // The deposit match promo is an admin setting (0 = no promo); it has no expiry date
+    const { bonusMatchRate } = await getSettings()
 
     return NextResponse.json({
       success: true,
@@ -29,9 +33,8 @@ export async function GET(req: NextRequest) {
       disturbingAlerts,
       unreadCount,
       unattendedCount,
-      bonusActive: true,
-      bonusRate: 0.10, // 10% cash match bonus
-      bonusExpiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+      bonusActive: bonusMatchRate > 0,
+      bonusRate: bonusMatchRate / 100,
     })
   } catch (error: any) {
     console.error('[GET /api/notifications]', error)

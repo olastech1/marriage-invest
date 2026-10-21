@@ -65,23 +65,9 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
               <span className="text-[#C9A84C]">shared future.</span>
             </h1>
             <p className="mt-6 text-slate-400 text-lg leading-relaxed max-w-sm">
-              Union Verify helps couples build wealth together — with joint
-              portfolios, transparent returns, and goals that matter.
+              Union Verify helps couples save and invest together — with joint
+              portfolios and shared goals.
             </p>
-
-            {/* Stats row */}
-            <div className="mt-12 grid grid-cols-3 gap-6">
-              {[
-                { value: '6.8%', label: 'APY compounding vault' },
-                { value: '50/50', label: 'Joint beneficial rights' },
-                { value: '$0', label: 'Platform fees on gifting' },
-              ].map((stat) => (
-                <div key={stat.label}>
-                  <p className="text-2xl font-bold text-[#C9A84C]">{stat.value}</p>
-                  <p className="mt-1 text-xs text-slate-500 leading-snug">{stat.label}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Footer line */}

@@ -25,8 +25,7 @@ export const config = {
     '/my-documents/:path*',
     '/settings/:path*',
     '/certificate/:path*',
-    '/quests/:path*',
     '/solo/:path*',
-    '/friends/:path*',
+    '/payment/:path*',
   ],
 }

@@ -2,14 +2,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatDate } from '@/lib/utils'
-import {
-  FileText,
-  Upload,
-  CheckCircle2,
-  Download,
-  Plus,
-  Layers,
-} from 'lucide-react'
+import { FileText, Download } from 'lucide-react'
+import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +13,7 @@ export default async function AdminDocumentsPage() {
     redirect('/login?callbackUrl=/admin/documents')
   }
 
+  let loadError = false
   let documents: any[] = []
   try {
     documents = await prisma.document.findMany({
@@ -32,26 +27,29 @@ export default async function AdminDocumentsPage() {
       },
       orderBy: { createdAt: 'desc' },
     })
-  } catch {
-    // DB offline
+  } catch (error) {
+    console.error('[admin/documents]', error)
+    loadError = true
   }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Offer Document & Compliance Vault</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Publish official prospectuses, manage revisions, and audit investor electronic acknowledgments.
+            Documents stored on the platform and how many members have acknowledged each one.
           </p>
         </div>
       </div>
 
+      {loadError && <LoadErrorBanner />}
+
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Managed Compliance Documents</h2>
-            <p className="text-xs text-gray-500">Total documents archived: {documents.length}</p>
+            <h2 className="text-base font-bold text-gray-900">All Documents</h2>
+            <p className="text-xs text-gray-500">Total documents: {documents.length}</p>
           </div>
         </div>
 
@@ -60,15 +58,22 @@ export default async function AdminDocumentsPage() {
             <thead className="bg-gray-50 text-gray-500 uppercase font-semibold border-b border-gray-100">
               <tr>
                 <th className="py-3 px-6">Document Title</th>
-                <th className="py-3 px-6">Linked Vehicle</th>
+                <th className="py-3 px-6">Linked Opportunity</th>
                 <th className="py-3 px-6">Type</th>
                 <th className="py-3 px-6">Version</th>
-                <th className="py-3 px-6">Signed Acknowledgments</th>
+                <th className="py-3 px-6">Acknowledgments</th>
                 <th className="py-3 px-6">Published Date</th>
                 <th className="py-3 px-6 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {!loadError && documents.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 px-6 text-center text-gray-400">
+                    No documents yet.
+                  </td>
+                </tr>
+              )}
               {documents.map((doc) => (
                 <tr key={doc.id} className="hover:bg-gray-50/50">
                   <td className="py-3.5 px-6 font-semibold text-gray-900 flex items-center gap-2">
@@ -76,7 +81,7 @@ export default async function AdminDocumentsPage() {
                     <span>{doc.name}</span>
                   </td>
                   <td className="py-3.5 px-6 text-gray-700">
-                    {doc.opportunity ? doc.opportunity.title : 'Global Platform'}
+                    {doc.opportunity ? doc.opportunity.title : 'Platform-wide'}
                   </td>
                   <td className="py-3.5 px-6 text-gray-500 font-mono text-[11px]">
                     {doc.type}
@@ -86,7 +91,7 @@ export default async function AdminDocumentsPage() {
                   </td>
                   <td className="py-3.5 px-6">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {doc.acknowledgments.length} Signatures
+                      {doc.acknowledgments.length} Acknowledged
                     </span>
                   </td>
                   <td className="py-3.5 px-6 font-mono text-gray-500">

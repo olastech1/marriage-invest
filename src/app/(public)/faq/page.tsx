@@ -1,83 +1,78 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { HelpCircle, ChevronRight, MessageSquare } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Frequently Asked Questions | Union Verify',
   description:
-    'Comprehensive answers regarding our marriage investment platform, USD operations, distributions, KYC onboarding, security, and withdrawals.',
+    'Answers about Union Verify: joint accounts, returns, fees, security, deposits and withdrawals.',
 }
 
 const categories = [
   {
-    category: '1. Platform & Business Model',
+    category: '1. The Platform',
     items: [
       {
         q: 'What is Union Verify?',
-        a: 'Union Verify is a secure, institutional investment platform designed specifically for married couples. It allows partners to pool financial resources into structured, USD-denominated investment vehicles with transparent distribution schedules and shared governance.',
+        a: 'Union Verify is a joint savings and investment platform for couples. Partners can save into shared vaults, see each other’s contributions, sign a Union Verify certificate together, and invest in the opportunities listed on the platform.',
       },
       {
-        q: 'Why invest as a married couple rather than individually?',
-        a: 'Couples frequently manage life milestones together—from home ownership to generational wealth. Union Verify provides joint account ownership, dual-approval controls for withdrawals, synchronized tax statements, and consolidated portfolio tracking.',
+        q: 'Why use a joint account instead of saving individually?',
+        a: 'If you are saving towards shared goals, a joint view means both partners can see the same balance and every contribution, and joint withdrawals need the other partner’s approval.',
       },
       {
-        q: 'Is Union Verify a bank or an investment platform?',
-        a: 'Union Verify operates as an investment syndication and private placement platform. We are not a commercial depository bank. Funds committed are allocated into real asset-backed and structured yield vehicles pursuant to official offer documents.',
+        q: 'Is Union Verify a bank?',
+        a: 'No. Union Verify is not a bank, and money on the platform is not covered by any government deposit insurance scheme.',
       },
     ],
   },
   {
-    category: '2. Currency & Financial Terms',
+    category: '2. Currency & Returns',
     items: [
       {
         q: 'What currency is used for investments and payouts?',
-        a: 'All platform investments, interest calculations, distributions, accounting ledgers, and withdrawals are strictly denominated in United States Dollars (USD $).',
+        a: 'All platform investments, distributions, fees and withdrawals are in United States Dollars (USD).',
       },
       {
         q: 'Are returns guaranteed?',
-        a: 'No. All stated rates (e.g. 8.5% p.a.) are projections based on historical asset underwriting and cash flow modeling. They are not guaranteed outcomes unless specifically backed by an explicit and disclosed commercial surety. All investments carry risk of loss.',
+        a: 'No. Projected returns and the vault rate are estimates, and the vault rate is variable. They are not guaranteed. All investments carry risk, including the loss of the money you put in.',
       },
       {
-        q: 'How frequently are distributions calculated and disbursed?',
-        a: 'Distribution frequency depends on the chosen fund: Monthly, Quarterly, Annual, or at Maturity. Approved distributions are credited to your investor cash ledger, from where you can initiate a bank withdrawal.',
+        q: 'How often are distributions paid?',
+        a: 'It depends on the opportunity: monthly, quarterly, annually or at maturity, as shown on each opportunity’s page. Distributions, if any, are credited to your account balance.',
       },
       {
         q: 'What fees does the platform charge?',
-        a: 'Platform management fees, custody charges, and standard withdrawal processing deductions (e.g., 2% on capital liquidations) are fully disclosed in each official offer document. There are zero hidden fees.',
+        a: 'Registering your union costs $500 and the certificate costs $500. Withdrawals currently have a 2% processing fee plus a 1% early-withdrawal charge, deducted from the amount withdrawn.',
       },
     ],
   },
   {
-    category: '3. Registration, Verification & Onboarding',
+    category: '3. Accounts & Security',
     items: [
       {
-        q: 'Do both spouses need to verify their identity?',
-        a: 'Yes. In adherence to Anti-Money Laundering (AML) and Know-Your-Customer (KYC) regulatory standards, both partners must complete digital identity verification before private investment allocations can be funded.',
+        q: 'Does my partner need their own account?',
+        a: 'Yes. Each partner signs in with their own email and password. You can invite your partner with a link from the certificate page.',
       },
       {
-        q: 'What documentation is required for onboarding?',
-        a: 'A government-issued photo ID (passport, national ID, or driver’s license), proof of residential address, and optional confirmation of civil union or marriage status.',
-      },
-      {
-        q: 'How is account access secured?',
-        a: 'We implement 256-bit SSL encryption, bcrypt password hashing, session activity logging, and optional Two-Factor Authentication (2FA) via authenticator apps.',
+        q: 'How are passwords stored?',
+        a: 'Passwords are stored as bcrypt hashes, never in plain text. Never share your password, including with anyone claiming to be from Union Verify.',
       },
     ],
   },
   {
-    category: '4. Deposits, Payments & Withdrawals',
+    category: '4. Deposits & Withdrawals',
     items: [
       {
-        q: 'What payment methods are supported for funding?',
-        a: 'We support international USD wire transfers (ACH / SWIFT) and verified debit/credit card checkout via licensed payment processors with secure webhook verification.',
+        q: 'How do I deposit money?',
+        a: 'Deposits are made by card through our payment processor from your dashboard.',
       },
       {
         q: 'How do withdrawal requests work?',
-        a: 'Investors submit withdrawal requests through their dashboard. The platform verifies available settled balance, applies contractual fee deductions, and routes the request through a dual-officer administrative review before payout execution.',
+        a: 'You request a withdrawal from your dashboard. For joint accounts, your partner needs to approve it, and any deposit your partner is waiting for you to match must be matched first. Requests are then reviewed before payout.',
       },
       {
-        q: 'Can capital be withdrawn before the fund maturity date?',
-        a: 'Early withdrawals are governed by each fund’s specific contractual terms. Where liquidity permits, early exits are evaluated under administrative review and may incur an early redemption fee to protect fund stability.',
+        q: 'Can I withdraw before an investment matures?',
+        a: 'Early withdrawals depend on the terms of each opportunity and may not always be possible.',
       },
     ],
   },
@@ -95,7 +90,7 @@ export default function FAQPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-sm text-gray-600 leading-relaxed">
-            Detailed information regarding platform operations, USD transactions, contractual terms, and regulatory safeguards.
+            How the platform works, what it costs, and the risks involved.
           </p>
         </div>
 
@@ -132,13 +127,13 @@ export default function FAQPage() {
         <div className="mt-16 bg-[#0F1C3F] rounded-2xl p-8 text-white flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
             <h3 className="text-base font-bold mb-1">Have a specific question not covered here?</h3>
-            <p className="text-xs text-gray-300">Our investor relations and compliance officers respond within 24 business hours.</p>
+            <p className="text-xs text-gray-300">Send us a message and we&apos;ll reply by email.</p>
           </div>
           <Link
             href="/contact"
             className="px-6 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold hover:bg-[#d4b460] transition-colors whitespace-nowrap"
           >
-            Contact Support Desk
+            Contact Us
           </Link>
         </div>
       </div>

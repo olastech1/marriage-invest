@@ -49,7 +49,7 @@ export default function GlobalError({
             </div>
             <h1 style={{ fontSize: '22px', fontWeight: 800, margin: '0 0 8px 0', color: '#0F1C3F' }}>Union Verify</h1>
             <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 24px 0', lineHeight: 1.5 }}>
-              A new version of Union Verify is available. Click below to refresh and load the latest updates.
+              Something went wrong while loading this page. Reloading usually fixes it.
             </p>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button

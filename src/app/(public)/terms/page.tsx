@@ -10,30 +10,29 @@ export default function TermsPage() {
   return (
     <div className="bg-white min-h-screen pt-28 pb-20">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-serif font-bold text-[#0F1C3F] mb-4">
+        <h1 className="text-3xl font-serif font-bold text-[#0F1C3F] mb-8">
           Terms and Conditions of Service
         </h1>
-        <p className="text-xs text-gray-400 mb-8 font-mono">Last Updated: October 2024 • Version 2.1</p>
 
         <div className="prose prose-sm max-w-none text-gray-700 space-y-6 text-xs leading-relaxed">
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">1. Acceptance of Terms</h2>
             <p>
-              By accessing, browsing, registering an account on, or submitting capital to Union Verify (&quot;the Platform&quot;, &quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, our Privacy Policy, and any applicable fund Offer Documents.
+              By accessing, browsing, registering an account on, or submitting capital to Union Verify (&quot;the Platform&quot;, &quot;Company&quot;, &quot;we&quot;, &quot;us&quot;), you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions, our Privacy Policy, and the terms shown for any investment opportunity you invest in.
             </p>
           </section>
 
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">2. Nature of Platform & Financial Risks</h2>
             <p>
-              Union Verify is an investment syndication and private asset platform. We are not a commercial banking institution, and capital deposited is not insured by FDIC, FSCS, or equivalent governmental deposit insurance schemes. All investment opportunities carry inherent risk, including the possible loss of principal. Projected return rates (e.g., 8.5% p.a.) represent underwritten financial projections and do not constitute a performance guarantee.
+              Union Verify is not a bank, and money deposited is not insured by the FDIC, FSCS or any equivalent government deposit insurance scheme. All investment opportunities carry risk, including the possible loss of principal. Projected return rates and the vault rate are estimates, can change, and are not a guarantee of performance.
             </p>
           </section>
 
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">3. Joint Account Structure & Authority</h2>
             <p>
-              Accounts registered on Union Verify are established as joint couple accounts. Both registered partners warrant that they possess legal capacity to enter binding agreements. Any withdrawal request, capital redeployment, or formal amendment initiated by one partner may require mutual confirmation per platform safety rules.
+              Accounts registered on Union Verify are established as joint couple accounts. Both registered partners warrant that they possess legal capacity to enter binding agreements. Withdrawals from a joint account initiated by one partner require the other partner&apos;s approval.
             </p>
           </section>
 
@@ -47,14 +46,23 @@ export default function TermsPage() {
           <section>
             <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">5. Withdrawals, Lockup & Liquidity</h2>
             <p>
-              Each investment opportunity specifies a defined maturity term. Investors agree to honor the contractual tenure. Where early exit requests are permitted, they remain subject to administrative evaluation, available fund liquidity, and applicable exit processing deductions as set forth in the pertinent Offer Document.
+              Each investment opportunity specifies a defined maturity term. Investors agree to honor the contractual tenure. Where early exit requests are permitted, they remain subject to administrative evaluation, available fund liquidity, and applicable withdrawal fees.
             </p>
           </section>
 
-            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Governing Law & Dispute Resolution</h2>
+          <section>
+            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">6. Certificates</h2>
             <p>
-              These Terms and all Matrimonial Investment Covenants shall be governed by and construed in accordance with applicable commercial laws and international digital financial transaction standards. Any dispute, controversy, or claim arising out of or in connection with these terms shall be settled through binding commercial arbitration in accordance with standard international arbitration rules.
+              The Union Verify certificate is a document issued by the Platform. It is not a government-issued marriage certificate or licence.
             </p>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-bold text-[#0F1C3F] uppercase tracking-wider mb-2">7. Questions</h2>
+            <p>
+              If you have a question about these terms, please <Link href="/contact" className="text-[#0F1C3F] underline">contact us</Link>.
+            </p>
+          </section>
         </div>
       </div>
     </div>

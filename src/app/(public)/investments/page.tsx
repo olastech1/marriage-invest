@@ -6,7 +6,7 @@
  * Fetches all active (and non-draft) investment opportunities from the DB,
  * then renders them in a responsive 2-column card grid with:
  *  - Prominent risk disclaimer banner
- *  - Filter tabs (All / Active / Upcoming / Closed)
+ *  - Filter tabs (All / Active / Closed)
  *  - InvestmentCard grid
  *  - Legal footer text
  */
@@ -25,67 +25,13 @@ import type { OpportunityStatus } from '@prisma/client'
 export const metadata: Metadata = {
   title: 'Investment Opportunities | Union Verify',
   description:
-    'Browse active marriage investment opportunities offering projected returns. Union Verify connects investors with curated, structured opportunities.',
+    'Browse the investment opportunities currently listed on Union Verify. Projected returns are not guaranteed.',
 }
 
 // ---------------------------------------------------------------------------
 // Page-level revalidation (ISR): revalidate every 5 minutes
 // ---------------------------------------------------------------------------
 export const dynamic = 'force-dynamic'
-
-const FALLBACK_LIST: InvestmentOpportunityCard[] = [
-  {
-    id: 'f1',
-    title: 'Matrimonial Prime Yield Fund I',
-    slug: 'matrimonial-prime-yield-fund-i',
-    shortDescription: 'Senior-secured credit portfolio supporting verified wedding event venues & prime hospitality assets.',
-    minAmount: '1000',
-    maxAmount: '50000',
-    targetAmount: '500000',
-    fundedAmount: '320000',
-    termMonths: 24,
-    annualReturnRate: '0.108',
-    distributionType: 'QUARTERLY',
-    status: 'ACTIVE' as OpportunityStatus,
-    openDate: '2024-01-15T00:00:00.000Z',
-    closeDate: '2024-12-31T00:00:00.000Z',
-    riskLevel: 'LOW',
-  },
-  {
-    id: 'f2',
-    title: 'Marital Homestead Growth Notes V',
-    slug: 'marital-homestead-growth-notes-v',
-    shortDescription: 'First-lien residential acquisition notes tailored for married couples entering long-term property ownership.',
-    minAmount: '2500',
-    maxAmount: '100000',
-    targetAmount: '800000',
-    fundedAmount: '512000',
-    termMonths: 36,
-    annualReturnRate: '0.084',
-    distributionType: 'MONTHLY',
-    status: 'ACTIVE' as OpportunityStatus,
-    openDate: '2024-02-01T00:00:00.000Z',
-    closeDate: '2025-06-30T00:00:00.000Z',
-    riskLevel: 'MEDIUM',
-  },
-  {
-    id: 'f3',
-    title: 'Enduring Union Balanced Portfolio',
-    slug: 'enduring-union-balanced-portfolio',
-    shortDescription: 'Multi-asset liquidity fund providing capital preservation with balanced dividend yields.',
-    minAmount: '500',
-    maxAmount: '25000',
-    targetAmount: '300000',
-    fundedAmount: '195000',
-    termMonths: 12,
-    annualReturnRate: '0.069',
-    distributionType: 'ANNUAL',
-    status: 'ACTIVE' as OpportunityStatus,
-    openDate: '2024-03-01T00:00:00.000Z',
-    closeDate: '2024-11-30T00:00:00.000Z',
-    riskLevel: 'LOW',
-  },
-]
 
 // ---------------------------------------------------------------------------
 // Data fetching
@@ -122,10 +68,6 @@ async function getOpportunities(
       },
     })
 
-    if (!rows || rows.length === 0) {
-      return FALLBACK_LIST
-    }
-
     // Serialise Decimal → string so the client-safe boundary is crossed cleanly
     return rows.map((r) => ({
       ...r,
@@ -138,7 +80,7 @@ async function getOpportunities(
       closeDate: r.closeDate?.toISOString() ?? null,
     }))
   } catch {
-    return FALLBACK_LIST
+    return []
   }
 }
 
@@ -155,7 +97,6 @@ interface FilterTab {
 const TABS: FilterTab[] = [
   { label: 'All', value: 'ALL', href: '/investments' },
   { label: 'Active', value: 'ACTIVE', href: '/investments?status=ACTIVE' },
-  { label: 'Upcoming', value: 'DRAFT', href: '/investments?status=DRAFT' },
   { label: 'Closed', value: 'CLOSED', href: '/investments?status=CLOSED' },
 ]
 
@@ -254,9 +195,9 @@ function EmptyState() {
         </svg>
       </div>
       <div>
-        <p className="text-base font-semibold text-gray-700">No opportunities found</p>
+        <p className="text-base font-semibold text-gray-700">No open investments right now</p>
         <p className="mt-1 text-sm text-gray-500">
-          Check back soon — new opportunities are added regularly.
+          There are no opportunities listed in this category at the moment.
         </p>
       </div>
       <Link
@@ -279,15 +220,12 @@ function LegalFooter() {
       <p>
         All investments made through the Union Verify platform are subject to investment risk,
         including the possible loss of the principal amount invested. The projected annual return
-        rates displayed on this page are estimates based on the business plan of each opportunity
-        and historical comparable transactions. They are <strong>not guaranteed</strong>.
+        rates displayed on this page are estimates. They are <strong>not guaranteed</strong>.
       </p>
       <p>
         Union Verify is not a registered broker-dealer, investment adviser, or financial planner.
         Nothing on this website constitutes an offer to sell, a solicitation of an offer to buy,
-        or a recommendation of any security or any other product or service. Investment offerings
-        are made only to persons who qualify as accredited investors under applicable federal and
-        state securities laws.
+        or a recommendation of any security or any other product or service.
       </p>
       <p>
         Before investing, you should carefully consider the investment objectives, risks, charges,
@@ -313,7 +251,8 @@ interface PageProps {
 export default async function InvestmentsPage({ searchParams }: PageProps) {
   const { status: rawStatus } = await searchParams
 
-  const validStatuses: OpportunityStatus[] = ['ACTIVE', 'DRAFT', 'FUNDED', 'CLOSED', 'CANCELLED']
+  // Drafts are never shown publicly
+  const validStatuses: OpportunityStatus[] = ['ACTIVE', 'FUNDED', 'CLOSED', 'CANCELLED']
   const statusFilter =
     rawStatus && validStatuses.includes(rawStatus as OpportunityStatus)
       ? (rawStatus as OpportunityStatus)
@@ -338,9 +277,8 @@ export default async function InvestmentsPage({ searchParams }: PageProps) {
               Investment Opportunities
             </h1>
             <p className="mt-4 text-base text-blue-200 leading-relaxed">
-              Explore our curated selection of structured marriage investment opportunities.
-              Each offering is carefully reviewed by our compliance team before becoming available
-              to registered investors.
+              The investment opportunities currently listed on Union Verify. Read each
+              opportunity&apos;s details and risks before investing.
             </p>
           </div>
         </div>
@@ -379,7 +317,7 @@ export default async function InvestmentsPage({ searchParams }: PageProps) {
             <div className="mt-10 rounded-2xl bg-[#0F1C3F] p-8 text-center text-white">
               <h2 className="text-xl font-bold">Ready to invest?</h2>
               <p className="mt-2 text-blue-200 text-sm">
-                Create a free investor account to access full offer documents, submit investments,
+                Create an account to see full opportunity details, submit investments,
                 and track your portfolio.
               </p>
               <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">

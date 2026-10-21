@@ -21,7 +21,6 @@ import {
   FileText,
   BarChart3,
   Settings,
-  Sparkles,
   LogOut,
   X,
 } from 'lucide-react'
@@ -49,12 +48,6 @@ const NAV_ITEMS: NavItem[] = [
     href: '/admin/investors',
     icon: Users,
     roles: ['ADMIN', 'COMPLIANCE', 'SUPPORT'],
-  },
-  {
-    label: 'Demo Accounts',
-    href: '/admin/demo-accounts',
-    icon: Sparkles,
-    roles: ['ADMIN'],
   },
   {
     label: 'Investments',

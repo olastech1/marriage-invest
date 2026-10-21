@@ -2,10 +2,10 @@
 
 /**
  * AdminHeader – top bar shown across all admin pages.
- * Displays user name, role badge, and avatar with a notification bell.
+ * Displays user name, role badge, and avatar.
  */
 
-import { Bell, User, Menu } from 'lucide-react'
+import { Menu } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type AdminRole = 'ADMIN' | 'FINANCE' | 'COMPLIANCE' | 'SUPPORT'
@@ -54,12 +54,6 @@ export default function AdminHeader({ user, role, onMenuClick }: Props) {
         <span className={cn('text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full border border-current/20 uppercase tracking-wider', ROLE_COLOR[role])}>
           {role}
         </span>
-
-        {/* Notification bell */}
-        <button className="relative p-2 rounded-full hover:bg-gray-100 transition-colors">
-          <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
-        </button>
 
         {/* Avatar + user info */}
         <div className="flex items-center gap-2.5">

@@ -2,18 +2,9 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency, formatDate, formatAnnualRate } from '@/lib/utils'
 import { isDemoInvestment } from '@/lib/rating'
-import {
-  Briefcase,
-  TrendingUp,
-  Clock,
-  CheckCircle2,
-  Calendar,
-  Download,
-  AlertCircle,
-  ArrowUpRight,
-} from 'lucide-react'
+import { Briefcase } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +27,7 @@ export default async function PortfolioPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  // Strictly filter out demo investments — only real stuff
+  // Leave out demo investments
   const investments = allInvestments.filter((inv) => !isDemoInvestment(inv))
 
   const totalInvested = investments
@@ -60,14 +51,14 @@ export default async function PortfolioPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#0F1C3F]">Investment Portfolio</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Verified joint holdings, contractual maturity schedules, and cumulative distribution returns.
+            Your investments, their maturity dates and the distributions paid so far.
           </p>
         </div>
         <Link
           href="/save"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-xs hover:bg-[#d4b460] shadow-sm transition-all"
         >
-          Explore New Opportunities →
+          Go to Save →
         </Link>
       </div>
 
@@ -75,12 +66,12 @@ export default async function PortfolioPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-            Total Active Capital
+            Total Invested
           </span>
           <span className="text-2xl font-bold text-[#0F1C3F]">
             {formatCurrency(totalInvested)}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">USD-Denominated Principal</span>
+          <span className="text-[11px] text-gray-500 block mt-1">Active and matured, in USD</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
@@ -90,17 +81,17 @@ export default async function PortfolioPage() {
           <span className="text-2xl font-bold text-emerald-600">
             {activeCount}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Currently Earning Returns</span>
+          <span className="text-[11px] text-gray-500 block mt-1">Status: active</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-            Matured Vehicles
+            Matured
           </span>
           <span className="text-2xl font-bold text-blue-600">
             {maturedCount}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Completed Contract Terms</span>
+          <span className="text-[11px] text-gray-500 block mt-1">Reached their maturity date</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
@@ -110,7 +101,7 @@ export default async function PortfolioPage() {
           <span className="text-2xl font-bold text-[#C9A84C]">
             {formatCurrency(totalDistributions)}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Cumulative Contract Payouts</span>
+          <span className="text-[11px] text-gray-500 block mt-1">Completed payouts to date</span>
         </div>
       </div>
 
@@ -118,23 +109,22 @@ export default async function PortfolioPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-[#0F1C3F]">Individual Investment Ledger</h2>
-            <p className="text-xs text-gray-500">Traceable records connected to verified financial transactions.</p>
+            <h2 className="text-base font-bold text-[#0F1C3F]">Your Investments</h2>
           </div>
         </div>
 
         {investments.length === 0 ? (
           <div className="p-12 text-center">
             <Briefcase className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-gray-700 mb-1">No Active Investments Found</h3>
+            <h3 className="text-sm font-bold text-gray-700 mb-1">No investments yet</h3>
             <p className="text-xs text-gray-500 max-w-sm mx-auto mb-6">
-              You have not yet committed capital to any marriage investment vehicles.
+              You have not made any investments.
             </p>
             <Link
               href="/investments"
               className="px-6 py-2.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-semibold hover:bg-[#162c5e]"
             >
-              Browse Available Offerings
+              Browse Opportunities
             </Link>
           </div>
         ) : (
@@ -144,7 +134,7 @@ export default async function PortfolioPage() {
                 <tr>
                   <th className="py-3.5 px-6">Reference No.</th>
                   <th className="py-3.5 px-6">Opportunity Name</th>
-                  <th className="py-3.5 px-6">Capital Contributed</th>
+                  <th className="py-3.5 px-6">Amount</th>
                   <th className="py-3.5 px-6">Confirmed Date</th>
                   <th className="py-3.5 px-6">Tenure / Maturity</th>
                   <th className="py-3.5 px-6">Distributions</th>
@@ -171,14 +161,14 @@ export default async function PortfolioPage() {
                           {inv.opportunity.title}
                         </Link>
                         <p className="text-[11px] text-gray-400 mt-0.5">
-                          {(Number(inv.opportunity.annualReturnRate) * 100).toFixed(1)}% p.a. Projected • {inv.opportunity.distributionType.toLowerCase()}
+                          {formatAnnualRate(inv.opportunity.annualReturnRate)} p.a. target (not guaranteed) • {inv.opportunity.distributionType.toLowerCase()}
                         </p>
                       </td>
                       <td className="py-4 px-6 font-bold text-gray-900">
                         {formatCurrency(Number(inv.amount))}
                       </td>
                       <td className="py-4 px-6 text-gray-500">
-                        {inv.confirmedAt ? formatDate(inv.confirmedAt) : 'Pending Settlement'}
+                        {inv.confirmedAt ? formatDate(inv.confirmedAt) : 'Pending'}
                       </td>
                       <td className="py-4 px-6 text-gray-600">
                         <span>{inv.opportunity.termMonths} Mo</span>

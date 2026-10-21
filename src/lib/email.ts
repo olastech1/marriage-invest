@@ -133,8 +133,8 @@ function baseTemplate(body: string, preheader = ''): string {
   <div class="wrapper">
     <div class="card">
       <div class="header">
-        <h1>💍 Union Verify</h1>
-        <p>Secure your future together</p>
+        <h1>Union Verify</h1>
+        <p>Joint savings for couples</p>
       </div>
       <div class="body">
         ${body}
@@ -251,13 +251,13 @@ export async function sendWelcomeEmail(
 ): Promise<boolean> {
   const html = baseTemplate(
     /* html */ `
-    <h2>Welcome aboard, ${name}! 🎉</h2>
-    <p>Your Union Verify account is now active. We're thrilled to have you join a community building a secure financial future together.</p>
+    <h2>Welcome, ${name}</h2>
+    <p>Your Union Verify account is now active.</p>
     <p>Here's how to get started:</p>
     <ol style="padding-left:20px;line-height:2;">
-      <li>Browse available <a href="${APP_URL}/plans" style="color:${BRAND_COLOR};">investment plans</a></li>
-      <li>Complete your <a href="${APP_URL}/profile" style="color:${BRAND_COLOR};">profile and KYC</a></li>
-      <li>Make your first investment</li>
+      <li>Browse available <a href="${APP_URL}/investments" style="color:${BRAND_COLOR};">investment opportunities</a></li>
+      <li>Complete your <a href="${APP_URL}/settings" style="color:${BRAND_COLOR};">profile</a></li>
+      <li>Make your first deposit</li>
     </ol>
     <p style="text-align:center;margin:28px 0;">
       <a href="${APP_URL}/dashboard" class="btn">Go to Your Dashboard</a>
@@ -332,7 +332,7 @@ export async function sendInvestmentConfirmationEmail(
 
   const html = baseTemplate(
     /* html */ `
-    <h2>Investment Confirmed ✅</h2>
+    <h2>Investment Confirmed</h2>
     <p>Hi ${name}, your investment has been successfully created. Here is a summary:</p>
     <table class="table">
       <tr><td>Reference</td><td>${details.reference}</td></tr>
@@ -342,11 +342,11 @@ export async function sendInvestmentConfirmationEmail(
       <tr><td>Term</td><td>${details.termMonths} month${details.termMonths !== 1 ? 's' : ''}</td></tr>
       <tr><td>Start Date</td><td>${fmtDate(details.startDate)}</td></tr>
       <tr><td>Maturity Date</td><td>${fmtDate(details.maturityDate)}</td></tr>
-      <tr><td>Expected Return</td><td><strong>${fmtCurrency(expectedReturn)}</strong></td></tr>
+      <tr><td>Projected value at maturity (not guaranteed)</td><td><strong>${fmtCurrency(expectedReturn)}</strong></td></tr>
     </table>
     <p>You can track your investment at any time from your dashboard.</p>
     <p style="text-align:center;margin:28px 0;">
-      <a href="${APP_URL}/dashboard/investments/${details.reference}" class="btn">View Investment</a>
+      <a href="${APP_URL}/portfolio" class="btn">View Investment</a>
     </p>
     <hr class="divider" />
     <p style="font-size:13px;color:#6b7280;">
@@ -425,7 +425,7 @@ export async function sendWithdrawalStatusEmail(
     </table>
     <p>${info.body}</p>
     <p style="text-align:center;margin:28px 0;">
-      <a href="${APP_URL}/dashboard/withdrawals" class="btn">View Withdrawal History</a>
+      <a href="${APP_URL}/withdrawals" class="btn">View Withdrawal History</a>
     </p>
     `,
     `Your withdrawal of ${fmtCurrency(amount)} is now ${info.label}.`,
@@ -481,7 +481,7 @@ export async function sendPaymentReceiptEmail(
     </table>
     <p>Please keep this receipt for your records. If you did not authorise this transaction, contact our support team immediately.</p>
     <p style="text-align:center;margin:28px 0;">
-      <a href="${APP_URL}/dashboard/transactions" class="btn">View All Transactions</a>
+      <a href="${APP_URL}/transactions" class="btn">View All Transactions</a>
     </p>
     `,
     `Receipt for ${transaction.type} of ${fmtCurrency(transaction.amount)}.`,
@@ -499,16 +499,16 @@ export async function sendPaymentReceiptEmail(
 // ---------------------------------------------------------------------------
 
 /**
- * Send an automated or spousal deposit reminder email to a partner.
+ * Send a deposit reminder from one spouse to the other.
  */
 export async function sendDepositReminderEmail({
   to,
   recipientName,
   senderName,
   amount,
-  vaultName = 'Jane Doe & Marcus Vance Spousal Contribution',
+  vaultName = 'your joint savings',
   note,
-  frequency = 'Monthly',
+  frequency,
 }: {
   to: string
   recipientName: string
@@ -516,61 +516,41 @@ export async function sendDepositReminderEmail({
   amount: number
   vaultName?: string
   note?: string
+  /** Only for scheduled reminders, e.g. "Monthly" */
   frequency?: string
 }): Promise<boolean> {
   const html = baseTemplate(
     /* html */ `
-    <div style="text-align:center;margin-bottom:20px;">
-      <span style="display:inline-block;padding:4px 14px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;background:#FEF3C7;color:#92400E;">
-        ⏰ Matrimonial Deposit Reminder
-      </span>
-    </div>
-    <h2>Deposit Reminder from ${senderName}</h2>
+    <h2>Deposit reminder from ${senderName}</h2>
     <p>Hi ${recipientName},</p>
     <p>
-      <strong>${senderName}</strong> has sent you a scheduled deposit reminder for your joint matrimonial wealth vault:
+      <strong>${senderName}</strong> sent you a reminder to deposit into
       <strong style="color:#0F1C3F;">${vaultName}</strong>.
     </p>
 
     <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:16px;padding:20px;margin:24px 0;">
       <table class="table" style="margin:0;">
         <tr>
-          <td>Target Amount</td>
+          <td>Amount</td>
           <td><strong style="font-size:18px;color:#0F1C3F;">${fmtCurrency(amount)}</strong></td>
         </tr>
-        <tr>
-          <td>Vault Target</td>
-          <td>${vaultName}</td>
-        </tr>
-        <tr>
-          <td>Compounding Yield</td>
-          <td><strong style="color:#059669;">6.8% APY (Compounding Every Second)</strong></td>
-        </tr>
-        <tr>
-          <td>Schedule</td>
-          <td>${frequency} Spousal Contribution</td>
-        </tr>
-        ${note ? `<tr><td>Personal Note</td><td><em>&ldquo;${note}&rdquo;</em></td></tr>` : ''}
+        ${frequency && frequency.toUpperCase() !== 'ONCE' ? `<tr><td>Schedule</td><td>${frequency.charAt(0).toUpperCase()}${frequency.slice(1).toLowerCase()}</td></tr>` : ''}
+        ${note ? `<tr><td>Note</td><td><em>&ldquo;${note}&rdquo;</em></td></tr>` : ''}
       </table>
     </div>
 
-    <p style="font-size:13px;color:#64748B;line-height:1.6;">
-      Under your Spousal Covenant, maintaining consistent matching deposits preserves maximum compounding acceleration and protects your dual-signatory liquidity covenant.
-    </p>
-
     <p style="text-align:center;margin:32px 0 24px;">
       <a href="${APP_URL}/save?amount=${amount}&target=joint" class="btn" style="background:#0F1C3F;color:#ffffff;padding:14px 32px;font-weight:700;border-radius:12px;text-decoration:none;display:inline-block;">
-        Deposit ${fmtCurrency(amount)} Now ↗
+        Deposit ${fmtCurrency(amount)}
       </a>
     </p>
     `,
-    `Deposit Reminder: ${senderName} sent you a reminder to deposit ${fmtCurrency(amount)} into your joint vault.`,
+    `${senderName} sent you a reminder to deposit ${fmtCurrency(amount)} into your joint savings.`,
   )
 
   return sendEmail({
     to,
-    subject: `⏰ Deposit Reminder: ${senderName} nudged you to deposit ${fmtCurrency(amount)}`,
+    subject: `Deposit reminder: ${senderName} asked you to deposit ${fmtCurrency(amount)}`,
     html,
   })
 }
-

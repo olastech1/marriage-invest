@@ -36,18 +36,12 @@ export default function AdminDashboardCharts({
     return `$${tickItem}`
   }
 
-  const formatTooltip = (value: number | string | undefined) => {
-    if (value === undefined) return '$0'
-    const num = typeof value === 'number' ? value : Number(value)
-    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
-  }
-
   return (
     <div className="space-y-6 w-full min-w-0 overflow-hidden">
       <div className="h-64 w-full min-w-0">
         {lineData.length === 0 ? (
           <div className="h-full flex items-center justify-center text-sm text-gray-400">
-            No transaction data available
+            No completed deposits in the last 12 months
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -99,7 +93,7 @@ export default function AdminDashboardCharts({
       {pieData.length > 0 && (
         <div className="pt-4 border-t border-gray-100">
           <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">
-            Active Fund Distribution
+            Funded Amount by Opportunity
           </p>
           <div className="space-y-2">
             {pieData.map((item, idx) => (

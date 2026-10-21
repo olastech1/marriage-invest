@@ -18,6 +18,7 @@ import {
   Clock,
 } from 'lucide-react'
 import AdminDashboardCharts from '@/components/admin/AdminDashboardCharts'
+import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 import Link from 'next/link'
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -67,15 +68,11 @@ export const dynamic = 'force-dynamic'
 async function getDashboardData() {
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-  const last12Months = new Date(now)
-  last12Months.setMonth(last12Months.getMonth() - 11)
-  last12Months.setDate(1)
-  last12Months.setHours(0, 0, 0, 0)
+  const last12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1)
 
-  try {
-    const [
-      totalInvestors,
-      totalInvestedAgg,
+  const [
+    totalInvestors,
+    totalInvestedAgg,
     pendingWithdrawals,
     transactionsThisMonth,
     recentInvestors,
@@ -97,7 +94,7 @@ async function getDashboardData() {
     // 3. Count pending withdrawals
     prisma.withdrawalRequest.count({ where: { status: 'PENDING' } }),
 
-    // 4. Count transactions this month
+    // 4. Count transactions this calendar month
     prisma.transaction.count({
       where: { createdAt: { gte: startOfMonth } },
     }),
@@ -113,7 +110,6 @@ async function getDashboardData() {
         email: true,
         createdAt: true,
         identityVerified: true,
-        _count: { select: { investments: true } },
       },
     }),
 
@@ -137,15 +133,14 @@ async function getDashboardData() {
       include: { user: { select: { name: true } } },
     }),
 
-    // 8. Unread system notifications (INFO/WARNING/ALERT) – stored as admin
-    //    notifications. We'll just read the most recent 5.
+    // 8. Most recent unread WARNING/ALERT notifications
     prisma.notification.findMany({
       where: { type: { in: ['WARNING', 'ALERT'] }, read: false },
       orderBy: { createdAt: 'desc' },
       take: 5,
     }),
 
-    // 9. Funded amount by opportunity (for pie chart)
+    // 9. Funded amount by opportunity
     prisma.investmentOpportunity.findMany({
       where: { status: { not: 'DRAFT' } },
       select: {
@@ -156,44 +151,37 @@ async function getDashboardData() {
       take: 8,
     }),
 
-    // 10. Monthly deposit totals for the last 12 months (line chart)
-    prisma.transaction.groupBy({
-      by: ['createdAt'],
+    // 10. Completed deposits in the last 12 months (bucketed by month below)
+    prisma.transaction.findMany({
       where: {
         type: 'DEPOSIT',
         status: 'COMPLETED',
         createdAt: { gte: last12Months },
       },
-      _sum: { amount: true },
-      orderBy: { createdAt: 'asc' },
+      select: { amount: true, createdAt: true },
     }),
   ])
 
   // Build monthly time-series buckets
+  const monthKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   const monthBuckets: Record<string, number> = {}
   for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    monthBuckets[key] = 0
+    monthBuckets[monthKey(new Date(now.getFullYear(), now.getMonth() - 11 + i, 1))] = 0
   }
   for (const row of monthlyDeposits) {
-    const d = new Date(row.createdAt)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    if (key in monthBuckets) {
-      monthBuckets[key] += Number(row._sum.amount ?? 0)
-    }
+    const key = monthKey(new Date(row.createdAt))
+    if (key in monthBuckets) monthBuckets[key] += Number(row.amount)
   }
-  const chartLineData = Object.entries(monthBuckets).map(([month, total]) => ({
-    month,
-    total,
-  }))
+  const chartLineData = monthlyDeposits.length
+    ? Object.entries(monthBuckets).map(([month, total]) => ({ month, total }))
+    : []
 
-  // Pie data
-  const chartPieData = investmentsByOpportunity.map((op) => ({
-    name:
-      op.title.length > 24 ? op.title.slice(0, 22) + '…' : op.title,
-    value: Number(op.fundedAmount),
-  }))
+  const chartPieData = investmentsByOpportunity
+    .filter((op) => Number(op.fundedAmount) > 0)
+    .map((op) => ({
+      name: op.title.length > 24 ? op.title.slice(0, 22) + '…' : op.title,
+      value: Number(op.fundedAmount),
+    }))
 
   return {
     stats: {
@@ -209,28 +197,23 @@ async function getDashboardData() {
     chartLineData,
     chartPieData,
   }
-  } catch {
-    return {
-      stats: {
-        totalInvestors: 0,
-        totalInvested: 0,
-        pendingWithdrawals: 0,
-        transactionsThisMonth: 0,
-      },
-      recentInvestors: [],
-      pendingWithdrawalList: [],
-      recentTransactions: [],
-      systemNotifications: [],
-      chartLineData: [],
-      chartPieData: [],
-    }
-  }
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function AdminDashboardPage() {
-  const data = await getDashboardData()
+  let data: Awaited<ReturnType<typeof getDashboardData>>
+  try {
+    data = await getDashboardData()
+  } catch (error) {
+    console.error('[admin/dashboard]', error)
+    return (
+      <div className="space-y-8">
+        <h1 className="text-2xl font-bold text-gray-900">Platform Overview</h1>
+        <LoadErrorBanner />
+      </div>
+    )
+  }
   const { stats, recentInvestors, pendingWithdrawalList, recentTransactions, systemNotifications, chartLineData, chartPieData } = data
 
   return (
@@ -315,7 +298,7 @@ export default async function AdminDashboardPage() {
           </div>
           {pendingWithdrawalList.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              No pending withdrawals 🎉
+              No pending withdrawals
             </p>
           ) : (
             <ul className="space-y-3">
@@ -371,6 +354,13 @@ export default async function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
+                {recentInvestors.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="py-6 text-center text-sm text-gray-400">
+                      No investors have registered yet.
+                    </td>
+                  </tr>
+                )}
                 {recentInvestors.map((inv) => (
                   <tr
                     key={inv.id}
@@ -422,6 +412,9 @@ export default async function AdminDashboardPage() {
             </Link>
           </div>
           <div className="space-y-3">
+            {recentTransactions.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-8">No transactions yet.</p>
+            )}
             {recentTransactions.map((tx) => (
               <div
                 key={tx.id}

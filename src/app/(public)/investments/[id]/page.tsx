@@ -1,4 +1,6 @@
 import { notFound } from 'next/navigation'
+import InvestForm from '@/components/investments/InvestForm'
+import { formatAnnualRate } from '@/lib/utils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -21,82 +23,11 @@ interface PageProps {
 
 export const dynamic = 'force-dynamic'
 
-const FALLBACK_DETAIL: Record<string, any> = {
-  'matrimonial-prime-yield-fund-i': {
-    id: 'f1',
-    title: 'Matrimonial Prime Yield Fund I',
-    slug: 'matrimonial-prime-yield-fund-i',
-    description: 'Senior-secured debt facility backing tier-1 wedding reception venues, banquet estates, and luxury event production providers across high-demand metropolitan markets. Structured with first-position asset liens, corporate parent guarantees, and rigorous monthly cash flow covenant monitoring.',
-    shortDescription: 'Senior-secured credit portfolio supporting verified wedding event venues & prime hospitality assets.',
-    minAmount: 1000,
-    maxAmount: 50000,
-    targetAmount: 500000,
-    fundedAmount: 320000,
-    termMonths: 24,
-    annualReturnRate: 0.108,
-    distributionType: 'QUARTERLY',
-    status: 'ACTIVE',
-    riskLevel: 'LOW',
-    openDate: new Date('2024-01-15'),
-    closeDate: new Date('2024-12-31'),
-    documents: [
-      {
-        id: 'doc-1',
-        name: 'Form 1-A Offering Circular — Matrimonial Prime Yield Fund I',
-        fileUrl: '/documents/offering-circular-fund-i-v1.2.pdf',
-        version: '1.2',
-        fileSize: 2450000,
-        createdAt: new Date('2024-01-15'),
-      },
-    ],
-  },
-  'marital-homestead-growth-notes-v': {
-    id: 'f2',
-    title: 'Marital Homestead Growth Notes V',
-    slug: 'marital-homestead-growth-notes-v',
-    description: 'First-lien residential acquisition notes tailored for married couples entering long-term property ownership. Secured against verified single-family residential equity with conservative loan-to-value underwriting.',
-    shortDescription: 'First-lien residential acquisition notes tailored for married couples entering long-term property ownership.',
-    minAmount: 2500,
-    maxAmount: 100000,
-    targetAmount: 800000,
-    fundedAmount: 512000,
-    termMonths: 36,
-    annualReturnRate: 0.084,
-    distributionType: 'MONTHLY',
-    status: 'ACTIVE',
-    riskLevel: 'MEDIUM',
-    openDate: new Date('2024-02-01'),
-    closeDate: new Date('2025-06-30'),
-    documents: [],
-  },
-  'enduring-union-balanced-portfolio': {
-    id: 'f3',
-    title: 'Enduring Union Balanced Portfolio',
-    slug: 'enduring-union-balanced-portfolio',
-    description: 'Multi-asset liquidity fund providing capital preservation with balanced dividend yields for joint couple accounts.',
-    shortDescription: 'Multi-asset liquidity fund providing capital preservation with balanced dividend yields.',
-    minAmount: 500,
-    maxAmount: 25000,
-    targetAmount: 300000,
-    fundedAmount: 195000,
-    termMonths: 12,
-    annualReturnRate: 0.069,
-    distributionType: 'ANNUAL',
-    status: 'ACTIVE',
-    riskLevel: 'LOW',
-    openDate: new Date('2024-03-01'),
-    closeDate: new Date('2024-11-30'),
-    documents: [],
-  },
-}
-
 export default async function OpportunityDetailPage({ params }: PageProps) {
   const { id } = await params
   const session = await auth()
 
-  let opportunity: any = null
-  try {
-    opportunity = await prisma.investmentOpportunity.findFirst({
+  const opportunity = await prisma.investmentOpportunity.findFirst({
       where: {
         OR: [{ id }, { slug: id }],
       },
@@ -106,22 +37,16 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
         },
       },
     })
-  } catch {
-    // Database offline
-  }
 
-  if (!opportunity) {
-    opportunity = FALLBACK_DETAIL[id] || Object.values(FALLBACK_DETAIL)[0]
-  }
-
-  if (!opportunity) {
+  // Drafts are not public
+  if (!opportunity || opportunity.status === 'DRAFT') {
     notFound()
   }
 
   const fundedAmount = Number(opportunity.fundedAmount)
   const targetAmount = Number(opportunity.targetAmount)
   const percentFunded = Math.min(100, Math.round((fundedAmount / targetAmount) * 100))
-  const returnRatePercent = (Number(opportunity.annualReturnRate) * 100).toFixed(2)
+  const returnRatePercent = formatAnnualRate(opportunity.annualReturnRate).replace('%', '')
 
   return (
     <div className="bg-white min-h-screen">
@@ -223,10 +148,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
                   <strong>No Guarantee of Yield:</strong> The stated return rate of {returnRatePercent}% p.a. reflects projected underlying asset cash-flows. Macroeconomic disruptions, interest rate fluctuations, or contractual counterparties may impact final yields.
                 </p>
                 <p>
-                  <strong>Liquidity and Lockup:</strong> Capital committed to this opportunity is subject to a {opportunity.termMonths}-month contractual tenure. Early redemption requests are evaluated per platform liquidity policies and may incur redemption charges.
-                </p>
-                <p>
-                  <strong>Regulatory Status:</strong> This offering is conducted pursuant to applicable private syndication standards. Prospective investors must satisfy verification and onboarding criteria.
+                  <strong>Liquidity and Lockup:</strong> Money invested here is committed for {opportunity.termMonths} months. Early withdrawals may incur fees.
                 </p>
               </div>
             </section>
@@ -304,19 +226,22 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
               </div>
 
               {session?.user ? (
-                <Link
-                  href={`/deposits?opportunityId=${opportunity.id}`}
-                  className="w-full py-3.5 px-4 bg-[#0F1C3F] hover:bg-[#162c5e] text-white text-center font-semibold rounded-xl block transition shadow-sm text-sm"
-                >
-                  Proceed to Invest →
-                </Link>
+                opportunity.status === 'ACTIVE' ? (
+                  <InvestForm
+                    opportunityId={opportunity.id}
+                    minAmount={Number(opportunity.minAmount)}
+                    maxAmount={opportunity.maxAmount ? Number(opportunity.maxAmount) : null}
+                  />
+                ) : (
+                  <p className="text-sm text-gray-500 text-center">This opportunity is not open for new investments.</p>
+                )
               ) : (
                 <div className="space-y-2">
                   <Link
                     href={`/register?redirect=/investments/${opportunity.slug}`}
                     className="w-full py-3.5 px-4 bg-[#C9A84C] hover:bg-[#b08b3a] text-[#0F1C3F] font-bold text-center rounded-xl block transition shadow-sm text-sm"
                   >
-                    Register Joint Account to Invest
+                    Create an account to invest
                   </Link>
                   <Link
                     href={`/login?redirect=/investments/${opportunity.slug}`}
@@ -328,7 +253,7 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
               )}
 
               <p className="text-[11px] text-gray-400 text-center mt-4">
-                🔒 Bank-grade 256-bit SSL encryption. Funds secured in designated custody accounts.
+                Card payments are processed by Stripe.
               </p>
             </div>
           </div>

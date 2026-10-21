@@ -95,7 +95,7 @@ export default async function InvestorDocumentsPage() {
     <DocumentLibraryClient
       initialDocuments={documentItems}
       initialRating={rating}
-      userName={userRecord?.name || session?.user?.name || 'Investor'}
+      userName={userRecord?.name || session?.user?.name || 'Member'}
     />
   )
 }

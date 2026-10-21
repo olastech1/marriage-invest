@@ -3,15 +3,6 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { isDemoTransaction } from '@/lib/rating'
-import {
-  CreditCard,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Filter,
-  Download,
-  Calendar,
-  ShieldCheck,
-} from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +23,7 @@ export default async function TransactionsPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  // Strictly filter out demo deposits — only real stuff
+  // Leave out demo entries
   const transactions = allTransactions.filter((t) => !isDemoTransaction(t))
 
   const totalDeposited = transactions
@@ -52,13 +43,10 @@ export default async function TransactionsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold text-[#0F1C3F]">Transaction Ledger & History</h1>
-            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-              Verified Real Ledger Only
-            </span>
+            <h1 className="text-2xl font-bold text-[#0F1C3F]">Transactions</h1>
           </div>
           <p className="text-xs text-gray-500">
-            Complete USD transaction audit trail of settled deposits, distributions, and disbursements. Demo allocations are strictly excluded.
+            Your deposits, distributions and withdrawals in USD. Demo entries are not shown.
           </p>
         </div>
       </div>
@@ -67,32 +55,29 @@ export default async function TransactionsPage() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-            Total Settled Deposits
+            Completed Deposits
           </span>
           <span className="text-2xl font-bold text-[#0F1C3F]">
             {formatCurrency(totalDeposited)}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Confirmed capital investments</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-            Total Distributions Paid
+            Distributions Paid
           </span>
           <span className="text-2xl font-bold text-emerald-600">
             {formatCurrency(totalDistributions)}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Contractual yield payouts</span>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-xs">
           <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">
-            Total Capital Liquidated
+            Completed Withdrawals
           </span>
           <span className="text-2xl font-bold text-orange-600">
             {formatCurrency(totalWithdrawn)}
           </span>
-          <span className="text-[11px] text-gray-500 block mt-1">Completed withdrawals</span>
         </div>
       </div>
 
@@ -100,8 +85,7 @@ export default async function TransactionsPage() {
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-[#0F1C3F]">Verified Ledger Entries</h2>
-            <p className="text-xs text-gray-500">Traceable bank and payment provider transaction receipts.</p>
+            <h2 className="text-base font-bold text-[#0F1C3F]">All Transactions</h2>
           </div>
         </div>
 

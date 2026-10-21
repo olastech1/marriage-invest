@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import {
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertCircle,
-  Building2,
-  User,
-  ShieldAlert,
-} from 'lucide-react'
+import { CheckCircle2, AlertCircle } from 'lucide-react'
 
 interface WithdrawalRequest {
   id: string
@@ -35,18 +27,17 @@ export default function AdminWithdrawalsPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
   const fetchRequests = () => {
     fetch('/api/admin/withdrawals')
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.withdrawals) setRequests(data.withdrawals)
-        setLoading(false)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok) throw new Error(data.error || 'Could not load withdrawal requests.')
+        setRequests(data.withdrawals ?? [])
       })
-      .catch((err) => {
-        console.error(err)
-        setLoading(false)
-      })
+      .catch((err) => setError(err.message || 'Could not load withdrawal requests.'))
+      .finally(() => setLoading(false))
   }
 
   useEffect(() => {
@@ -55,6 +46,7 @@ export default function AdminWithdrawalsPage() {
 
   const handleDecision = async (id: string, action: 'approve' | 'reject') => {
     setActionLoading(id)
+    setError('')
     try {
       const res = await fetch(`/api/admin/withdrawals/${id}`, {
         method: 'PATCH',
@@ -63,13 +55,13 @@ export default function AdminWithdrawalsPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        setMessage(`Withdrawal successfully ${action}d.`)
+        setMessage(action === 'approve' ? 'Withdrawal approved and recorded.' : 'Withdrawal rejected.')
         fetchRequests()
       } else {
-        alert(data.error || 'Failed to update withdrawal status')
+        setError(data.error || 'Failed to update withdrawal status')
       }
     } catch (e: any) {
-      alert(e.message || 'Error executing decision')
+      setError(e.message || 'Error executing decision')
     } finally {
       setActionLoading(null)
       setTimeout(() => setMessage(''), 3000)
@@ -82,11 +74,18 @@ export default function AdminWithdrawalsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Withdrawal & Payout Approval Queue</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Withdrawal Requests</h1>
         <p className="text-xs text-gray-500 mt-1">
-          Review, approve, or reject investor capital redemption requests with dual audit recordkeeping.
+          Approving a request records the withdrawal; it does not send money. Send the bank transfer yourself.
         </p>
       </div>
+
+      {error && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {message && (
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
@@ -100,16 +99,18 @@ export default function AdminWithdrawalsPage() {
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="text-base font-bold text-gray-900">Pending Review Queue</h2>
-            <p className="text-xs text-gray-500">Requires finance authorization before wire dispatch.</p>
+            <p className="text-xs text-gray-500">Requests waiting for a decision.</p>
           </div>
           <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-200">
             {pending.length} Pending Actions
           </span>
         </div>
 
-        {pending.length === 0 ? (
+        {loading ? (
+          <div className="p-8 text-center text-xs text-gray-400">Loading...</div>
+        ) : pending.length === 0 ? (
           <div className="p-8 text-center text-xs text-gray-400">
-            No pending withdrawal requests in the queue.
+            No pending withdrawal requests.
           </div>
         ) : (
           <div className="divide-y divide-gray-100">
@@ -122,7 +123,7 @@ export default function AdminWithdrawalsPage() {
                   </div>
 
                   <div className="text-xs text-gray-600">
-                    Vehicle: <strong>{req.investment?.opportunity?.title}</strong> • Ref: {req.investment?.referenceNumber}
+                    Investment: <strong>{req.investment?.opportunity?.title}</strong> • Ref: {req.investment?.referenceNumber}
                   </div>
 
                   <div className="text-xs text-gray-500 bg-gray-50 p-2.5 rounded-lg border border-gray-100 flex flex-wrap gap-4">
@@ -160,7 +161,7 @@ export default function AdminWithdrawalsPage() {
                       disabled={actionLoading === req.id}
                       className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold disabled:opacity-50"
                     >
-                      Approve & Wire
+                      Approve
                     </button>
                   </div>
                 </div>
@@ -173,13 +174,13 @@ export default function AdminWithdrawalsPage() {
       {/* Decision History */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100">
-          <h2 className="text-base font-bold text-gray-900">Historical Disbursed & Rejected Requests</h2>
-          <p className="text-xs text-gray-500">Historical records archived for compliance auditing.</p>
+          <h2 className="text-base font-bold text-gray-900">Past Requests</h2>
+          <p className="text-xs text-gray-500">Approved and rejected requests.</p>
         </div>
 
         {history.length === 0 ? (
           <div className="p-8 text-center text-xs text-gray-400">
-            No historical requests processed yet.
+            No requests processed yet.
           </div>
         ) : (
           <div className="overflow-x-auto">

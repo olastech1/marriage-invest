@@ -1,35 +1,41 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
-import {
-  Users,
-  Search,
-  ShieldCheck,
-  CheckCircle2,
-  Clock,
-  Filter,
-  Eye,
-  Sparkles,
-  Award,
-} from 'lucide-react'
+import { Search, CheckCircle2, Clock } from 'lucide-react'
+import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 
 export const dynamic = 'force-dynamic'
 
-export default async function AdminInvestorsPage() {
+export default async function AdminInvestorsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string | string[] }>
+}) {
   const session = await auth()
   if (!session?.user?.role || !['ADMIN', 'FINANCE', 'COMPLIANCE', 'SUPPORT'].includes(session.user.role)) {
     redirect('/login?callbackUrl=/admin/investors')
   }
 
+  const { q } = await searchParams
+  const query = (Array.isArray(q) ? q[0] : q ?? '').trim()
+
+  let loadError = false
   let investors: any[] = []
   let allDocuments: any[] = []
   try {
     const [invs, docs] = await Promise.all([
       prisma.user.findMany({
-        where: { role: 'INVESTOR' },
+        where: {
+          role: 'INVESTOR',
+          ...(query && {
+            OR: [
+              { name: { contains: query, mode: 'insensitive' as const } },
+              { email: { contains: query, mode: 'insensitive' as const } },
+            ],
+          }),
+        },
         include: {
           investments: true,
           documents: true,
@@ -45,8 +51,9 @@ export default async function AdminInvestorsPage() {
     ])
     investors = invs
     allDocuments = docs
-  } catch {
-    // DB offline
+  } catch (error) {
+    console.error('[admin/investors]', error)
+    loadError = true
   }
 
   return (
@@ -55,34 +62,31 @@ export default async function AdminInvestorsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Investor Management</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Registered joint investor accounts, onboarding verification statuses, and capital allocations.
+            Registered investor accounts, identity verification status, and invested amounts.
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href="/admin/demo-accounts"
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#0F1C3F] text-[#C9A84C] text-xs font-bold hover:bg-[#1a2e63] transition-colors shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#C9A84C]" />
-            Demo Accounts Studio
-          </Link>
           <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700">
-            Total Investors: {investors.length}
+            {query ? 'Matching' : 'Total'} Investors: {investors.length}
           </span>
         </div>
       </div>
 
+      {loadError && <LoadErrorBanner />}
+
       {/* Table */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <div className="relative max-w-xs w-full">
+          <form method="get" className="relative max-w-xs w-full">
             <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
-              type="text"
+              type="search"
+              name="q"
+              defaultValue={query}
               placeholder="Search investor by name or email..."
               className="w-full pl-9 pr-4 py-2 rounded-lg border border-gray-200 text-xs text-gray-900 outline-none focus:border-[#C9A84C]"
             />
-          </div>
+          </form>
         </div>
 
         <div className="overflow-x-auto">
@@ -95,11 +99,17 @@ export default async function AdminInvestorsPage() {
                 <th className="py-3 px-6">Account Rating</th>
                 <th className="py-3 px-6">KYC Status</th>
                 <th className="py-3 px-6">Active Investments</th>
-                <th className="py-3 px-6">Real Funded (USD)</th>
-                <th className="py-3 px-6 text-right">Actions</th>
+                <th className="py-3 px-6">Invested (USD)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {!loadError && investors.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 px-6 text-center text-gray-400">
+                    {query ? 'No investors match your search.' : 'No investors have registered yet.'}
+                  </td>
+                </tr>
+              )}
               {investors.map((inv: any) => {
                 const realInvestments = (inv.investments || []).filter((i: any) => !isDemoInvestment(i))
                 const realTransactions = (inv.transactions || []).filter((t: any) => !isDemoTransaction(t))
@@ -156,13 +166,7 @@ export default async function AdminInvestorsPage() {
                       {activeCount} Active
                     </td>
                     <td className="py-3.5 px-6 font-bold text-[#0F1C3F]">
-                      <div>{formatCurrency(totalFunded)}</div>
-                      <span className="text-[9px] text-gray-400 font-normal">Real capital</span>
-                    </td>
-                    <td className="py-3.5 px-6 text-right">
-                      <button className="px-3 py-1 rounded-lg border border-gray-200 text-gray-700 text-[11px] font-medium hover:bg-gray-50">
-                        View Dossier
-                      </button>
+                      {formatCurrency(totalFunded)}
                     </td>
                   </tr>
                 )

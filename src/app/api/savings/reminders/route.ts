@@ -6,8 +6,6 @@ import { createChatMessage, resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_SPOUSE_EMAIL = ''
-const DEFAULT_SPOUSE_NAME = 'your spouse'
 
 export async function GET() {
   try {
@@ -23,11 +21,6 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       reminders: reminders || [],
-      partner: {
-        name: DEFAULT_SPOUSE_NAME,
-        email: DEFAULT_SPOUSE_EMAIL,
-        phone: '',
-      },
     })
   } catch (error: any) {
     console.error('[GET /api/savings/reminders]', error)
@@ -40,168 +33,91 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
-    const userName = session?.user?.name || 'Investor'
+    const userName = session?.user?.name || 'Your spouse'
     const body = await req.json()
 
-    const {
-      action = 'send_now',
-      amount = 500,
-      targetPartnerName = DEFAULT_SPOUSE_NAME,
-      targetEmail = DEFAULT_SPOUSE_EMAIL,
-      vaultName = 'your joint vault',
-      note = '',
-      frequency = 'MONTHLY',
-      dayOfWeek,
-      dayOfMonth = 1,
-      time = '09:00 AM',
-      channels = ['EMAIL', 'IN_APP', 'CHAT_SYSTEM'],
-    } = body
+    const { action = 'send_now', amount = 0, vaultName = 'your joint vault', note = '' } = body
 
-    // 1. INSTANT DEPOSIT NUDGE (TRIGGER NOW)
+    // 1. SEND A REMINDER TO MY SPOUSE NOW (in-app, couple chat, and email when configured)
     if (action === 'send_now') {
-      const numAmount = Number(amount) || 500
-      const customNote = note || `Hi ${targetPartnerName}, please make your deposit of $${numAmount.toLocaleString()} to our joint vault.`
-
-      // A. Send Branded Email
-      let emailSent = false
-      try {
-        emailSent = await sendDepositReminderEmail({
-          to: targetEmail,
-          recipientName: targetPartnerName,
-          senderName: userName,
-          amount: numAmount,
-          vaultName,
-          note: customNote,
-          frequency,
-        })
-      } catch (e) {
-        console.warn('Failed to send email:', e)
+      const spouseId = await resolveSpouseId(userId)
+      const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId } }) : null
+      if (!spouse) {
+        return NextResponse.json({ success: false, error: 'Connect with your spouse first.' }, { status: 400 })
       }
+      const numAmount = Math.round(Number(amount) * 100) / 100
+      if (!(numAmount > 0)) {
+        return NextResponse.json({ success: false, error: 'Enter an amount.' }, { status: 400 })
+      }
+      const cleanNote = String(note || '').slice(0, 300)
+      const sent: string[] = []
 
-      // B. Create In-App Notification (persistent until attended)
-      try {
-        await prisma.notification.create({
+      const emailSent = await sendDepositReminderEmail({
+        to: spouse.email,
+        recipientName: spouse.name,
+        senderName: userName,
+        amount: numAmount,
+        vaultName,
+        note: cleanNote || `Please add $${numAmount.toLocaleString()} to our joint vault.`,
+        frequency: 'ONCE',
+      }).catch(() => false)
+      if (emailSent) sent.push('email')
+
+      const notified = await prisma.notification
+        .create({
           data: {
-            userId: (await resolveSpouseId(userId)) || userId,
+            userId: spouse.id,
             title: `Deposit reminder from ${userName}`,
-            message: `${userName} reminded you to deposit $${numAmount.toLocaleString()} into ${vaultName}.`,
+            message: `${userName} reminded you to deposit $${numAmount.toLocaleString()} into your joint vault.${cleanNote ? ` "${cleanNote}"` : ''}`,
             type: 'ALERT',
             link: `/save?amount=${numAmount}`,
             category: 'PARTNER_CHANGE',
             requiresAction: true,
-            attended: false,
             amount: numAmount,
             partnerName: userName,
             actionLabel: `Deposit $${numAmount.toLocaleString()}`,
-          } as any,
-        })
-      } catch (e) {
-        console.warn('Failed to create in-app notification:', e)
-      }
-
-      // C. Inject System Reminder into Couple Chat
-      const now = new Date()
-      const formattedTime = new Intl.DateTimeFormat('en-US', {
-        hour: 'numeric',
-        minute: 'numeric',
-        hour12: true,
-      }).format(now)
-
-      try {
-        await createChatMessage({
-          data: {
-            id: `sys-remind-${Date.now()}`,
-            threadId: 'spouse',
-            senderId: 'system_concierge',
-            senderName: 'Union Verify Concierge',
-            text: `${userName} sent ${targetPartnerName} a reminder to deposit $${numAmount.toLocaleString()} into ${vaultName}.`,
-            timestamp: formattedTime,
-            createdAt: now,
-            read: false,
-            type: 'system_reminder',
-            proposalData: {
-              goalName: vaultName,
-              amount: numAmount,
-              split: '50/50',
-              status: 'pending',
-              proposedBy: userName,
-            },
           },
-          spouseOf: userId,
         })
-      } catch (e) {
-        console.warn('Failed to create chat system reminder:', e)
-      }
+        .then(() => true)
+        .catch(() => false)
+      if (notified) sent.push('notification')
 
-      // D. Audit Log
+      const now = new Date()
+      const posted = await createChatMessage({
+        data: {
+          id: `sys-remind-${Date.now()}`,
+          threadId: 'spouse',
+          senderId: 'system_reminder',
+          senderName: 'Reminder',
+          text: `${userName} sent ${spouse.name} a reminder to deposit $${numAmount.toLocaleString()}.${cleanNote ? ` "${cleanNote}"` : ''}`,
+          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(now),
+          createdAt: now,
+          read: false,
+          type: 'system_reminder',
+          proposalData: { amount: numAmount },
+        },
+        spouseOf: userId,
+      })
+        .then(() => true)
+        .catch(() => false)
+      if (posted) sent.push('couple chat')
+
       await prisma.auditLog.create({
         data: {
           userId,
           action: 'DEPOSIT_REMINDER_SENT',
           entity: 'DepositReminder',
-          after: {
-            senderName: userName,
-            targetPartnerName,
-            targetEmail,
-            amount: numAmount,
-            vaultName,
-            channels,
-            emailSent,
-            sentAt: now.toISOString(),
-          },
+          after: { senderName: userName, spouseId: spouse.id, amount: numAmount, channels: sent, sentAt: now.toISOString() },
         },
       })
 
-      return NextResponse.json({
-        success: true,
-        message: `✓ Deposit reminder dispatched to ${targetPartnerName} via Email, In-App Notification, and Couple Chat!`,
-        details: {
-          recipient: targetPartnerName,
-          email: targetEmail,
-          amount: numAmount,
-          sentAt: now.toISOString(),
-        },
-      })
-    }
-
-    // 2. CREATE SCHEDULED DEPOSIT REMINDER
-    if (action === 'create_reminder') {
-      const numAmount = Number(amount) || 500
-      const nextDate = new Date()
-      if (frequency === 'DAILY') {
-        nextDate.setDate(nextDate.getDate() + 1)
-      } else if (frequency === 'WEEKLY') {
-        nextDate.setDate(nextDate.getDate() + 7)
-      } else {
-        nextDate.setMonth(nextDate.getMonth() + 1)
+      if (sent.length === 0) {
+        return NextResponse.json({ success: false, error: 'The reminder could not be sent. Please try again.' }, { status: 500 })
       }
-
-      const newReminder = await prisma.depositReminder.create({
-        data: {
-          id: `rem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-          userId,
-          targetPartnerId: 'usr_marcus_vance',
-          targetPartnerName,
-          targetEmail,
-          amount: numAmount,
-          frequency,
-          dayOfWeek: dayOfWeek || 'FRIDAY',
-          dayOfMonth: Number(dayOfMonth) || 1,
-          time,
-          note,
-          channels: channels || ['EMAIL', 'IN_APP', 'CHAT_SYSTEM'],
-          active: true,
-          nextReminderDate: nextDate.toISOString(),
-          lastSentAt: null,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      })
-
       return NextResponse.json({
         success: true,
-        message: `Scheduled ${frequency.toLowerCase()} deposit reminder created successfully!`,
-        reminder: newReminder,
+        message: `Reminder sent to ${spouse.name} by ${sent.join(', ')}.`,
+        details: { recipient: spouse.name, amount: numAmount, channels: sent, sentAt: now.toISOString() },
       })
     }
 

@@ -240,8 +240,8 @@ export async function POST(req: NextRequest) {
       await prisma.notification.create({
         data: {
           userId,
-          title: 'Partner Approval Required 🔐',
-          message: `Your withdrawal request of $${amount.toLocaleString()} is locked pending digital approval from ${partnerName}. Under our Spousal Covenant, joint funds cannot be released unilaterally.`,
+          title: 'Your spouse needs to approve this withdrawal',
+          message: `Your withdrawal request of $${amount.toLocaleString()} is waiting for ${partnerName} to approve it.`,
           type: 'INFO',
           link: '/withdrawals',
         },
@@ -273,7 +273,7 @@ export async function POST(req: NextRequest) {
         partnerName,
         message: isSolo
           ? 'Solo withdrawal submitted for review.'
-          : `Withdrawal submitted. Under our Spousal Covenant, ${partnerName} must approve before funds can be liquidated.`,
+          : `Withdrawal submitted. ${partnerName} needs to approve it before it is processed.`,
       },
       { status: 201 },
     )

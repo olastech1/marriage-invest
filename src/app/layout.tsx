@@ -22,11 +22,11 @@ export const metadata: Metadata = {
     template: '%s | Union Verify',
   },
   description:
-    'A secure, transparent marriage investment platform. Explore opportunities, manage your portfolio, and track your investments with confidence.',
+    'A joint savings and investment platform for couples. Explore opportunities, manage your portfolio, and track your investments.',
   keywords: ['investment', 'marriage investment', 'portfolio', 'USD investment', 'Union Verify'],
   openGraph: {
     title: 'Union Verify — Marriage Investment Platform',
-    description: 'A secure, transparent marriage investment platform.',
+    description: 'A joint savings and investment platform for couples.',
     type: 'website',
     locale: 'en_US',
   },

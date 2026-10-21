@@ -10,8 +10,6 @@ import {
   VolumeX,
   PiggyBank,
   Award,
-  Shield,
-  Clock,
   X,
   CheckCircle2,
   ArrowLeft,
@@ -20,17 +18,12 @@ import {
   UserCheck,
   RefreshCw,
   Sparkles,
-  DollarSign,
   Bell,
-  Phone,
-  Mail,
-  Share2,
   MessageSquare,
   Search,
   Plus,
   Users,
   ExternalLink,
-  User,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -118,7 +111,7 @@ export default function UnifiedChatPage() {
   // Empty until the server resolves the user's spouse (or a contact is picked)
   const [activeRecipient, setActiveRecipient] = useState<ChatUser>({
     id: '',
-    name: 'Your Spouse',
+    name: 'Your spouse',
     avatar: 'YS',
     online: false,
   })
@@ -178,42 +171,35 @@ export default function UnifiedChatPage() {
       if (matched) {
         setActiveRecipient(matched)
       } else {
-        const cleanName = recName ? decodeURIComponent(recName) : (recId.includes('marcus') ? 'Marcus Vance' : (recId.includes('jane') ? 'Jane Doe' : recId))
+        // Not in the directory: use the name from the link; no username, so no profile link
+        const cleanName = recName ? decodeURIComponent(recName) : 'Member'
         setActiveRecipient({
           id: recId,
           name: cleanName,
-          username: recId,
-          email: `${recId}@unionverify.com`,
           avatar: cleanName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-          online: true,
         })
       }
       setMobileTab('chat')
     } else if (threadParam === 'advisor' || threadParam === 'support') {
       setActiveRecipient({
         id: 'usr_admin',
-        name: 'Union Verify Desk',
-        username: 'support',
-        email: 'admin@unionverify.com',
-        role: 'Support & Concierge',
+        name: 'Union Verify Support',
+        role: 'Support',
         avatar: 'UV',
-        online: true,
       })
       setMobileTab('chat')
     } else if (spouseId) {
       // Default to the user's spouse
       const spouseConvo = conversations.find((c) => c.otherUserId === spouseId)
       const spouseContact = availableContacts.find((c) => c.id === spouseId)
-      const spouseName = spouseContact?.name || spouseConvo?.otherUserName || 'Your Spouse'
+      const spouseName = spouseContact?.name || spouseConvo?.otherUserName || 'Your spouse'
       setActiveRecipient((prev) =>
         prev.id === spouseId
           ? prev
           : spouseContact || {
               id: spouseId,
               name: spouseName,
-              username: spouseId,
               avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-              online: true,
             }
       )
     }
@@ -235,7 +221,7 @@ export default function UnifiedChatPage() {
   }
 
   // -------------------------------------------------------------------------
-  // 3. Messages & Real-Time Synchronization
+  // 3. Messages & polling
   // -------------------------------------------------------------------------
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputText, setInputText] = useState('')
@@ -244,11 +230,11 @@ export default function UnifiedChatPage() {
 
   // Modals & Extras
   const [showProposalModal, setShowProposalModal] = useState(false)
-  const [proposalGoal, setProposalGoal] = useState('Family Dream Home Down Payment')
+  const [proposalGoal, setProposalGoal] = useState('')
   const [proposalAmount, setProposalAmount] = useState('250')
   const [showLoveNoteModal, setShowLoveNoteModal] = useState(false)
-  const [loveNoteText, setLoveNoteText] = useState('Adding $150 to our Amalfi Coast fund today. Loving our life together! ❤️')
-  const [loveNotePreset, setLoveNotePreset] = useState('Vacation Nest Egg')
+  const [loveNoteText, setLoveNoteText] = useState('')
+  const [loveNotePreset, setLoveNotePreset] = useState('')
   const [isNudging, setIsNudging] = useState(false)
   const [nudgeBanner, setNudgeBanner] = useState('')
 
@@ -350,7 +336,7 @@ export default function UnifiedChatPage() {
     fetchConversations()
     fetchMessages(true)
 
-    // Polling interval every 2.0s for authentic real-time delivery
+    // Poll for new messages every 2s
     const pollInterval = setInterval(() => {
       fetchMessages(false)
       fetchConversations()
@@ -373,23 +359,8 @@ export default function UnifiedChatPage() {
     }
   }, [fetchContacts, fetchConversations, fetchMessages])
 
-  // Back from Stripe after reciprocating: record the payment (no-op if the webhook already did)
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const sessionId = params.get('session_id')
-    if (params.get('checkout_success') !== 'true' || !sessionId) return
-    window.history.replaceState({}, '', '/chat')
-    fetch('/api/payments/confirm', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sessionId }),
-    })
-      .then(() => fetchMessages(false))
-      .catch((err) => console.error('Failed to confirm card payment:', err))
-  }, [fetchMessages])
-
   // -------------------------------------------------------------------------
-  // 4. Send Message (100% Authentic Human-to-Human, No Bots)
+  // 4. Send Message
   // -------------------------------------------------------------------------
   const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault()
@@ -458,8 +429,16 @@ export default function UnifiedChatPage() {
     setTimeout(() => setCopiedInvite(false), 3500)
   }
 
-  // Instant Spousal Deposit Nudge
+  // Deposit reminder to my spouse (the member chooses the amount)
   const handleSendInstantNudge = async () => {
+    const entered = window.prompt(`How much would you like to remind ${activeRecipient.name} to deposit? (USD)`)
+    if (entered === null) return
+    const amount = Math.round(parseFloat(entered) * 100) / 100
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setNudgeBanner('Enter an amount greater than $0 to send a reminder.')
+      setTimeout(() => setNudgeBanner(''), 4500)
+      return
+    }
     setIsNudging(true)
     try {
       const res = await fetch('/api/savings/reminders', {
@@ -467,14 +446,14 @@ export default function UnifiedChatPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'send_now',
-          amount: 500,
+          amount,
           targetPartnerId: activeRecipient.id,
           targetPartnerName: activeRecipient.name,
         }),
       })
       const data = await res.json()
       if (data.success) {
-        setNudgeBanner(`Deposit reminder dispatched directly to ${activeRecipient.name}!`)
+        setNudgeBanner(`Deposit reminder sent to ${activeRecipient.name}.`)
         fetchMessages(false)
         broadcastChannelRef.current?.postMessage({ type: 'NUDGE_SENT' })
         setTimeout(() => setNudgeBanner(''), 4500)
@@ -514,10 +493,11 @@ export default function UnifiedChatPage() {
     }
   }
 
-  // Send Shared Vault Proposal
+  // Send a deposit proposal
   const handleCreateProposal = async (e: React.FormEvent) => {
     e.preventDefault()
-    const amountNum = parseFloat(proposalAmount) || 250
+    const amountNum = parseFloat(proposalAmount)
+    if (!Number.isFinite(amountNum) || amountNum <= 0) return
     setShowProposalModal(false)
 
     try {
@@ -531,7 +511,7 @@ export default function UnifiedChatPage() {
           recipientId: activeRecipient.id,
           recipientName: activeRecipient.name,
           type: 'proposal',
-          text: `Hey ${activeRecipient.name}, I propose adding $${amountNum.toFixed(2)} to our ${proposalGoal}. Will you approve our 50/50 contribution?`,
+          text: `I propose we deposit $${amountNum.toFixed(2)} for ${proposalGoal}, split 50/50. Do you approve?`,
           proposalData: {
             goalName: proposalGoal,
             amount: amountNum,
@@ -553,7 +533,7 @@ export default function UnifiedChatPage() {
     }
   }
 
-  // Send Matrimonial Love Note
+  // Send a love note
   const handleSendLoveNote = async (e: React.FormEvent) => {
     e.preventDefault()
     setShowLoveNoteModal(false)
@@ -570,7 +550,7 @@ export default function UnifiedChatPage() {
           recipientName: activeRecipient.name,
           type: 'love_note',
           text: loveNoteText,
-          loveNoteTitle: loveNotePreset,
+          loveNoteTitle: loveNotePreset || 'Love note',
         }),
       })
       const data = await res.json()
@@ -635,14 +615,10 @@ export default function UnifiedChatPage() {
             <ArrowLeft className="w-4 h-4" />
           </Link>
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h1 className="text-base sm:text-lg font-black text-[#0F1C3F] tracking-tight">
-              Real-Time Direct Messenger
+              Messages
             </h1>
           </div>
-          <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold">
-            Live Peer-to-Peer
-          </span>
         </div>
 
         {/* Identity & Invite Link */}
@@ -662,7 +638,7 @@ export default function UnifiedChatPage() {
             {copiedInvite ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="text-emerald-700 font-bold">Chat Link Copied!</span>
+                <span className="text-emerald-700 font-bold">Chat link copied</span>
               </>
             ) : (
               <>
@@ -682,7 +658,7 @@ export default function UnifiedChatPage() {
             title="Toggle notification chime"
           >
             {soundEnabled ? <Volume2 className="w-3.5 h-3.5 text-emerald-600" /> : <VolumeX className="w-3.5 h-3.5" />}
-            <span className="text-[11px]">{soundEnabled ? 'Chime Active' : 'Muted'}</span>
+            <span className="text-[11px]">{soundEnabled ? 'Sound on' : 'Muted'}</span>
           </button>
         </div>
       </div>
@@ -755,7 +731,6 @@ export default function UnifiedChatPage() {
                       }`}>
                         {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                       </div>
-                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -788,17 +763,19 @@ export default function UnifiedChatPage() {
             )}
           </div>
 
-          {/* Connected Quick Profile Bar */}
-          <div className="p-3 border-t border-gray-100 bg-white/60 flex-shrink-0 space-y-2">
-            <Link
-              href={activeRecipient.username ? `/u/${activeRecipient.username}` : (activeRecipient.id === 'usr_marcus_vance' ? '/u/marcus-vance' : '/u/jane-doe')}
-              target="_blank"
-              className="w-full py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5"
-            >
-              <ExternalLink size={13} className="text-blue-600" />
-              <span>View {activeRecipient.name}&apos;s Public Profile</span>
-            </Link>
-          </div>
+          {/* Public profile of the open conversation (only if they have a username) */}
+          {activeRecipient.username && (
+            <div className="p-3 border-t border-gray-100 bg-white/60 flex-shrink-0 space-y-2">
+              <Link
+                href={`/u/${activeRecipient.username}`}
+                target="_blank"
+                className="w-full py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5"
+              >
+                <ExternalLink size={13} className="text-blue-600" />
+                <span>View {activeRecipient.name}&apos;s Public Profile</span>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* ── RIGHT AREA: ACTIVE CHAT THREAD ── */}
@@ -824,7 +801,6 @@ export default function UnifiedChatPage() {
                 <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-xs">
                   {activeRecipient.avatar || (activeRecipient.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
               </div>
 
               <div className="min-w-0 overflow-hidden">
@@ -837,25 +813,24 @@ export default function UnifiedChatPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
-                  <span className="text-emerald-600 font-semibold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Online
-                  </span>
-                  <span>·</span>
-                  <Link
-                    href={activeRecipient.username ? `/u/${activeRecipient.username}` : (activeRecipient.id === 'usr_marcus_vance' ? '/u/marcus-vance' : '/u/jane-doe')}
-                    target="_blank"
-                    className="text-[#C9A84C] hover:underline"
-                  >
-                    Profile
-                  </Link>
-                  <span>·</span>
+                  {activeRecipient.username && (
+                    <>
+                      <Link
+                        href={`/u/${activeRecipient.username}`}
+                        target="_blank"
+                        className="text-[#C9A84C] hover:underline"
+                      >
+                        Profile
+                      </Link>
+                      <span>·</span>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={handleCopyPartnerInvite}
                     className="text-purple-600 font-semibold hover:underline"
                   >
-                    {copiedInvite ? '✓ Link Copied' : 'Invite'}
+                    {copiedInvite ? 'Link copied' : 'Invite'}
                   </button>
                 </div>
               </div>
@@ -914,7 +889,7 @@ export default function UnifiedChatPage() {
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                   <span>
-                    Your direct chat link has been copied! Send it to anyone to chat in real-time.
+                    Your chat link is copied. Anyone signed in who opens it can message you.
                   </span>
                 </div>
                 <button onClick={() => setCopiedInvite(false)} className="text-emerald-700 hover:text-emerald-950">
@@ -929,14 +904,8 @@ export default function UnifiedChatPage() {
                 <div className="w-5 h-5 rounded-full bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] flex items-center justify-center">
                   {activeRecipient.avatar || 'UV'}
                 </div>
-                <span className="text-xs font-bold text-[#0F1C3F]">Direct Line with {activeRecipient.name}</span>
-                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono font-bold px-1.5 py-0.2 rounded-full border border-emerald-200">
-                  Live
-                </span>
+                <span className="text-xs font-bold text-[#0F1C3F]">Conversation with {activeRecipient.name}</span>
               </div>
-              <p className="text-[11px] text-gray-500">
-                End-to-end encrypted direct communication. No bots or automated AI responses.
-              </p>
             </div>
 
             {/* Empty State */}
@@ -948,7 +917,7 @@ export default function UnifiedChatPage() {
                 <div>
                   <h4 className="text-sm font-bold text-[#0F1C3F]">Start conversation with {activeRecipient.name}</h4>
                   <p className="text-xs text-gray-400 max-w-sm mx-auto mt-1">
-                    Send a message below. Your recipient will receive an instant notification.
+                    Send a message below.
                   </p>
                 </div>
               </div>
@@ -999,12 +968,12 @@ export default function UnifiedChatPage() {
                                 : 'bg-amber-100 text-amber-800'
                             }`}
                           >
-                            {msg.proposalData.status === 'approved' ? '✓ Approved' : 'Awaiting Approval'}
+                            {msg.proposalData.status === 'approved' ? 'Approved' : 'Awaiting approval'}
                           </span>
                         </div>
 
                         <div>
-                          <span className="text-gray-500 block text-[11px]">Vault Goal</span>
+                          <span className="text-gray-500 block text-[11px]">For</span>
                           <strong className="text-[#0F1C3F] text-sm block">{msg.proposalData.goalName}</strong>
                         </div>
 
@@ -1035,17 +1004,17 @@ export default function UnifiedChatPage() {
                               ) : (
                                 <Check className="w-4 h-4" />
                               )}
-                              <span>Approve & Match Deposit</span>
+                              <span>Approve</span>
                             </button>
                           ) : (
                             <div className="p-2 rounded-lg bg-amber-50 text-amber-800 text-[11px] text-center font-medium border border-amber-200">
-                              ⏳ Waiting for {activeRecipient.name} to approve
+                              Waiting for {activeRecipient.name} to approve
                             </div>
                           )
                         ) : (
                           <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] text-center font-semibold flex items-center justify-center gap-1.5 border border-emerald-200">
                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Approved by {msg.proposalData.approvedBy || 'Partner'}</span>
+                            <span>Approved{msg.proposalData.approvedBy ? ` by ${msg.proposalData.approvedBy}` : ''}</span>
                           </div>
                         )}
                       </div>
@@ -1056,7 +1025,7 @@ export default function UnifiedChatPage() {
                       <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50 via-pink-50 to-white border-2 border-rose-200 shadow-xs text-xs space-y-2 min-w-[240px]">
                         <div className="flex items-center gap-1.5 text-rose-600 font-bold text-xs border-b border-rose-100 pb-1.5">
                           <Heart className="w-4 h-4 fill-rose-500 text-rose-500" />
-                          <span>{msg.loveNoteTitle || 'Matrimonial Love Note'}</span>
+                          <span>{msg.loveNoteTitle || 'Love note'}</span>
                         </div>
                         <p className="text-gray-800 text-xs italic leading-relaxed">&ldquo;{msg.text}&rdquo;</p>
                       </div>
@@ -1226,7 +1195,7 @@ export default function UnifiedChatPage() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
                 <PiggyBank className="w-5 h-5 text-[#C9A84C]" />
-                <h3 className="font-bold text-sm text-[#0F1C3F]">Propose Shared Vault Contribution</h3>
+                <h3 className="font-bold text-sm text-[#0F1C3F]">Propose a Joint Deposit</h3>
               </div>
               <button onClick={() => setShowProposalModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={16} />
@@ -1236,11 +1205,12 @@ export default function UnifiedChatPage() {
             <form onSubmit={handleCreateProposal} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Vault Milestone Goal
+                  What it&apos;s for
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder="e.g. our first home"
                   value={proposalGoal}
                   onChange={(e) => setProposalGoal(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
@@ -1249,7 +1219,7 @@ export default function UnifiedChatPage() {
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Total Match Amount ($)
+                  Total Amount ($)
                 </label>
                 <input
                   type="number"
@@ -1283,7 +1253,7 @@ export default function UnifiedChatPage() {
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
               <div className="flex items-center gap-2">
                 <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
-                <h3 className="font-bold text-sm text-[#0F1C3F]">Send Matrimonial Love Note</h3>
+                <h3 className="font-bold text-sm text-[#0F1C3F]">Send a Love Note</h3>
               </div>
               <button onClick={() => setShowLoveNoteModal(false)} className="text-gray-400 hover:text-gray-600">
                 <X size={16} />
@@ -1293,10 +1263,11 @@ export default function UnifiedChatPage() {
             <form onSubmit={handleSendLoveNote} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Occasion / Preset
+                  Title (optional)
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. Happy anniversary"
                   value={loveNotePreset}
                   onChange={(e) => setLoveNotePreset(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
@@ -1320,7 +1291,7 @@ export default function UnifiedChatPage() {
                 type="submit"
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs transition-colors shadow-xs"
               >
-                Send Note to {activeRecipient.name} ❤️
+                Send Note to {activeRecipient.name}
               </button>
             </form>
           </div>

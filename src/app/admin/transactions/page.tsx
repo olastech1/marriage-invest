@@ -2,13 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import {
-  CreditCard,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  FileSpreadsheet,
-} from 'lucide-react'
+import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,6 +12,7 @@ export default async function AdminTransactionsPage() {
     redirect('/login?callbackUrl=/admin/transactions')
   }
 
+  let loadError = false
   let transactions: any[] = []
   try {
     transactions = await prisma.transaction.findMany({
@@ -31,26 +26,29 @@ export default async function AdminTransactionsPage() {
       },
       orderBy: { createdAt: 'desc' },
     })
-  } catch {
-    // DB offline
+  } catch (error) {
+    console.error('[admin/transactions]', error)
+    loadError = true
   }
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Platform Financial Ledger</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
           <p className="text-xs text-gray-500 mt-1">
-            Reconciled records of all deposits, contractual yields, and liquidations denominated in USD.
+            All deposits, distributions, withdrawals, and fees recorded on the platform, in USD.
           </p>
         </div>
       </div>
 
+      {loadError && <LoadErrorBanner />}
+
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-base font-bold text-gray-900">Traceable Transaction Ledger</h2>
-            <p className="text-xs text-gray-500">Total ledger transactions: {transactions.length}</p>
+            <h2 className="text-base font-bold text-gray-900">All Transactions</h2>
+            <p className="text-xs text-gray-500">Total transactions: {transactions.length}</p>
           </div>
         </div>
 
@@ -68,6 +66,13 @@ export default async function AdminTransactionsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
+              {!loadError && transactions.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 px-6 text-center text-gray-400">
+                    No transactions yet.
+                  </td>
+                </tr>
+              )}
               {transactions.map((t) => (
                 <tr key={t.id} className="hover:bg-gray-50/50">
                   <td className="py-3.5 px-6 font-mono text-gray-500">

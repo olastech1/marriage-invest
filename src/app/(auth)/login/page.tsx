@@ -6,7 +6,6 @@
  * Features:
  * - Zod-based client-side validation
  * - Password show/hide toggle
- * - Remember-me checkbox
  * - Server error surfaced from NextAuth
  * - Loading / submitting state
  */
@@ -63,7 +62,6 @@ function LoginForm() {
   const urlError = resolveError(searchParams.get('error'))
 
   const [fields, setFields] = useState<LoginFields>({ email: '', password: '' })
-  const [rememberMe, setRememberMe] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [serverError, setServerError] = useState<string | null>(urlError)
@@ -182,21 +180,12 @@ function LoginForm() {
 
         {/* Password */}
         <div>
-          <div className="flex items-center justify-between mb-1.5">
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-slate-700"
-            >
-              Password
-            </label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-[#C9A84C] font-medium hover:text-[#b8943f] transition-colors"
-              tabIndex={isSubmitting ? -1 : undefined}
-            >
-              Forgot password?
-            </Link>
-          </div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-slate-700 mb-1.5"
+          >
+            Password
+          </label>
           <div className="relative">
             <input
               id="password"
@@ -238,25 +227,6 @@ function LoginForm() {
               {fieldErrors.password}
             </p>
           )}
-        </div>
-
-        {/* Remember me */}
-        <div className="flex items-center gap-2.5">
-          <input
-            id="remember-me"
-            name="remember-me"
-            type="checkbox"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-            disabled={isSubmitting}
-            className="h-4 w-4 rounded border-slate-300 text-[#0F1C3F] accent-[#0F1C3F] cursor-pointer disabled:cursor-not-allowed"
-          />
-          <label
-            htmlFor="remember-me"
-            className="text-sm text-slate-600 cursor-pointer select-none"
-          >
-            Keep me signed in for 30 days
-          </label>
         </div>
 
         <button

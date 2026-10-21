@@ -397,3 +397,39 @@ model AppSetting {
 
   @@map("app_settings")
 }
+
+// A Stripe Checkout payment waiting to be fulfilled (exactly once) when paid
+model PendingPayment {
+  id              String    @id @default(cuid())
+  purpose         String
+  userId          String?
+  amount          Float
+  payload         Json
+  status          String    @default("PENDING") // PENDING | PROCESSING | FULFILLED
+  stripeSessionId String?   @unique
+  result          Json?
+  createdAt       DateTime  @default(now())
+  fulfilledAt     DateTime?
+
+  @@index([userId])
+  @@map("pending_payments")
+}
+
+model MarriageRegistration {
+  id                String   @id @default(cuid())
+  docketNumber      String   @unique
+  userId            String
+  partner1Name      String
+  partner1Email     String
+  partner2Name      String
+  partner2Email     String
+  details           Json
+  registrationPaid  Boolean  @default(false)
+  certificatePaid   Boolean  @default(false)
+  certificateNumber String?  @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@map("marriage_registrations")
+}

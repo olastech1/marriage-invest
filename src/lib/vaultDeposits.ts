@@ -1,18 +1,20 @@
 /**
- * Records a joint-vault deposit (or a reciprocation of the spouse's deposit):
- * a transaction, one card in the couple chat, and a notification asking the
- * spouse to reciprocate.
+ * Records a PAID joint-vault deposit (or a reciprocation of the spouse's
+ * deposit): a transaction, one card in the couple chat, and a notification
+ * asking the spouse to reciprocate. Only called after Stripe confirms payment.
  */
 
 import { prisma } from '@/lib/db'
 import { createChatMessage, resolveSpouseId } from '@/lib/chat'
-import { getSpouseName } from '@/lib/reciprocation'
+import { getReciprocationStatus, getSpouseName } from '@/lib/reciprocation'
+import { bonusFor, getSettings } from '@/lib/settings'
 
 export interface VaultDepositInput {
   userId: string
   userName: string
   amount: number
-  applyBonus?: boolean
+  /** Stripe PaymentIntent / Checkout Session id this deposit was paid with */
+  paymentRef: string
   vaultTitle?: string
   note?: string
   isReciprocalMatch?: boolean
@@ -22,7 +24,7 @@ export async function recordVaultDeposit({
   userId,
   userName,
   amount,
-  applyBonus = false,
+  paymentRef,
   vaultTitle = 'Joint Vault',
   note = '',
   isReciprocalMatch = false,
@@ -30,7 +32,8 @@ export async function recordVaultDeposit({
   const spouseId = await resolveSpouseId(userId)
   const spouseName = spouseId ? await getSpouseName(spouseId) : 'your spouse'
 
-  const bonusAmount = applyBonus ? Math.round(amount * 0.1 * 100) / 100 : 0
+  // Promotional match only when an admin has turned it on
+  const bonusAmount = isReciprocalMatch ? 0 : bonusFor(amount, await getSettings())
   const totalAdded = amount + bonusAmount
   const reference = `DEP-${Date.now().toString(36).toUpperCase()}`
 
@@ -43,12 +46,13 @@ export async function recordVaultDeposit({
       netAmount: totalAdded as any,
       status: 'COMPLETED',
       reference,
-      description: `${vaultTitle} ${isReciprocalMatch ? 'Reciprocation' : 'Deposit'} ($${amount.toLocaleString()})${bonusAmount > 0 ? ` + 10% Cash Match ($${bonusAmount.toLocaleString()})` : ''}`,
+      stripePaymentIntentId: paymentRef,
+      processedAt: new Date(),
+      description: `${vaultTitle} ${isReciprocalMatch ? 'Reciprocation' : 'Deposit'} ($${amount.toLocaleString()})${bonusAmount > 0 ? ` + cash match ($${bonusAmount.toLocaleString()})` : ''}`,
       metadata: {
         depositorName: userName,
         baseAmount: amount,
         bonusMatch: bonusAmount,
-        bonusApplied: applyBonus,
         note,
         isReciprocalMatch,
         status: 'APPROVED',
@@ -74,7 +78,7 @@ export async function recordVaultDeposit({
         bonusMatch: bonusAmount,
         vaultTitle,
         depositorName: userName,
-        reference,
+        reference: paymentRef,
         isReciprocalMatch,
       },
       reactions: {},
@@ -97,7 +101,15 @@ export async function recordVaultDeposit({
         partnerName: userName,
         actionLabel: `Reciprocate $${amount.toLocaleString()}`,
         metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount },
-      } as any,
+      },
+    }).catch((err) => console.error('[recordVaultDeposit] spouse notification failed', err))
+  }
+
+  // Fully reciprocated: close the "your spouse deposited" prompts
+  if (isReciprocalMatch && (await getReciprocationStatus(userId)).owedByMe === 0) {
+    await prisma.notification.updateMany({
+      where: { userId, category: 'PARTNER_DEPOSIT', attended: false },
+      data: { attended: true, read: true, attendedAt: new Date() },
     })
   }
 

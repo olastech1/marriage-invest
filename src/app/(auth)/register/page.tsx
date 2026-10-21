@@ -12,9 +12,9 @@
  * - Success state with email verification notice
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Suspense } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { z } from 'zod'
 import {
@@ -107,11 +107,12 @@ function passwordStrength(password: string): { score: number; label: string; col
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function RegisterPage() {
+function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [fields, setFields] = useState<RegisterFields>({
     name: '',
-    email: '',
+    email: searchParams.get('email')?.trim() ?? '',
     phone: '',
     password: '',
     confirmPassword: '',
@@ -235,7 +236,7 @@ export default function RegisterPage() {
       <div className="mb-7">
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Create your account</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          Join thousands of couples growing wealth with Union Verify.
+          Save and invest together with Union Verify.
         </p>
       </div>
 
@@ -262,7 +263,7 @@ export default function RegisterPage() {
             autoComplete="name"
             value={fields.name}
             onChange={handleChange}
-            placeholder="Eleanor Sterling"
+            placeholder="Your full name"
             disabled={isSubmitting}
             className={cls('name')}
           />
@@ -488,5 +489,19 @@ export default function RegisterPage() {
         </Link>
       </p>
     </>
+  )
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center py-12">
+          <LoaderCircleIcon className="h-8 w-8 animate-spin text-[#0F1C3F]" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   )
 }

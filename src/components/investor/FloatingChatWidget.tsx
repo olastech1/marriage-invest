@@ -5,17 +5,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   MessageSquareHeart,
-  X,
   Minimize2,
   Maximize2,
   Send,
-  Heart,
-  PiggyBank,
-  CheckCheck,
+  Check,
   Volume2,
   VolumeX,
-  Shield,
-  Smile,
   ExternalLink,
 } from 'lucide-react'
 
@@ -32,9 +27,8 @@ export function FloatingChatWidget() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [soundEnabled, setSoundEnabled] = useState(true)
-  const [unreadCount, setUnreadCount] = useState(1)
+  const [unreadCount, setUnreadCount] = useState(0)
   const [inputText, setInputText] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [messages, setMessages] = useState<FloatingMessage[]>([])
@@ -50,11 +44,11 @@ export function FloatingChatWidget() {
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
   const [pendingMatch, setPendingMatch] = useState<{ owedByMe: number; pendingMessageId: string | null } | null>(null)
 
-  const displayPartnerName = partner?.name || 'Your Spouse'
+  const displayPartnerName = partner?.name || 'Your spouse'
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const partnerRelation = 'Spouse'
 
-  // Live synchronization with /api/chat?thread=spouse
+  // Poll /api/chat?thread=spouse for new messages
   const fetchLiveMessages = async () => {
     try {
       const res = await fetch('/api/chat?thread=spouse')
@@ -240,17 +234,12 @@ export function FloatingChatWidget() {
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F] font-bold flex items-center justify-center text-xs shadow-sm">
                   {partnerInitials}
                 </div>
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#0F1C3F] rounded-full" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-xs font-bold text-white truncate">{displayPartnerName}</h4>
                   <span className="text-[10px] text-[#C9A84C] font-semibold">({partnerRelation})</span>
                 </div>
-                <p className="text-[10px] text-gray-300 truncate flex items-center gap-1">
-                  <Shield className="w-2.5 h-2.5 text-[#C9A84C]" />
-                  Encrypted Matrimonial Line
-                </p>
               </div>
             </div>
 
@@ -272,7 +261,7 @@ export function FloatingChatWidget() {
               <Link
                 href="/chat"
                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="Open Fullscreen Chat Hub"
+                title="Open full chat"
               >
                 <Maximize2 className="w-3.5 h-3.5" />
               </Link>
@@ -281,7 +270,7 @@ export function FloatingChatWidget() {
                 type="button"
                 onClick={() => setIsOpen(false)}
                 className="p-1.5 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-                title="Minimize Chat"
+                title="Minimize chat"
               >
                 <Minimize2 className="w-3.5 h-3.5" />
               </button>
@@ -289,21 +278,22 @@ export function FloatingChatWidget() {
           </div>
 
           {/* Quick Notice Banner */}
-          <div className="px-3.5 py-1.5 bg-[#FCFBF7] border-b border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Mutual Joint Account Synchronized
-            </span>
+          <div className="px-3.5 py-1.5 bg-[#FCFBF7] border-b border-gray-100 flex items-center justify-end text-[11px] text-gray-500">
             <Link
               href="/chat"
               className="text-[#C9A84C] font-bold hover:underline flex items-center gap-0.5 text-[10px]"
             >
-              Full Hub <ExternalLink className="w-2.5 h-2.5" />
+              Full chat <ExternalLink className="w-2.5 h-2.5" />
             </Link>
           </div>
 
           {/* Messages Stream */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50 text-xs">
+            {messages.length === 0 && (
+              <p className="text-center text-[11px] text-gray-400 pt-6">
+                {partner ? `No messages with ${displayPartnerName} yet.` : 'No spouse is linked to your account yet.'}
+              </p>
+            )}
             {messages.map((m) => {
               const isMe = m.sender === 'user'
               return (
@@ -339,39 +329,13 @@ export function FloatingChatWidget() {
                   </div>
                   <div className="flex items-center gap-1 px-1 mt-0.5 text-[9px] text-gray-400">
                     <span>{m.time}</span>
-                    {isMe && <CheckCheck className="w-3 h-3 text-[#C9A84C]" />}
+                    {isMe && <Check className="w-3 h-3 text-[#C9A84C]" />}
                   </div>
                 </div>
               )
             })}
 
-            {isTyping && (
-              <div className="flex items-center gap-1.5 text-gray-400 text-[10px] pl-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" />
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
-                <span className="ml-1">{displayPartnerName} is typing…</span>
-              </div>
-            )}
             <div ref={messagesEndRef} />
-          </div>
-
-          {/* Quick Reply Bar */}
-          <div className="px-3 py-1.5 bg-white border-t border-gray-100 flex items-center gap-1.5 overflow-x-auto text-[11px] no-scrollbar">
-            <button
-              type="button"
-              onClick={() => setInputText('Love you! ❤️')}
-              className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 flex-shrink-0"
-            >
-              Love you ❤️
-            </button>
-            <button
-              type="button"
-              onClick={() => setInputText('Checking our vault right now 📊')}
-              className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 hover:bg-gray-200 flex-shrink-0"
-            >
-              Check Vault
-            </button>
           </div>
 
           {/* Message Input Bar */}
@@ -390,7 +354,7 @@ export function FloatingChatWidget() {
               type="submit"
               disabled={!inputText.trim()}
               className="p-2.5 rounded-xl bg-[#0F1C3F] text-[#C9A84C] hover:bg-[#1a2c5e] disabled:opacity-40 transition-colors shadow-xs"
-              title="Send Message"
+              title="Send message"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
@@ -410,16 +374,14 @@ export function FloatingChatWidget() {
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F] font-bold flex items-center justify-center text-[11px] shadow-sm">
               {partnerInitials}
             </div>
-            <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#0F1C3F] animate-pulse" />
           </div>
 
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-bold text-white">Spouse Chat</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             </div>
             <span className="text-[10px] text-gray-300 font-medium">
-              {displayPartnerName} · <span className="text-[#C9A84C]">Online</span>
+              {displayPartnerName}
             </span>
           </div>
 

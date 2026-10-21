@@ -1,16 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   FileText,
   Download,
   CheckCircle2,
   Clock,
   ShieldCheck,
-  Award,
-  Sparkles,
-  ArrowRight,
-  ExternalLink,
   Check,
   X,
   FileCheck,
@@ -41,8 +38,10 @@ export default function DocumentLibraryClient({
   initialRating,
   userName,
 }: DocumentLibraryClientProps) {
+  const router = useRouter()
   const [documents, setDocuments] = useState<DocumentItem[]>(initialDocuments)
-  const [rating, setRating] = useState<AccountRating>(initialRating)
+  // The rating is computed on the server; refreshing after a signature recomputes it
+  const rating = initialRating
   const [activeModalDoc, setActiveModalDoc] = useState<DocumentItem | null>(null)
   const [signing, setSigning] = useState(false)
   const [successToast, setSuccessToast] = useState<string | null>(null)
@@ -65,45 +64,18 @@ export default function DocumentLibraryClient({
           )
         )
 
-        // Increment local rating score
-        setRating((prev) => {
-          const newDocCount = prev.documentCount + 1
-          const newScore = Math.min(100, prev.score + 10)
-          let newTier: AccountRating['tier'] = prev.tier
-          let newTitle = prev.title
-          if (newScore >= 90) {
-            newTier = 'AAA'
-            newTitle = 'Sovereign Institutional Fiduciary'
-          } else if (newScore >= 75) {
-            newTier = 'AA+'
-            newTitle = 'Prime Matrimonial Covenant'
-          } else if (newScore >= 55) {
-            newTier = 'A'
-            newTitle = 'Verified Fiduciary Account'
-          } else if (newScore >= 35) {
-            newTier = 'BBB'
-            newTitle = 'Accredited Standard Covenant'
-          }
-
-          return {
-            ...prev,
-            documentCount: newDocCount,
-            score: newScore,
-            tier: newTier,
-            title: newTitle,
-            pointsToNextTier: Math.max(0, prev.pointsToNextTier - 10),
-          }
-        })
+        // Recompute the rating on the server
+        router.refresh()
 
         setActiveModalDoc(null)
-        setSuccessToast(`"${doc.name}" has been executed! Your Account Rating increased.`)
+        setSuccessToast(`You signed "${doc.name}".`)
         setTimeout(() => setSuccessToast(null), 4000)
       } else {
         alert(data.error || 'Failed to acknowledge document.')
       }
     } catch (err) {
       console.error(err)
-      alert('Error connecting to document execution registry.')
+      alert('Could not reach the server. Please try again.')
     } finally {
       setSigning(false)
     }
@@ -121,7 +93,7 @@ export default function DocumentLibraryClient({
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="text-xs font-bold text-[#C9A84C] uppercase tracking-wider">
-              Document Executed & Rating Raised!
+              Document signed
             </h4>
             <p className="text-xs text-gray-200 mt-0.5 leading-relaxed">{successToast}</p>
           </div>
@@ -139,17 +111,17 @@ export default function DocumentLibraryClient({
         <div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/15 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-2">
             <ShieldCheck className="w-3.5 h-3.5" />
-            Verified Document Repository
+            Documents
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#0F1C3F]">
-            Investor Document Library & Fiduciary Vault
+            Your Documents
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-2xl leading-relaxed">
-            Execute and maintain your official legal covenants, offering documents, and statutory disclosures. Each accumulated document directly enhances your account credit rating and unlocks institutional privileges.
+            Review and sign the platform&apos;s documents. Signed documents count toward your account rating checklist; the rating does not change your rates, limits or access.
           </p>
         </div>
 
-        {/* Real Capital Only Rating Pill */}
+        {/* Rating summary */}
         <div className="flex items-center gap-3 bg-white p-3 sm:p-4 rounded-2xl border border-gray-200 shadow-sm flex-shrink-0">
           <div className="w-12 h-12 rounded-xl bg-[#0F1C3F] text-[#C9A84C] flex flex-col items-center justify-center font-serif font-black text-lg border border-[#C9A84C]">
             <span>{rating.tier}</span>
@@ -157,13 +129,13 @@ export default function DocumentLibraryClient({
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
-              Current Rating Grade
+              Account rating
             </span>
             <span className="text-sm font-bold text-[#0F1C3F] block">
               {rating.title}
             </span>
             <span className="text-[10px] text-emerald-700 font-semibold block">
-              {ackedCount} of {documents.length} Executed · Demo Excluded
+              {ackedCount} of {documents.length} signed
             </span>
           </div>
         </div>
@@ -173,13 +145,13 @@ export default function DocumentLibraryClient({
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="p-5 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
           <div>
-            <h2 className="text-base font-bold text-[#0F1C3F]">Document Portfolio</h2>
+            <h2 className="text-base font-bold text-[#0F1C3F]">All documents</h2>
             <p className="text-xs text-gray-500">
-              Cryptographically timestamped and archived under international fiduciary standards.
+              The date you sign each document is saved to your account.
             </p>
           </div>
           <span className="text-xs font-bold px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-[#C9A84C] border border-[#C9A84C]/30 w-fit">
-            {ackedCount} of {documents.length} Documents Executed
+            {ackedCount} of {documents.length} signed
           </span>
         </div>
 
@@ -191,7 +163,7 @@ export default function DocumentLibraryClient({
                 <th className="py-3.5 px-6">Category</th>
                 <th className="py-3.5 px-6">Scope / Opportunity</th>
                 <th className="py-3.5 px-6">Version</th>
-                <th className="py-3.5 px-6">Status & Execution</th>
+                <th className="py-3.5 px-6">Status</th>
                 <th className="py-3.5 px-6 text-right">Actions</th>
               </tr>
             </thead>
@@ -219,7 +191,7 @@ export default function DocumentLibraryClient({
                     </span>
                   </td>
                   <td className="py-4 px-6 text-gray-700">
-                    {doc.opportunity ? doc.opportunity.title : 'General Matrimonial Covenant'}
+                    {doc.opportunity ? doc.opportunity.title : 'General'}
                   </td>
                   <td className="py-4 px-6 font-mono text-gray-500">
                     v{doc.version}
@@ -233,7 +205,7 @@ export default function DocumentLibraryClient({
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
                         <Clock className="w-3.5 h-3.5 text-amber-600" />
-                        Action Required (+10 Pts)
+                        Not signed yet
                       </span>
                     )}
                   </td>
@@ -273,7 +245,7 @@ export default function DocumentLibraryClient({
             <div className="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
               <div>
                 <span className="text-[10px] uppercase font-bold text-[#C9A84C] tracking-wider block mb-1">
-                  Electronic Execution Protocol
+                  Review and sign
                 </span>
                 <h3 className="text-lg font-bold text-[#0F1C3F]">{activeModalDoc.name}</h3>
               </div>
@@ -287,7 +259,7 @@ export default function DocumentLibraryClient({
 
             <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 text-xs text-gray-700 space-y-2 leading-relaxed">
               <p>
-                <strong>Document Overview:</strong> {activeModalDoc.description || 'Official statutory covenant document requiring formal electronic acknowledgment by account holders.'}
+                <strong>Document Overview:</strong> {activeModalDoc.description || 'No description provided.'}
               </p>
               <p className="text-[11px] text-gray-500 font-mono">
                 Version: {activeModalDoc.version} · Category: {activeModalDoc.type}
@@ -297,10 +269,10 @@ export default function DocumentLibraryClient({
             {/* Legal Acknowledgment Statement */}
             <div className="p-4 rounded-2xl bg-[#0F1C3F]/[0.02] border border-[#0F1C3F]/15 space-y-2">
               <span className="text-xs font-bold text-[#0F1C3F] block">
-                Legal Electronic Attestation
+                Acknowledgment
               </span>
               <p className="text-[11px] text-gray-600 leading-relaxed">
-                By clicking &quot;Execute & Sign Acknowledgment&quot;, I, <strong>{userName}</strong>, hereby declare that I have reviewed, understood, and consented to the stipulations outlined in this official filing. My digital acknowledgment will be cryptographically bound to my investor ID and will elevate my account standing.
+                By clicking &quot;Sign&quot;, I, <strong>{userName}</strong>, confirm that I have read and agree to this document. The date I sign is saved to my account.
               </p>
             </div>
 
@@ -319,11 +291,11 @@ export default function DocumentLibraryClient({
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2d5e] text-[#C9A84C] font-bold text-xs shadow-md shadow-[#0F1C3F]/20 disabled:opacity-50"
               >
                 {signing ? (
-                  'Executing Signature...'
+                  'Signing...'
                 ) : (
                   <>
                     <FileCheck className="w-4 h-4" />
-                    <span>Execute & Boost Rating (+10 pts)</span>
+                    <span>Sign</span>
                   </>
                 )}
               </button>

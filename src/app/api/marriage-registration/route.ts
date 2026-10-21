@@ -1,183 +1,75 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { createChatMessage } from '@/lib/chat'
-import bcrypt from 'bcryptjs'
+import { FEES, PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 
-export async function POST(req: Request) {
+export const dynamic = 'force-dynamic'
+
+const OPTIONS = {
+  both: { amount: FEES.registration + FEES.certificate, title: 'Union registration and certificate' },
+  registration: { amount: FEES.registration, title: 'Union registration' },
+  certificate: { amount: FEES.certificate, title: 'Union certificate' },
+} as const
+
+const clean = (v: unknown, max = 120) => String(v ?? '').trim().slice(0, max)
+
+// ---------------------------------------------------------------------------
+// POST /api/marriage-registration
+// The signed-in member registers their union (they are partner 1). The fee is
+// set here, paid through Stripe Checkout, and the registration is created only
+// once the payment succeeds (see src/lib/payments.ts).
+// ---------------------------------------------------------------------------
+export async function POST(req: NextRequest) {
   try {
     const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Please sign in or create an account first.' }, { status: 401 })
+    }
+
     const body = await req.json()
-    const {
-      selectedTypeId,
-      partner1Name,
-      partner1Email,
-      partner1Dob,
-      partner1Citizenship,
-      partner1Password,
-      partner2Name,
-      partner2Email,
-      partner2Dob,
-      partner2Citizenship,
-      weddingDate,
-      jurisdiction,
-      customVows,
-      paymentOption,
-      totalAmount = 1000,
-    } = body
-
-    if (!partner1Name || !partner1Email || !partner2Name || !partner2Email) {
-      return NextResponse.json(
-        { error: 'Names and email addresses for both spouses are required.' },
-        { status: 400 }
-      )
+    const option = OPTIONS[body.paymentOption as keyof typeof OPTIONS] ? (body.paymentOption as keyof typeof OPTIONS) : 'both'
+    const partner2Name = clean(body.partner2Name)
+    const partner2Email = clean(body.partner2Email).toLowerCase()
+    if (!partner2Name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(partner2Email)) {
+      return NextResponse.json({ error: "Please enter your partner's name and a valid email." }, { status: 400 })
+    }
+    if (partner2Email === session.user.email?.toLowerCase()) {
+      return NextResponse.json({ error: "Your partner's email must be different from yours." }, { status: 400 })
     }
 
-    const cleanEmail1 = String(partner1Email).toLowerCase().trim()
-    const cleanEmail2 = String(partner2Email).toLowerCase().trim()
-    const docketNumber = `REG-2026-CH-${Math.floor(10000 + Math.random() * 90000)}`
-
-    let userId: string
-    let isNewUser = false
-
-    if (session?.user?.id) {
-      // User is already logged in
-      userId = session.user.id
-      // Update name if needed
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          name: partner1Name,
-          identityVerified: true,
-          identityVerifiedAt: new Date(),
-        },
-      }).catch(() => null)
-    } else {
-      // Check if user with partner1Email exists
-      let existingUser = await prisma.user.findUnique({
-        where: { email: cleanEmail1 },
-      })
-
-      if (existingUser) {
-        userId = existingUser.id
-      } else {
-        isNewUser = true
-        const passwordToHash = partner1Password && String(partner1Password).length >= 6
-          ? String(partner1Password).trim()
-          : `MarriagePass${Math.floor(1000 + Math.random() * 9000)}!`
-
-        const passwordHash = await bcrypt.hash(passwordToHash, 10)
-
-        const newUser = await prisma.user.create({
-          data: {
-            name: partner1Name,
-            email: cleanEmail1,
-            passwordHash,
-            role: 'INVESTOR',
-            emailVerified: new Date(),
-            identityVerified: true,
-            identityVerifiedAt: new Date(),
-          },
-        })
-        userId = newUser.id
-      }
-    }
-
-    // Record fee transaction in database
-    await prisma.transaction.create({
-      data: {
-        userId,
-        type: 'FEE',
-        amount: Number(totalAmount),
-        fee: 0,
-        netAmount: Number(totalAmount),
-        status: 'COMPLETED',
-        reference: `FEE-${docketNumber}`,
-        description: `Matrimonial Registration Fee (${paymentOption === 'both' ? 'Registration + Certificate' : paymentOption})`,
-        metadata: {
-          docketNumber,
-          marriageType: selectedTypeId,
-          partner1Name,
-          partner1Email: cleanEmail1,
-          partner1Dob,
-          partner1Citizenship,
-          partner2Name,
-          partner2Email: cleanEmail2,
-          partner2Dob,
-          partner2Citizenship,
-          weddingDate,
-          jurisdiction,
-          customVows,
-          paymentOption,
-          totalAmount,
-        },
-        processedAt: new Date(),
-      },
-    }).catch((err) => console.error('[Transaction Create Error]', err))
-
-    // Create Notification
-    await prisma.notification.create({
-      data: {
-        userId,
-        title: 'Marriage Solemnization Docketed',
-        message: `Docket ${docketNumber} for ${partner1Name} & ${partner2Name} officially registered. Invitation dispatched to ${cleanEmail2}.`,
-        type: 'SUCCESS',
-        link: '/chat?thread=spouse',
-      },
-    }).catch(() => null)
-
-    // Inject Official Certificate Notice into Couple Chat
-    try {
-      await createChatMessage({
-        data: {
-          id: `msg-cert-${Date.now()}`,
-          threadId: 'spouse',
-          senderId: userId,
-          senderName: partner1Name,
-          text: `💍 Official Marriage Registration Solemnized! Docket ${docketNumber} for ${partner1Name} & ${partner2Name} is officially recorded on the mutual matrimonial ledger. Certificate active!`,
-          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
-          createdAt: new Date(),
-          read: false,
-          type: 'certificate',
-          reactions: { '💍': 2, '🥂': 2, '❤️': 2 },
-        },
-      })
-    } catch (e) {
-      console.warn('Failed to post certificate to chat:', e)
-    }
-
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        userId,
-        action: 'MARRIAGE_REGISTRATION_CREATED',
-        entity: 'MarriageDocket',
-        entityId: docketNumber,
-        after: {
-          docketNumber,
-          selectedTypeId,
-          partner1Name,
-          partner1Email: cleanEmail1,
-          partner2Name,
-          partner2Email: cleanEmail2,
-          totalAmount,
-          isNewUser,
+    const { amount, title } = OPTIONS[option]
+    const checkoutUrl = await startPayment({
+      purpose: 'MARRIAGE_REGISTRATION',
+      amount,
+      userId: session.user.id,
+      userName: session.user.name || 'Member',
+      email: session.user.email,
+      title,
+      description: `${session.user.name} & ${partner2Name}`,
+      payload: {
+        option,
+        partner1Name: session.user.name || clean(body.partner1Name),
+        partner1Email: session.user.email,
+        partner2Name,
+        partner2Email,
+        details: {
+          unionType: clean(body.selectedTypeId, 60),
+          partner1Dob: clean(body.partner1Dob, 20),
+          partner1Citizenship: clean(body.partner1Citizenship, 60),
+          partner2Dob: clean(body.partner2Dob, 20),
+          partner2Citizenship: clean(body.partner2Citizenship, 60),
+          weddingDate: clean(body.weddingDate, 20),
+          vows: clean(body.customVows, 2000),
         },
       },
-    }).catch(() => null)
-
-    return NextResponse.json({
-      success: true,
-      docketNumber,
-      isNewUser,
-      userEmail: cleanEmail1,
-      message: 'Marriage registration officially solemnized and docketed.',
+      origin: req.nextUrl.origin,
+      cancelPath: '/get-married',
     })
-  } catch (error: any) {
+    return NextResponse.json({ success: true, checkoutUrl })
+  } catch (error) {
+    if (error instanceof PaymentsNotConfiguredError) {
+      return NextResponse.json({ error: error.message }, { status: 503 })
+    }
     console.error('[POST /api/marriage-registration]', error)
-    return NextResponse.json(
-      { error: error?.message || 'Failed to complete marriage registration.' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Could not start the payment. Please try again.' }, { status: 500 })
   }
 }
