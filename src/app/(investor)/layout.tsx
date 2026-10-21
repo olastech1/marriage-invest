@@ -63,14 +63,6 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-// Phone tab bar: the four most-used places plus "More" (opens the full menu)
-const TABS: NavItem[] = [
-  { href: '/dashboard', label: 'Home', icon: LayoutDashboard },
-  { href: '/save', label: 'Vault', icon: PiggyBank },
-  { href: '/chat', label: 'Chat', icon: MessageSquareHeart },
-  { href: '/portfolio', label: 'Invest', icon: Briefcase },
-]
-
 // Pages reached from inside other pages, mapped to the menu item they belong to
 const PAGE_TITLES: Record<string, string> = {
   '/payment/complete': 'Payment',
@@ -242,7 +234,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
         <Sidebar pathname={pathname} user={user} publicBioUrl={publicBioUrl} unread={unread} />
       </div>
 
-      {/* Phone "More" drawer */}
+      {/* Phone menu drawer */}
       {menuOpen && (
         <div className="fixed inset-0 z-50 flex lg:hidden">
           <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
@@ -269,11 +261,14 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             <NotificationBellDropdown />
             <Link
               href="/chat"
-              className="relative hidden lg:flex p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors items-center gap-1.5 text-xs font-bold"
+              aria-label="Spouse chat"
+              className="relative flex p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors items-center gap-1.5 text-xs font-bold"
             >
-              <MessageSquareHeart size={17} />
-              <span>Spouse chat</span>
-              {unread > 0 && <span className="h-2 w-2 rounded-full bg-rose-500" aria-label={`${unread} unread`} />}
+              <MessageSquareHeart size={19} />
+              <span className="hidden lg:inline">Spouse chat</span>
+              {unread > 0 && (
+                <span className="absolute top-1 right-1 lg:static h-2.5 w-2.5 rounded-full bg-rose-500" aria-label={`${unread} unread`} />
+              )}
             </Link>
             <Link
               href="/settings"
@@ -285,12 +280,12 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
           </div>
         </header>
 
-        {/* Page content (bottom padding leaves room for the phone tab bar) */}
+        {/* Page content */}
         <main
           className={`flex-1 min-w-0 ${
             isChat
-              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px-64px)] lg:h-[calc(100vh-53px)]'
-              : 'overflow-y-auto overflow-x-hidden relative pb-20 lg:pb-0'
+              ? 'overflow-hidden flex flex-col p-0 h-[calc(100dvh-57px)] lg:h-[calc(100vh-53px)]'
+              : 'overflow-y-auto overflow-x-hidden relative'
           }`}
         >
           <div
@@ -303,44 +298,10 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             {children}
           </div>
 
-          {/* Floating spouse chat (desktop; phones use the Chat tab) */}
+          {/* Floating spouse chat (desktop; phones use the chat icon in the top bar) */}
           <FloatingChatWidget />
         </main>
 
-        {/* Phone tab bar */}
-        <nav
-          className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 bg-white pb-[env(safe-area-inset-bottom)]"
-          aria-label="Main"
-        >
-          <div className="grid grid-cols-5 h-16">
-            {TABS.map(({ href, label, icon: Icon }) => {
-              const active = isActive(pathname, href)
-              return (
-                <Link
-                  key={href}
-                  href={href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${
-                    active ? 'text-[#0F1C3F]' : 'text-slate-400'
-                  }`}
-                >
-                  <Icon size={21} className={active ? 'text-[#C9A84C]' : ''} />
-                  {label}
-                  {href === '/chat' && unread > 0 && (
-                    <span className="absolute top-2 right-[calc(50%-18px)] h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-white" />
-                  )}
-                </Link>
-              )
-            })}
-            <button
-              onClick={() => setMenuOpen(true)}
-              className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-slate-400"
-            >
-              <Menu size={21} />
-              More
-            </button>
-          </div>
-        </nav>
       </div>
     </div>
   )

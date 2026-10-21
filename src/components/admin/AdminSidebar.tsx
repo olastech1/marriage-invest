@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Admin navigation: grouped sidebar (desktop + phone drawer) and a phone tab
- * bar. The admin area is only reachable with the ADMIN role.
+ * Admin navigation: grouped sidebar on desktop, drawer (☰) on phones.
+ * The admin area is only reachable with the ADMIN role.
  */
 
 import Link from 'next/link'
@@ -18,7 +18,6 @@ import {
   Settings,
   LogOut,
   X,
-  Menu,
   ExternalLink,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
@@ -56,13 +55,6 @@ export const ADMIN_NAV_GROUPS: { title: string | null; items: AdminNavItem[] }[]
   },
 ]
 
-const TABS: AdminNavItem[] = [
-  { label: 'Home', href: '/admin/dashboard', icon: LayoutDashboard },
-  { label: 'Withdrawals', href: '/admin/withdrawals', icon: ArrowDownToLine },
-  { label: 'Investors', href: '/admin/investors', icon: Users },
-  { label: 'Investments', href: '/admin/investments', icon: TrendingUp },
-]
-
 export function isAdminActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + '/')
 }
@@ -91,11 +83,10 @@ function CountBadge({ count, light = false }: { count: number; light?: boolean }
 interface Props {
   pendingWithdrawals: number
   mobileOpen?: boolean
-  onOpenMobile?: () => void
   onCloseMobile?: () => void
 }
 
-export default function AdminSidebar({ pendingWithdrawals, mobileOpen = false, onOpenMobile, onCloseMobile }: Props) {
+export default function AdminSidebar({ pendingWithdrawals, mobileOpen = false, onCloseMobile }: Props) {
   const pathname = usePathname()
 
   const renderContent = (isMobile = false) => (
@@ -178,7 +169,7 @@ export default function AdminSidebar({ pendingWithdrawals, mobileOpen = false, o
         {renderContent(false)}
       </aside>
 
-      {/* Phone drawer ("More") */}
+      {/* Phone drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onCloseMobile} />
@@ -186,40 +177,6 @@ export default function AdminSidebar({ pendingWithdrawals, mobileOpen = false, o
         </div>
       )}
 
-      {/* Phone tab bar */}
-      <nav
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]"
-        aria-label="Admin main"
-      >
-        <div className="grid grid-cols-5 h-16">
-          {TABS.map(({ href, label, icon: Icon }) => {
-            const active = isAdminActive(pathname, href)
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold',
-                  active ? 'text-[#0F1C3F]' : 'text-gray-400',
-                )}
-              >
-                <Icon className={cn('w-5 h-5', active && 'text-[#C9A84C]')} />
-                {label}
-                {href === '/admin/withdrawals' && pendingWithdrawals > 0 && (
-                  <span className="absolute top-1.5 right-[calc(50%-20px)] min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center">
-                    {pendingWithdrawals > 9 ? '9+' : pendingWithdrawals}
-                  </span>
-                )}
-              </Link>
-            )
-          })}
-          <button onClick={onOpenMobile} className="flex flex-col items-center justify-center gap-0.5 text-[11px] font-semibold text-gray-400">
-            <Menu className="w-5 h-5" />
-            More
-          </button>
-        </div>
-      </nav>
     </>
   )
 }
