@@ -1,7 +1,7 @@
 /**
  * Admin portal layout – wraps every page under /admin.
  *
- * Guards: session must exist + role must be one of ADMIN | FINANCE | COMPLIANCE | SUPPORT.
+ * Guards: session must exist + role must be ADMIN.
  * Sidebar nav items are conditionally shown based on the active role.
  */
 
@@ -10,7 +10,7 @@ import { auth } from '@/lib/auth'
 import AdminShell from '@/components/admin/AdminShell'
 
 // Permitted roles for the admin portal
-const ADMIN_ROLES = ['ADMIN', 'FINANCE', 'COMPLIANCE', 'SUPPORT'] as const
+const ADMIN_ROLES = ['ADMIN'] as const
 type AdminRole = (typeof ADMIN_ROLES)[number]
 
 export const dynamic = 'force-dynamic'

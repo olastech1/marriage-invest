@@ -1,6 +1,13 @@
 import { PrismaClient, UserRole, OpportunityStatus, RiskLevel, DistributionType, DocumentType } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
+// Seed passwords come from the environment; never commit real passwords
+function requireEnv(name: string): string {
+  const value = process.env[name]
+  if (!value) throw new Error(`Set ${name} to run the seed`)
+  return value
+}
+
 const prisma = new PrismaClient()
 
 async function main() {
@@ -22,7 +29,7 @@ async function main() {
   }
 
   // Admin user
-  const adminPassword = await bcrypt.hash('Admin@123!', 12)
+  const adminPassword = await bcrypt.hash(requireEnv('SEED_ADMIN_PASSWORD'), 12)
   const admin = await prisma.user.create({
     data: {
       email: 'admin@unionverify.com',
@@ -37,7 +44,7 @@ async function main() {
   console.log('✅ Admin user created:', admin.email)
 
   // Finance user
-  const financePassword = await bcrypt.hash('Finance@123!', 12)
+  const financePassword = await bcrypt.hash(requireEnv('SEED_FINANCE_PASSWORD'), 12)
   await prisma.user.create({
     data: {
       email: 'finance@unionverify.com',
@@ -49,7 +56,7 @@ async function main() {
   })
 
   // Sample investor
-  const investorPassword = await bcrypt.hash('Investor@123!', 12)
+  const investorPassword = await bcrypt.hash(requireEnv('SEED_INVESTOR_PASSWORD'), 12)
   const investor = await prisma.user.create({
     data: {
       email: 'amelie.laurent@unionverify.com',
@@ -309,11 +316,7 @@ async function main() {
   console.log('')
   console.log('🎉 Seeding complete!')
   console.log('')
-  console.log('Default credentials:')
-  console.log('  Admin:    admin@unionverify.com / Admin@123!')
-  console.log('  Finance:  finance@unionverify.com / Finance@123!')
-  console.log('  Investor: amelie.laurent@unionverify.com / Investor@123!')
-  console.log('            (also investor@example.com / Investor@123!)')
+  console.log('Accounts use the passwords from SEED_ADMIN_PASSWORD, SEED_FINANCE_PASSWORD and SEED_INVESTOR_PASSWORD.')
 }
 
 main()

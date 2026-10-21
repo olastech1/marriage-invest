@@ -38,6 +38,8 @@ declare module 'next-auth' {
 // ---------------------------------------------------------------------------
 // Credentials validation schema
 // ---------------------------------------------------------------------------
+const PUBLISHED_SEED_PASSWORDS = ['Admin@123!', 'Finance@123!', 'Investor@123!']
+
 const credentialsSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(1, 'Password is required'),
@@ -69,13 +71,16 @@ const config: NextAuthConfig = {
         const email = parsed.data.email.toLowerCase().trim()
         await ensureSystemAccount(email)
 
+        // These passwords are published in the repo's old seed file; never accept them
+        if (PUBLISHED_SEED_PASSWORDS.includes(parsed.data.password)) return null
+
         const user = await prisma.user.findUnique({ where: { email } })
         if (!user?.passwordHash) return null
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash)
         if (!valid) return null
 
         // Admin access only for the configured ADMIN_EMAIL, whatever the stored role says
-        const role: UserRole = user.role === 'ADMIN' && !isAdminEmail(email) ? 'INVESTOR' : user.role
+        const role: UserRole = user.role === 'ADMIN' && isAdminEmail(email) ? 'ADMIN' : 'INVESTOR'
 
         return {
           id: user.id,
