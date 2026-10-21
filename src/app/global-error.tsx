@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { tryAutoReload } from '@/lib/autoReload'
 
 export default function GlobalError({
   error,
@@ -10,29 +11,13 @@ export default function GlobalError({
   reset: () => void
 }) {
   useEffect(() => {
-    // If a chunk load failed, automatically refresh to pick up new deployment hashes
-    const msg = error?.message?.toLowerCase() || ''
-    if (
-      msg.includes('chunk') ||
-      msg.includes('loading') ||
-      msg.includes('failed to fetch') ||
-      msg.includes('dynamically imported module')
-    ) {
-      if (typeof window !== 'undefined') {
-        const hasAutoReloaded = sessionStorage.getItem('global_chunk_reload')
-        if (!hasAutoReloaded) {
-          sessionStorage.setItem('global_chunk_reload', 'true')
-          window.location.reload()
-          return
-        }
-      }
-    }
-    console.error('Global layout error caught:', error)
+    // Usually a page left open across a new deployment: reloading fixes it
+    if (tryAutoReload()) return
+    console.error('Application error:', error)
   }, [error])
 
   const handleReload = () => {
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('global_chunk_reload')
       window.location.reload()
     } else {
       reset()

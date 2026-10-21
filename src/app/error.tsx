@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { tryAutoReload } from '@/lib/autoReload'
 import Link from 'next/link'
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 
@@ -12,29 +13,13 @@ export default function RootError({
   reset: () => void
 }) {
   useEffect(() => {
-    // Check if this error was caused by a stale deployment chunk or failed fetch
-    const msg = error?.message?.toLowerCase() || ''
-    const isChunkError =
-      msg.includes('chunk') ||
-      msg.includes('loading') ||
-      msg.includes('failed to fetch') ||
-      msg.includes('dynamically imported module')
-
-    if (isChunkError && typeof window !== 'undefined') {
-      const hasAutoReloaded = sessionStorage.getItem('chunk_reload_attempted')
-      if (!hasAutoReloaded) {
-        sessionStorage.setItem('chunk_reload_attempted', 'true')
-        window.location.reload()
-        return
-      }
-    }
-
-    console.error('Root application error boundary caught:', error)
+    // Usually a page left open across a new deployment: reloading fixes it
+    if (tryAutoReload()) return
+    console.error('Application error:', error)
   }, [error])
 
   const handleReload = () => {
     if (typeof window !== 'undefined') {
-      sessionStorage.removeItem('chunk_reload_attempted')
       window.location.reload()
     } else {
       reset()
@@ -70,8 +55,7 @@ export default function RootError({
             href="/"
             onClick={() => {
               if (typeof window !== 'undefined') {
-                sessionStorage.removeItem('chunk_reload_attempted')
-              }
+                        }
             }}
             className="flex-1 py-3 px-4 rounded-xl border border-slate-200 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
           >

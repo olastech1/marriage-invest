@@ -51,20 +51,22 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
-                window.addEventListener('error', function(e) {
-                  var msg = (e && e.message) ? e.message.toLowerCase() : '';
-                  if (msg.indexOf('loading chunk') !== -1 || msg.indexOf('failed to fetch dynamically imported module') !== -1) {
-                    var key = 'chunk_reload_lock';
-                    if (!sessionStorage.getItem(key)) {
-                      sessionStorage.setItem(key, '1');
-                      window.location.reload();
-                    }
-                  }
-                });
-                window.addEventListener('load', function() {
-                  setTimeout(function() {
-                    sessionStorage.removeItem('chunk_reload_lock');
-                  }, 1000);
+                // A page left open across a deployment can't load the new build's files.
+                // Reload (at most every 30s) for Chrome, Safari and Firefox wordings.
+                var stale = /loading (css )?chunk|chunkloaderror|dynamically imported module|importing a module script failed|load failed|error loading dynamically/i;
+                function reloadOnce(message) {
+                  if (!stale.test(message || '')) return;
+                  try {
+                    var last = Number(sessionStorage.getItem('uv_auto_reload_at') || 0);
+                    if (Date.now() - last < 30000) return;
+                    sessionStorage.setItem('uv_auto_reload_at', String(Date.now()));
+                  } catch (e) { return; }
+                  window.location.reload();
+                }
+                window.addEventListener('error', function(e) { reloadOnce(e && e.message); });
+                window.addEventListener('unhandledrejection', function(e) {
+                  var r = e && e.reason;
+                  reloadOnce(r && (r.message || String(r)));
                 });
               })();
             `,
