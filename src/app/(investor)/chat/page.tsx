@@ -107,50 +107,10 @@ export default function UnifiedChatPage() {
   // -------------------------------------------------------------------------
   // 1. Current Active User Identity (Sender Perspective)
   // -------------------------------------------------------------------------
-  const [activeUserId, setActiveUserId] = useState<string>('usr_jane_doe')
-  const [activeUserName, setActiveUserName] = useState<string>('Jane Doe')
+  // The signed-in user (the member area requires a session)
+  const activeUserId = session?.user?.id || ''
+  const activeUserName = session?.user?.name || 'Member'
   const [copiedInvite, setCopiedInvite] = useState(false)
-
-  // Initialize identity: the logged-in session always wins. The ?as= / localStorage
-  // switch only applies to signed-out demo visitors.
-  useEffect(() => {
-    if (session?.user?.id) {
-      setActiveUserId(session.user.id)
-      setActiveUserName(session.user.name || 'Member')
-      return
-    }
-
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search)
-      const asParam = params.get('as')?.toLowerCase()
-      const saved = localStorage.getItem('union_verify_active_partner')
-      if (asParam === 'marcus' || asParam === 'usr_marcus_vance' || asParam === 'husband' || (!asParam && saved === 'usr_marcus_vance')) {
-        setActiveUserId('usr_marcus_vance')
-        setActiveUserName('Marcus Vance')
-        localStorage.setItem('union_verify_active_partner', 'usr_marcus_vance')
-        return
-      }
-    }
-
-    setActiveUserId('usr_jane_doe')
-    setActiveUserName('Jane Doe')
-  }, [session])
-
-  const isMarcus = activeUserId === 'usr_marcus_vance'
-
-  // Quick switch between Jane Doe and Marcus Vance for instant testing
-  const handleSwitchPartner = () => {
-    const nextId = isMarcus ? 'usr_jane_doe' : 'usr_marcus_vance'
-    const nextName = isMarcus ? 'Jane Doe' : 'Marcus Vance'
-    setActiveUserId(nextId)
-    setActiveUserName(nextName)
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('union_verify_active_partner', nextId)
-      const url = new URL(window.location.href)
-      url.searchParams.set('as', nextId === 'usr_marcus_vance' ? 'marcus' : 'jane')
-      window.history.replaceState({}, '', url.toString())
-    }
-  }
 
   // -------------------------------------------------------------------------
   // 2. Chat Recipient & Contact Management
@@ -163,38 +123,7 @@ export default function UnifiedChatPage() {
     online: false,
   })
 
-  const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([
-    {
-      id: 'usr_marcus_vance',
-      name: 'Marcus Vance',
-      username: 'marcus-vance',
-      email: 'marcus.vance@unionverify.com',
-      role: 'Husband & Joint Signatory',
-      avatar: 'MV',
-      online: true,
-      bio: 'Joint covenant wealth partner. 6.8% APY compounding vault.',
-    },
-    {
-      id: 'usr_jane_doe',
-      name: 'Jane Doe',
-      username: 'jane-doe',
-      email: 'jane.doe@unionverify.com',
-      role: 'Wife & Joint Signatory',
-      avatar: 'JD',
-      online: true,
-      bio: 'Joint covenant wealth partner. Co-managing our matrimonial reserve.',
-    },
-    {
-      id: 'usr_admin',
-      name: 'Union Verify Desk',
-      username: 'support',
-      email: 'admin@unionverify.com',
-      role: 'Support & Concierge',
-      avatar: 'UV',
-      online: true,
-      bio: '24/7 Platform assistance, registry, and fiduciary support desk.',
-    },
-  ])
+  const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([])
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
@@ -223,7 +152,7 @@ export default function UnifiedChatPage() {
   // Load Active Conversations List
   const fetchConversations = useCallback(async () => {
     try {
-      const res = await fetch(`/api/chat?list=true&senderId=${encodeURIComponent(activeUserId)}`)
+      const res = await fetch('/api/chat?list=true')
       const data = await res.json()
       if (data.success && Array.isArray(data.conversations)) {
         setConversations(data.conversations)
@@ -376,7 +305,7 @@ export default function UnifiedChatPage() {
     }
     try {
       const res = await fetch(
-        `/api/chat?thread=${encodeURIComponent(activeThreadId)}&recipientId=${encodeURIComponent(activeRecipient.id)}&senderId=${encodeURIComponent(activeUserId)}`
+        `/api/chat?thread=${encodeURIComponent(activeThreadId)}&recipientId=${encodeURIComponent(activeRecipient.id)}`
       )
       const data = await res.json()
       if (data.success && Array.isArray(data.messages)) {
@@ -716,22 +645,12 @@ export default function UnifiedChatPage() {
           </span>
         </div>
 
-        {/* Sender Switcher & Invite Link */}
+        {/* Identity & Invite Link */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs shadow-2xs">
             <UserCheck className="w-3.5 h-3.5 text-[#C9A84C]" />
             <span className="text-gray-500 text-[11px]">Chatting as:</span>
             <strong className="text-[#0F1C3F] font-bold">{activeUserName}</strong>
-            {!session?.user?.id && (
-            <button
-              type="button"
-              onClick={handleSwitchPartner}
-              className="ml-1 text-[11px] font-bold text-[#C9A84C] hover:text-[#b3933e] underline cursor-pointer flex items-center gap-0.5"
-              title={`Switch perspective to test as ${isMarcus ? 'Jane Doe' : 'Marcus Vance'}`}
-            >
-              ⇄ Switch to {isMarcus ? 'Jane Doe' : 'Marcus Vance'}
-            </button>
-            )}
           </div>
 
           <button

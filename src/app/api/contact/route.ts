@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 // ---------------------------------------------------------------------------
 export async function GET(req: NextRequest) {
   try {
-    const messages = await (prisma as any).chatMessage.findMany({
+    const messages = await prisma.chatMessage.findMany({
       where: { threadId: 'advisor' },
       orderBy: { createdAt: 'asc' },
     })
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     }).format(now)
 
     // 1. Create the visitor message in the chat system under thread 'advisor'
-    const userMsg = await (prisma as any).chatMessage.create({
+    const userMsg = await prisma.chatMessage.create({
       data: {
         id: `msg-contact-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         threadId: 'advisor',

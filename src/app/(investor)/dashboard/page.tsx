@@ -79,12 +79,8 @@ export const dynamic = 'force-dynamic'
 
 export default async function DashboardPage() {
   const session = await auth()
-  const currentUser = session?.user || {
-    id: 'usr_jane_doe',
-    name: 'Investor',
-    email: '',
-    role: 'INVESTOR',
-  }
+  if (!session?.user?.id) redirect('/login')
+  const currentUser = session.user
   const userId = currentUser.id
 
   // ── parallel data fetch ────────────────────────────────────────────────

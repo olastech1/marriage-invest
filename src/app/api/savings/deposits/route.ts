@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   try {
     const session = await auth()
-    const currentUserId = session?.user?.id || 'usr_jane_doe'
+    const currentUserId = session?.user?.id
+    if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const deposits = await getCoupleDeposits(currentUserId)
 
     return NextResponse.json({
@@ -29,6 +30,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
     const body = await req.json()
     const amount = Number(body.amount)
     if (!amount || amount <= 0) {
@@ -36,8 +39,8 @@ export async function POST(req: NextRequest) {
     }
 
     const result = await recordVaultDeposit({
-      userId: session?.user?.id || 'usr_jane_doe',
-      userName: session?.user?.name || 'Investor',
+      userId,
+      userName: session?.user?.name || 'Member',
       amount,
       applyBonus: !!body.applyBonus,
       vaultTitle: body.vaultTitle,

@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
     // Fetch all notifications for user
     const allNotifs: any[] = await prisma.notification.findMany({
@@ -40,7 +41,8 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    const currentUserId = session?.user?.id || 'usr_jane_doe'
+    const currentUserId = session?.user?.id
+    if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const currentUserName = session?.user?.name || 'Investor'
 
     const body = await req.json()

@@ -11,7 +11,8 @@ type Params = { params: Promise<{ id: string }> }
 export async function GET(_req: NextRequest, { params }: Params) {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
     const { id } = await params
     const withdrawal = await prisma.withdrawalRequest.findUnique({
@@ -60,7 +61,8 @@ export async function GET(_req: NextRequest, { params }: Params) {
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
     const { id } = await params
     const body = await req.json()

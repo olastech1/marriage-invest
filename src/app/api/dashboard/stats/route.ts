@@ -5,7 +5,8 @@ import { prisma } from '@/lib/db'
 export async function GET() {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
     const [userRecord, investments, transactions] = await Promise.all([
       prisma.user.findUnique({

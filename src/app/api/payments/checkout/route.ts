@@ -7,7 +7,8 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    const currentUserId = session?.user?.id || 'usr_jane_doe'
+    const currentUserId = session?.user?.id
+    if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const currentUserName = session?.user?.name || 'Investor'
 
     const body = await req.json()

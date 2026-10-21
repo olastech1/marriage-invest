@@ -12,7 +12,7 @@ export async function GET(
     const cleanSlug = slug.toLowerCase().trim()
 
     // 1. Try to find user by username or ID
-    let user: any = await (prisma.user as any).findFirst({
+    let user: any = await prisma.user.findFirst({
       where: {
         username: cleanSlug,
       },

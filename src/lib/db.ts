@@ -1,14 +1,16 @@
 /**
- * Database client singleton for Union Verify.
+ * Database client singleton for Union Verify (PostgreSQL via Prisma).
  *
- * Configured as a 100% frontend-ready, backend-independent mock engine.
- * Eliminates all external PostgreSQL database dependencies, ensuring zero
- * downtime, zero connection timeouts, and flawless operation on Vercel
- * or any client-side hosting platform.
+ * The schema is applied on every Vercel build (`prisma db push` in the build
+ * script), so DATABASE_URL must point at a reachable Postgres database.
  */
 
 import { PrismaClient } from '@prisma/client'
-import { mockPrismaClient } from '@/lib/mockDb'
 
-export const prisma: PrismaClient = mockPrismaClient as unknown as PrismaClient
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+
+export const prisma: PrismaClient = globalForPrisma.prisma ?? new PrismaClient()
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+
 export default prisma

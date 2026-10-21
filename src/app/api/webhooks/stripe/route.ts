@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
       case 'checkout.session.completed': {
         const checkoutSession = event.data.object as Stripe.Checkout.Session
         const metadata = checkoutSession.metadata || {}
-        const userId = metadata.userId || checkoutSession.client_reference_id || 'usr_jane_doe'
+        const userId = metadata.userId || checkoutSession.client_reference_id
+        if (!userId) break
         const type = metadata.type || 'DEPOSIT'
         const numAmount = Number(metadata.amount) || (checkoutSession.amount_total ? checkoutSession.amount_total / 100 : 0)
         const paymentIntentId = typeof checkoutSession.payment_intent === 'string' ? checkoutSession.payment_intent : checkoutSession.id

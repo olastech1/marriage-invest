@@ -23,7 +23,7 @@ export async function POST(
     const cleanSlug = slug.toLowerCase().trim()
 
     // Find target user from slug (by username or ID)
-    let targetUser = await (prisma.user as any).findFirst({
+    let targetUser = await prisma.user.findFirst({
       where: { username: cleanSlug },
     })
 

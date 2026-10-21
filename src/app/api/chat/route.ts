@@ -5,7 +5,6 @@ import {
   buildThreadId,
   createChatMessage,
   getChatDb,
-  getChatStoreStatus,
   isParticipant,
   otherParticipant,
   resolveSpouseId,
@@ -18,19 +17,20 @@ const DEMO_NAMES: Record<string, string> = {
   usr_admin: 'Support & Advisor',
 }
 
-// The logged-in user always wins; senderId is only honoured for signed-out demo visitors
-async function resolveCurrentUser(fallbackId?: string | null, fallbackName?: string | null) {
+// Chat always acts as the signed-in user (never an id supplied by the browser)
+async function resolveCurrentUser() {
   const session = await auth()
-  const id = session?.user?.id || fallbackId || 'usr_jane_doe'
-  const name = session?.user?.name || fallbackName || DEMO_NAMES[id] || 'Member'
-  return { id, name }
+  if (!session?.user?.id) return null
+  return { id: session.user.id, name: session.user.name || 'Member' }
 }
+
+const UNAUTHORIZED = () => NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
 
 async function lookupUser(id: string) {
   if (!id) return null
   const user =
     (await prisma.user.findUnique({ where: { id } })) ||
-    (await (prisma.user as any).findFirst({ where: { username: id.toLowerCase() } }))
+    (await prisma.user.findFirst({ where: { username: id.toLowerCase() } }))
   return user as any
 }
 
@@ -54,7 +54,8 @@ export async function GET(req: NextRequest) {
     const listConversations = searchParams.get('list') === 'true'
     const listUsers = searchParams.get('users') === 'true'
 
-    const currentUser = await resolveCurrentUser(searchParams.get('senderId'))
+    const currentUser = await resolveCurrentUser()
+    if (!currentUser) return UNAUTHORIZED()
     const currentUserId = currentUser.id
     const chatDb = await getChatDb()
 
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
           online: true,
         }))
 
-      return NextResponse.json({ success: true, users: contacts, currentUserId, chatStore: getChatStoreStatus() })
+      return NextResponse.json({ success: true, users: contacts, currentUserId })
     }
 
     const spouseId = await resolveSpouseId(currentUserId)
@@ -135,7 +136,6 @@ export async function GET(req: NextRequest) {
         conversations: Array.from(threadMap.values()),
         currentUserId,
         spouseId,
-        chatStore: getChatStoreStatus(),
       })
     }
 
@@ -162,48 +162,10 @@ export async function GET(req: NextRequest) {
 
     const threadId = buildThreadId(currentUserId, recipientId)
 
-    let messages = await chatDb.chatMessage.findMany({
+    const messages = await chatDb.chatMessage.findMany({
       where: { threadId },
       orderBy: { createdAt: 'asc' },
     })
-
-    // Seed the demo couple's thread so it never looks empty
-    const demoThreadId = buildThreadId('usr_jane_doe', 'usr_marcus_vance')
-    if (messages.length === 0 && threadId === demoThreadId) {
-      await createChatMessage({
-        data: {
-          id: 'msg-seed-1',
-          threadId: demoThreadId,
-          senderId: 'usr_marcus_vance',
-          senderName: 'Marcus Vance',
-          recipientId: 'usr_jane_doe',
-          recipientName: 'Jane Doe',
-          text: 'Hey love! I reviewed our joint matrimonial vault. Looking great with the 6.8% compounding interest! ❤️',
-          timestamp: '10:15 AM',
-          createdAt: new Date(Date.now() - 3600000 * 2),
-          read: true,
-          type: 'text',
-          reactions: { '❤️': 1 },
-        },
-      })
-      await createChatMessage({
-        data: {
-          id: 'msg-seed-2',
-          threadId: demoThreadId,
-          senderId: 'usr_jane_doe',
-          senderName: 'Jane Doe',
-          recipientId: 'usr_marcus_vance',
-          recipientName: 'Marcus Vance',
-          text: "So proud of our progress together! Let's keep building our generational wealth.",
-          timestamp: '10:18 AM',
-          createdAt: new Date(Date.now() - 3600000),
-          read: true,
-          type: 'text',
-          reactions: { '🚀': 1 },
-        },
-      })
-      messages = await chatDb.chatMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'asc' } })
-    }
 
     // Mark messages addressed to me as read
     for (const msg of messages) {
@@ -223,7 +185,6 @@ export async function GET(req: NextRequest) {
       messages,
       currentUser,
       spouseId,
-      chatStore: getChatStoreStatus(),
       reciprocation:
         recipientId === spouseId
           ? await getReciprocationStatus(currentUserId).then((r) => ({
@@ -268,7 +229,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Message content cannot be empty' }, { status: 400 })
     }
 
-    const sender = await resolveCurrentUser(senderId, senderName)
+    const sender = await resolveCurrentUser()
+    if (!sender) return UNAUTHORIZED()
 
     let effectiveRecipientId: string = recipientId || ''
     if (!effectiveRecipientId && threadIdParam && threadIdParam !== 'spouse') {
@@ -348,7 +310,8 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'messageId is required' }, { status: 400 })
     }
 
-    const currentUser = await resolveCurrentUser(senderId, approvedBy || partnerName)
+    const currentUser = await resolveCurrentUser()
+    if (!currentUser) return UNAUTHORIZED()
     const chatDb = await getChatDb()
     const existing = await chatDb.chatMessage.findUnique({ where: { id: messageId } })
 

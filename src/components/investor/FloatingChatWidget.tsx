@@ -54,14 +54,10 @@ export function FloatingChatWidget() {
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const partnerRelation = 'Spouse'
 
-  // Only used when signed out (demo mode); the server ignores it for logged-in users
-  const getDemoSenderId = () =>
-    typeof window !== 'undefined' ? localStorage.getItem('union_verify_active_partner') || '' : ''
-
   // Live synchronization with /api/chat?thread=spouse
   const fetchLiveMessages = async () => {
     try {
-      const res = await fetch(`/api/chat?thread=spouse&senderId=${encodeURIComponent(getDemoSenderId())}`)
+      const res = await fetch('/api/chat?thread=spouse')
       const data = await res.json()
       if (data.success && Array.isArray(data.messages)) {
         const currentActiveId = data.currentUser?.id
@@ -166,7 +162,6 @@ export function FloatingChatWidget() {
     if (!inputText.trim()) return
 
     const textToSend = inputText.trim()
-    const senderId = getDemoSenderId()
     const recipientId = partner?.id
     const recipientName = partner?.name
 
@@ -189,7 +184,6 @@ export function FloatingChatWidget() {
         body: JSON.stringify({
           threadId: 'spouse',
           text: textToSend,
-          senderId,
           recipientId,
           recipientName,
           type: 'text',

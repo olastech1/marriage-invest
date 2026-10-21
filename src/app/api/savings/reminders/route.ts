@@ -12,9 +12,10 @@ const DEFAULT_SPOUSE_NAME = 'your spouse'
 export async function GET() {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
-    const reminders = await (prisma as any).depositReminder.findMany({
+    const reminders = await prisma.depositReminder.findMany({
       where: { userId },
       orderBy: { createdAt: 'desc' },
     })
@@ -37,7 +38,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const userName = session?.user?.name || 'Investor'
     const body = await req.json()
 
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
         nextDate.setMonth(nextDate.getMonth() + 1)
       }
 
-      const newReminder = await (prisma as any).depositReminder.create({
+      const newReminder = await prisma.depositReminder.create({
         data: {
           id: `rem_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
           userId,
@@ -219,7 +221,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Reminder ID is required' }, { status: 400 })
     }
 
-    const updated = await (prisma as any).depositReminder.update({
+    const updated = await prisma.depositReminder.update({
       where: { id },
       data: { active: Boolean(active) },
     })
@@ -244,7 +246,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Reminder ID is required' }, { status: 400 })
     }
 
-    await (prisma as any).depositReminder.delete({
+    await prisma.depositReminder.delete({
       where: { id },
     })
 

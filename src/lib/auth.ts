@@ -11,6 +11,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
+import { ensureSystemAccount, isAdminEmail } from '@/lib/accounts'
 import type { UserRole } from '@prisma/client'
 
 // ---------------------------------------------------------------------------
@@ -65,51 +66,24 @@ const config: NextAuthConfig = {
         const parsed = credentialsSchema.safeParse(credentials)
         if (!parsed.success) return null
 
-        const { email } = parsed.data
-        const cleanEmail = email.toLowerCase().trim()
-        const isAdmin = cleanEmail.includes('admin')
-        const isMarcus = cleanEmail.includes('marcus')
+        const email = parsed.data.email.toLowerCase().trim()
+        await ensureSystemAccount(email)
 
-        let id = 'usr_jane_doe'
-        let name = 'Jane Doe'
-        let defaultEmail = 'jane.doe@unionverify.com'
-        let role: UserRole = 'INVESTOR'
+        const user = await prisma.user.findUnique({ where: { email } })
+        if (!user?.passwordHash) return null
+        const valid = await bcrypt.compare(parsed.data.password, user.passwordHash)
+        if (!valid) return null
 
-        if (isAdmin) {
-          id = 'usr_admin'
-          name = 'Platform Administrator'
-          defaultEmail = 'admin@unionverify.com'
-          role = 'ADMIN'
-        } else if (isMarcus) {
-          id = 'usr_marcus_vance'
-          name = 'Marcus Vance'
-          defaultEmail = 'marcus.vance@unionverify.com'
-          role = 'INVESTOR'
-        } else if (cleanEmail.includes('jane')) {
-          id = 'usr_jane_doe'
-          name = 'Jane Doe'
-          defaultEmail = 'jane.doe@unionverify.com'
-          role = 'INVESTOR'
-        } else {
-          const usernamePart = cleanEmail.split('@')[0] || 'investor'
-          const extractedName = usernamePart.replace(/[._-]/g, ' ')
-          const capitalizedName = extractedName
-            .split(' ')
-            .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-            .join(' ')
-          name = capitalizedName || 'Investor'
-          id = `usr_${usernamePart.replace(/[^a-zA-Z0-9]/g, '_')}`
-          defaultEmail = cleanEmail
-        }
+        // Admin access only for the configured ADMIN_EMAIL, whatever the stored role says
+        const role: UserRole = user.role === 'ADMIN' && !isAdminEmail(email) ? 'INVESTOR' : user.role
 
-        // Instant demo authorization - zero external database dependencies
         return {
-          id,
-          name,
-          email: cleanEmail || defaultEmail,
+          id: user.id,
+          name: user.name,
+          email: user.email,
           role,
-          emailVerified: new Date('2024-01-15'),
-          twoFactorEnabled: false,
+          emailVerified: user.emailVerified,
+          twoFactorEnabled: user.twoFactorEnabled,
         }
       },
     }),

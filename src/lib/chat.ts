@@ -1,18 +1,11 @@
 /**
- * Spousal chat storage & thread helpers.
- *
- * Chat messages must be visible to BOTH spouses, who are usually on different
- * devices and therefore hit different serverless instances. The in-memory
- * mock DB cannot share state across instances, so chat is stored in Postgres
- * (CHAT_DATABASE_URL, falling back to DATABASE_URL). If no database is
- * configured or it cannot be reached, chat falls back to the mock store so
- * local development keeps working.
+ * Spousal chat thread helpers. Messages live in the shared Postgres database
+ * so both spouses see the same conversation from any device.
  */
 
-import { PrismaClient } from '@prisma/client'
-import { mockPrismaClient } from '@/lib/mockDb'
+import { prisma } from '@/lib/db'
 
-// Demo couple used by the seeded accounts
+// Demo couple used by the seeded test accounts
 const DEMO_SPOUSES: Record<string, string> = {
   usr_jane_doe: 'usr_marcus_vance',
   usr_marcus_vance: 'usr_jane_doe',
@@ -37,96 +30,9 @@ const CHAT_FIELDS = [
   'createdAt',
 ] as const
 
-type ChatClient = Pick<PrismaClient, 'chatMessage'>
-
-export type ChatStoreKind = 'postgres' | 'memory'
-
-const globalForChat = globalThis as unknown as {
-  chatPrisma?: PrismaClient
-  chatDbPromise?: Promise<ChatClient>
-  chatStoreKind?: ChatStoreKind
-  chatStoreError?: string
-  chatRetryAt?: number
-}
-
-const RETRY_POSTGRES_MS = 60_000
-
-// Mirrors the ChatMessage model so the table exists even if `prisma db push` was never run
-const CREATE_CHAT_TABLE_SQL = [
-  `CREATE TABLE IF NOT EXISTS "chat_messages" (
-    "id" TEXT NOT NULL PRIMARY KEY,
-    "threadId" TEXT NOT NULL,
-    "senderId" TEXT NOT NULL,
-    "senderName" TEXT NOT NULL,
-    "recipientId" TEXT,
-    "recipientName" TEXT,
-    "text" TEXT NOT NULL,
-    "timestamp" TEXT NOT NULL,
-    "type" TEXT NOT NULL DEFAULT 'text',
-    "read" BOOLEAN NOT NULL DEFAULT false,
-    "reactions" JSONB,
-    "proposalData" JSONB,
-    "depositData" JSONB,
-    "loveNoteTitle" TEXT,
-    "voiceDuration" TEXT,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`,
-  `CREATE INDEX IF NOT EXISTS "chat_messages_threadId_createdAt_idx" ON "chat_messages"("threadId", "createdAt")`,
-  `CREATE INDEX IF NOT EXISTS "chat_messages_senderId_idx" ON "chat_messages"("senderId")`,
-  `CREATE INDEX IF NOT EXISTS "chat_messages_recipientId_idx" ON "chat_messages"("recipientId")`,
-]
-
-function useMemoryStore(reason: string): ChatClient {
-  globalForChat.chatStoreKind = 'memory'
-  globalForChat.chatStoreError = reason
-  console.error(
-    '[chat] Postgres chat store unavailable — falling back to in-memory store. ' +
-      'Spouses on different devices will NOT see each other\'s messages until this is fixed. ' +
-      'Check CHAT_DATABASE_URL / DATABASE_URL.',
-    reason,
-  )
-  return mockPrismaClient as unknown as ChatClient
-}
-
-async function connectChatDb(): Promise<ChatClient> {
-  const url = process.env.CHAT_DATABASE_URL || process.env.DATABASE_URL
-  if (!url) return useMemoryStore('no CHAT_DATABASE_URL / DATABASE_URL set')
-
-  try {
-    const client = globalForChat.chatPrisma ?? new PrismaClient({ datasourceUrl: url })
-    globalForChat.chatPrisma = client
-    try {
-      await client.chatMessage.count({ where: { id: '__healthcheck__' } })
-    } catch (err: any) {
-      // P2021: table does not exist yet — create it, then re-check
-      if (err?.code !== 'P2021') throw err
-      for (const sql of CREATE_CHAT_TABLE_SQL) await client.$executeRawUnsafe(sql)
-      await client.chatMessage.count({ where: { id: '__healthcheck__' } })
-    }
-    globalForChat.chatStoreKind = 'postgres'
-    globalForChat.chatStoreError = undefined
-    return client
-  } catch (err: any) {
-    // Retry Postgres periodically instead of caching the failure forever
-    globalForChat.chatRetryAt = Date.now() + RETRY_POSTGRES_MS
-    return useMemoryStore(err?.code || err?.errorCode || 'connection failed')
-  }
-}
-
-/** Shared chat store (Postgres when available). */
-export function getChatDb(): Promise<ChatClient> {
-  if (globalForChat.chatRetryAt && Date.now() > globalForChat.chatRetryAt) {
-    globalForChat.chatRetryAt = undefined
-    globalForChat.chatDbPromise = undefined
-  }
-  globalForChat.chatDbPromise ??= connectChatDb()
-  return globalForChat.chatDbPromise
-}
-
-/** Which store chat is currently using, for diagnostics. */
-export function getChatStoreStatus(): { store: ChatStoreKind; error?: string } {
-  return { store: globalForChat.chatStoreKind || 'memory', error: globalForChat.chatStoreError }
+/** Chat store (kept as a function so callers don't change if storage moves). */
+export async function getChatDb() {
+  return prisma
 }
 
 // ---------------------------------------------------------------------------

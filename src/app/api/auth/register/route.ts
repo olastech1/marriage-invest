@@ -13,9 +13,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
-import crypto from 'crypto'
 import { prisma } from '@/lib/db'
-import { sendVerificationEmail } from '@/lib/email'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -71,19 +69,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (existingUser) {
       return NextResponse.json(
-        {
-          message:
-            'If this email is not already registered, you will receive a verification link shortly.',
-        },
-        { status: 201 },
+        { error: 'An account with this email already exists. Please sign in.' },
+        { status: 409 },
       )
     }
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12)
-
-    // Generate email-verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex')
 
     // Create user record
     const user = await prisma.user.create({
@@ -99,15 +91,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { id: true, name: true, email: true },
     })
 
-    // Send verification email
-    sendVerificationEmail(user.email, verificationToken).catch((err: unknown) => {
-      console.error('[register] Failed to send verification email:', err)
-    })
-
     return NextResponse.json(
       {
-        message:
-          'Account created successfully. Please check your email to verify your account.',
+        message: 'Account created. You can sign in now.',
         userId: user.id,
       },
       { status: 201 },

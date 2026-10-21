@@ -14,6 +14,8 @@
 
 import { useState, useCallback } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { signIn } from 'next-auth/react'
 import { z } from 'zod'
 import {
   EyeIcon,
@@ -106,6 +108,7 @@ function passwordStrength(password: string): { score: number; label: string; col
 // Component
 // ---------------------------------------------------------------------------
 export default function RegisterPage() {
+  const router = useRouter()
   const [fields, setFields] = useState<RegisterFields>({
     name: '',
     email: '',
@@ -177,7 +180,18 @@ export default function RegisterPage() {
         return
       }
 
-      setSuccess(true)
+      // Account exists now: sign straight in
+      const signInResult = await signIn('credentials', {
+        email: fields.email.toLowerCase().trim(),
+        password: fields.password,
+        redirect: false,
+      })
+      if (signInResult?.error) {
+        setSuccess(true)
+        return
+      }
+      router.push('/dashboard')
+      router.refresh()
     } catch {
       setServerError('Network error. Please check your connection and try again.')
     } finally {
@@ -192,28 +206,15 @@ export default function RegisterPage() {
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 border border-emerald-200">
           <CheckCircle2Icon className="h-8 w-8 text-emerald-500" />
         </div>
-        <h2 className="text-xl font-bold text-[#0F1C3F]">Check your inbox</h2>
+        <h2 className="text-xl font-bold text-[#0F1C3F]">Account created</h2>
         <p className="mt-3 text-sm text-slate-500 leading-relaxed max-w-sm mx-auto">
-          We&apos;ve sent a verification link to{' '}
-          <strong className="text-slate-700">{fields.email}</strong>. Click the
-          link to activate your account and start investing.
-        </p>
-        <p className="mt-4 text-xs text-slate-400">
-          Didn&apos;t receive it? Check your spam folder or{' '}
-          <button
-            type="button"
-            className="text-[#C9A84C] font-medium hover:underline"
-            onClick={() => setSuccess(false)}
-          >
-            try again
-          </button>
-          .
+          Your account for <strong className="text-slate-700">{fields.email}</strong> is ready. Sign in to continue.
         </p>
         <Link
           href="/login"
           className="mt-6 inline-block text-sm font-medium text-[#0F1C3F] hover:underline"
         >
-          Back to sign in →
+          Sign in →
         </Link>
       </div>
     )

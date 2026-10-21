@@ -19,7 +19,8 @@ const withdrawalSchema = z.object({
 export async function GET() {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const userName = session?.user?.name || 'Jane Doe'
 
     const [userWithdrawals, allPendingWithdrawals, eligibleInvestments, reciprocation] = await Promise.all([
@@ -144,7 +145,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const userName = session?.user?.name || 'Jane Doe'
     const body = await req.json()
     const parsed = withdrawalSchema.safeParse(body)

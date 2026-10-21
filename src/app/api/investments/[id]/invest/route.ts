@@ -45,7 +45,8 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
   try {
     // 1. Authenticate
     const session = await auth()
-    const userId = session?.user?.id || 'usr_jane_doe'
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
     // 2. Parse & validate body
     let body: unknown
