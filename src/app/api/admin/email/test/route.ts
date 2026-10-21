@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import nodemailer from 'nodemailer'
 import { auth } from '@/lib/auth'
 
+const PASSWORD_MASK = '••••••••'
+
 export async function GET() {
   try {
     const session = await auth()
@@ -13,8 +15,9 @@ export async function GET() {
       host: process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
       port: process.env.SMTP_PORT || '465',
       encryption: (process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT) ? 'SSL/TLS' : 'STARTTLS',
-      user: process.env.SMTP_USER || 'AKIAVHXIDBLGLO4ATDEA',
-      pass: process.env.SMTP_PASS || 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+      user: process.env.SMTP_USER || '',
+      // Never send the stored password to the browser
+      pass: process.env.SMTP_PASS ? PASSWORD_MASK : '',
       fromEmail: process.env.EMAIL_FROM || 'support@unionverify.com',
       fromName: process.env.EMAIL_FROM_NAME || 'Union Verify',
       testRecipient: 'support@unionverify.com',
@@ -35,14 +38,15 @@ export async function POST(req: NextRequest) {
     const {
       host = process.env.SMTP_HOST || 'email-smtp.us-east-1.amazonaws.com',
       port = Number(process.env.SMTP_PORT || 465),
-      user = process.env.SMTP_USER || 'AKIAVHXIDBLGLO4ATDEA',
-      pass = process.env.SMTP_PASS || 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+      user = process.env.SMTP_USER || '',
+      pass: rawPass,
       secure = false,
       fromEmail = process.env.EMAIL_FROM || 'support@unionverify.com',
       fromName = process.env.EMAIL_FROM_NAME || 'Union Verify',
       toEmail,
       sendTest = false,
     } = body
+    const pass = !rawPass || rawPass === PASSWORD_MASK ? process.env.SMTP_PASS || '' : rawPass
 
     if (!host) {
       return NextResponse.json({ error: 'SMTP Host is required' }, { status: 400 })

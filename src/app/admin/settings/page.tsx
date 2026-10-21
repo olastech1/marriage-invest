@@ -83,8 +83,8 @@ export default function AdminSettingsPage() {
     host: 'email-smtp.us-east-1.amazonaws.com',
     port: '465',
     encryption: 'SSL/TLS',
-    user: 'AKIAVHXIDBLGLO4ATDEA',
-    pass: 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+    user: '',
+    pass: '',
     fromEmail: 'support@unionverify.com',
     fromName: 'Union Verify Notifications',
     testRecipient: 'support@unionverify.com',
@@ -123,9 +123,7 @@ export default function AdminSettingsPage() {
     if (activeTab === 'payments' || paymentSettings.secretKey) {
       try {
         if (typeof window !== 'undefined') {
-          localStorage.setItem('union_stripe_secret_key', paymentSettings.secretKey)
           localStorage.setItem('union_stripe_publishable_key', paymentSettings.publishableKey)
-          localStorage.setItem('union_stripe_webhook_secret', paymentSettings.webhookSecret)
         }
         await fetch('/api/admin/payments', {
           method: 'POST',
@@ -198,14 +196,14 @@ export default function AdminSettingsPage() {
       host: 'email-smtp.us-east-1.amazonaws.com',
       port: '465',
       encryption: 'SSL/TLS',
-      user: 'AKIAVHXIDBLGLO4ATDEA',
-      pass: 'BAEcA3rSWKXc6pukKBAb+EbAtpshVIFI5RWgBSkGHeSp',
+      user: '',
+      pass: '',
       fromEmail: 'support@unionverify.com',
       fromName: 'Union Verify Notifications',
     })
     setEmailStatus({
       type: 'success',
-      message: 'Amazon SES credentials loaded (email-smtp.us-east-1.amazonaws.com:465). Click "Verify Handshake" to test.',
+      message: 'Amazon SES server settings loaded. Enter your SMTP username and password, then click "Verify Handshake".',
     })
   }
 
@@ -217,7 +215,7 @@ export default function AdminSettingsPage() {
         port: '587',
         encryption: 'STARTTLS',
         user: 'invest@unionverify.com',
-        pass: 'UnionM@il_98Fid!2026',
+        pass: '',
         fromEmail: 'invest@unionverify.com',
         fromName: 'Union Verify Notifications',
       })
@@ -228,7 +226,7 @@ export default function AdminSettingsPage() {
         port: '587',
         encryption: 'STARTTLS',
         user: 'noreply@unionverify.com',
-        pass: 'UnionVerify_Smtp2026!',
+        pass: '',
         fromEmail: 'noreply@unionverify.com',
         fromName: 'Union Verify System',
       })
@@ -239,14 +237,14 @@ export default function AdminSettingsPage() {
         port: '587',
         encryption: 'STARTTLS',
         user: 'admin@unionverify.com',
-        pass: 'UnionVerify_Smtp2026!',
+        pass: '',
         fromEmail: 'admin@unionverify.com',
         fromName: 'Union Verify Administration',
       })
     }
     setEmailStatus({
       type: 'success',
-      message: `Preset (${type}@unionverify.com) loaded. Click "Verify Handshake" to test.`,
+      message: `Preset (${type}@unionverify.com) loaded. Enter the mailbox password, then click "Verify Handshake".`,
     })
   }
 
@@ -284,9 +282,12 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
     // 1. Check localStorage first so inputs never wipe out on client
     if (typeof window !== 'undefined') {
       try {
-        const savedSecret = localStorage.getItem('union_stripe_secret_key')
+        // Secret keys are never stored in the browser; old copies are removed
+        localStorage.removeItem('union_stripe_secret_key')
+        localStorage.removeItem('union_stripe_webhook_secret')
+        const savedSecret = ''
         const savedPub = localStorage.getItem('union_stripe_publishable_key')
-        const savedWebhook = localStorage.getItem('union_stripe_webhook_secret')
+        const savedWebhook = ''
         if (savedSecret || savedPub || savedWebhook) {
           setPaymentSettings((prev) => ({
             ...prev,
@@ -376,9 +377,7 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
     // Save locally immediately
     if (typeof window !== 'undefined') {
       try {
-        localStorage.setItem('union_stripe_secret_key', paymentSettings.secretKey)
         localStorage.setItem('union_stripe_publishable_key', paymentSettings.publishableKey)
-        localStorage.setItem('union_stripe_webhook_secret', paymentSettings.webhookSecret)
       } catch {}
     }
 
@@ -806,7 +805,6 @@ STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
                     onChange={(e) => {
                       const val = e.target.value
                       setPaymentSettings((prev) => ({ ...prev, secretKey: val }))
-                      try { localStorage.setItem('union_stripe_secret_key', val) } catch {}
                     }}
                     placeholder="sk_test_51... or sk_live_51..."
                     className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"
@@ -863,7 +861,6 @@ STRIPE_WEBHOOK_SECRET="${paymentSettings.webhookSecret}"`
                     onChange={(e) => {
                       const val = e.target.value
                       setPaymentSettings((prev) => ({ ...prev, webhookSecret: val }))
-                      try { localStorage.setItem('union_stripe_webhook_secret', val) } catch {}
                     }}
                     placeholder="whsec_..."
                     className="w-full pl-4 pr-11 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#C9A84C] text-sm text-gray-900 font-mono"

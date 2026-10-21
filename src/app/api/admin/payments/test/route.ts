@@ -14,7 +14,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => ({}))
     const config = await getStripeConfig()
-    const secretKey = (body.secretKey || config.secretKey || process.env.STRIPE_SECRET_KEY || '').trim()
+    // A masked key (sk_…1234) from the admin UI means "use the stored key"
+    const typedKey = body.secretKey && !String(body.secretKey).includes('…') ? body.secretKey : ''
+    const secretKey = (typedKey || config.secretKey || process.env.STRIPE_SECRET_KEY || '').trim()
 
     if (!secretKey) {
       return NextResponse.json(

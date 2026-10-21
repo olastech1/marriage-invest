@@ -78,6 +78,18 @@ export async function getStripeConfig(): Promise<StripeGatewayConfig> {
   }
 }
 
+/** Show only the key prefix and last 4 characters, e.g. sk_live_…a1b2 */
+export function maskSecret(value: string): string {
+  if (!value) return ''
+  const prefix = value.match(/^(sk|pk|rk|whsec)_(live_|test_)?/)?.[0] || ''
+  return `${prefix}…${value.slice(-4)}`
+}
+
+/** A masked value echoed back from the admin UI means "unchanged" */
+function isMasked(value?: string): boolean {
+  return !!value && value.includes('…')
+}
+
 export async function saveStripeConfig(params: {
   secretKey?: string
   publishableKey?: string
@@ -85,9 +97,11 @@ export async function saveStripeConfig(params: {
 }): Promise<StripeGatewayConfig> {
   const current = await getStripeConfig()
 
-  const secretKey = (params.secretKey !== undefined ? params.secretKey : current.secretKey).trim()
-  const publishableKey = (params.publishableKey !== undefined ? params.publishableKey : current.publishableKey).trim()
-  const webhookSecret = (params.webhookSecret !== undefined ? params.webhookSecret : current.webhookSecret).trim()
+  const pick = (incoming: string | undefined, existing: string) =>
+    (incoming !== undefined && !isMasked(incoming) ? incoming : existing).trim()
+  const secretKey = pick(params.secretKey, current.secretKey)
+  const publishableKey = pick(params.publishableKey, current.publishableKey)
+  const webhookSecret = pick(params.webhookSecret, current.webhookSecret)
 
   // 1. Update in-memory runtime cache
   globalThis.__STRIPE_CONFIG = {

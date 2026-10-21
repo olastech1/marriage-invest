@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getStripeConfig, saveStripeConfig } from '@/lib/stripeConfig'
+import { getStripeConfig, maskSecret, saveStripeConfig } from '@/lib/stripeConfig'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,8 +16,9 @@ export async function GET() {
     return NextResponse.json({
       success: true,
       publishableKey: config.publishableKey,
-      secretKey: config.secretKey,
-      webhookSecret: config.webhookSecret,
+      // Secrets are never sent back to the browser in full
+      secretKey: maskSecret(config.secretKey),
+      webhookSecret: maskSecret(config.webhookSecret),
       rawSecretKeyPresent: Boolean(config.secretKey && !config.isPlaceholder),
       rawWebhookSecretPresent: Boolean(config.webhookSecret && !config.isPlaceholder),
       isPlaceholder: config.isPlaceholder,
@@ -59,9 +60,9 @@ export async function POST(req: NextRequest) {
       message: 'Stripe payment configuration saved successfully!',
       mode: updatedConfig.mode,
       config: {
-        secretKey: updatedConfig.secretKey,
+        secretKey: maskSecret(updatedConfig.secretKey),
         publishableKey: updatedConfig.publishableKey,
-        webhookSecret: updatedConfig.webhookSecret,
+        webhookSecret: maskSecret(updatedConfig.webhookSecret),
         mode: updatedConfig.mode,
         isLive: updatedConfig.isLive,
         isPlaceholder: updatedConfig.isPlaceholder,
