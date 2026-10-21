@@ -214,6 +214,9 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
+    const session = await auth()
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const body = await req.json()
     const { id, active } = body
 
@@ -221,10 +224,14 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Reminder ID is required' }, { status: 400 })
     }
 
-    const updated = await prisma.depositReminder.update({
-      where: { id },
+    const owned = await prisma.depositReminder.updateMany({
+      where: { id, userId },
       data: { active: Boolean(active) },
     })
+    if (owned.count === 0) {
+      return NextResponse.json({ success: false, error: 'Reminder not found' }, { status: 404 })
+    }
+    const updated = await prisma.depositReminder.findUnique({ where: { id } })
 
     return NextResponse.json({
       success: true,
@@ -239,6 +246,9 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await auth()
+    const userId = session?.user?.id
+    if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
 
@@ -246,9 +256,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Reminder ID is required' }, { status: 400 })
     }
 
-    await prisma.depositReminder.delete({
-      where: { id },
-    })
+    const deleted = await prisma.depositReminder.deleteMany({ where: { id, userId } })
+    if (deleted.count === 0) {
+      return NextResponse.json({ success: false, error: 'Reminder not found' }, { status: 404 })
+    }
 
     return NextResponse.json({
       success: true,

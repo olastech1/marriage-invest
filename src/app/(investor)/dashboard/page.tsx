@@ -1,6 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getReciprocationStatus } from '@/lib/reciprocation'
+import { resolveSpouseId } from '@/lib/chat'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Decimal } from '@prisma/client/runtime/library'
@@ -136,10 +137,15 @@ export default async function DashboardPage() {
     prisma.auditLog.findFirst({
       where: { userId, action: 'MARRIAGE_REGISTRATION_CREATED' },
     }),
-    prisma.withdrawalRequest.findMany({
-      where: { status: 'PENDING' },
-      select: { id: true, amount: true, adminNote: true, userId: true },
-    }),
+    // Only my spouse's pending requests can need my approval
+    resolveSpouseId(userId).then((spouseId) =>
+      spouseId
+        ? prisma.withdrawalRequest.findMany({
+            where: { status: 'PENDING', userId: spouseId },
+            select: { id: true, amount: true, adminNote: true, userId: true },
+          })
+        : [],
+    ),
     getReciprocationStatus(userId),
   ])
 

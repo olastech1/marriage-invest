@@ -21,8 +21,9 @@ export async function GET() {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
-    const userName = session?.user?.name || 'Jane Doe'
+    const userName = session?.user?.name || 'Member'
 
+    const reciprocationSpouse = resolveSpouseId(userId)
     const [userWithdrawals, allPendingWithdrawals, eligibleInvestments, reciprocation] = await Promise.all([
       prisma.withdrawalRequest.findMany({
         where: { userId },
@@ -36,9 +37,13 @@ export async function GET() {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.withdrawalRequest.findMany({
+      // Only the spouse's own pending requests can need my approval
+      reciprocationSpouse.then((spouseId) =>
+        spouseId
+          ? prisma.withdrawalRequest.findMany({
         where: {
           status: 'PENDING',
+          userId: spouseId,
         },
         include: {
           investment: {
@@ -56,7 +61,9 @@ export async function GET() {
           },
         },
         orderBy: { createdAt: 'desc' },
-      }),
+      })
+          : [],
+      ),
       prisma.investment.findMany({
         where: {
           userId,
@@ -112,10 +119,11 @@ export async function GET() {
           fee: Number(w.fee),
           netAmount: Number(w.netAmount),
           bankName: w.bankName,
-          accountNumber: w.accountNumber,
+          // Never expose the spouse's full account number
+          accountNumber: w.accountNumber ? `••••${w.accountNumber.slice(-4)}` : null,
           createdAt: w.createdAt,
           requesterId: w.userId,
-          requesterName: meta?.requestedByName || w.user?.name || 'Your Partner',
+          requesterName: meta?.requestedByName || w.user?.name || 'your spouse',
           partnerName: meta?.partnerName || 'your spouse',
           opportunityTitle: w.investment?.opportunity?.title || 'Joint Marriage Reserve',
           referenceNumber: w.investment?.referenceNumber,
@@ -147,7 +155,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
-    const userName = session?.user?.name || 'Jane Doe'
+    const userName = session?.user?.name || 'Member'
     const body = await req.json()
     const parsed = withdrawalSchema.safeParse(body)
 

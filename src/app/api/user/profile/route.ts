@@ -1,8 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
+
+const EMPTY_SOCIALS = { instagram: '', tiktok: '', twitter: '', whatsapp: '', linkedin: '', website: '' }
+
+type ProfileUser = {
+  id: string
+  name: string
+  username: string | null
+  email: string
+  phone: string | null
+  bio: string | null
+  socials: unknown
+  publicChatEnabled: boolean
+  showPhone: boolean
+  showEmail: boolean
+  role: string
+  identityVerified: boolean
+}
+
+function initials(name: string) {
+  return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+function present(u: ProfileUser) {
+  return {
+    id: u.id,
+    name: u.name,
+    username: u.username || '',
+    email: u.email,
+    phone: u.phone || '',
+    bio: u.bio || '',
+    socials: (u.socials as Record<string, string>) || EMPTY_SOCIALS,
+    publicChatEnabled: u.publicChatEnabled,
+    showPhone: u.showPhone,
+    showEmail: u.showEmail,
+    publicBioUrl: u.username ? `/u/${u.username}` : null,
+    role: u.role,
+    avatar: initials(u.name),
+    identityVerified: u.identityVerified,
+  }
+}
 
 export async function GET() {
   try {
@@ -10,112 +51,16 @@ export async function GET() {
     const currentUserId = session?.user?.id
     if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
 
-    const user: any = (await prisma.user.findUnique({
-      where: { id: currentUserId },
-    })) || {
-      id: 'usr_jane_doe',
-      name: 'Investor',
-      username: 'investor',
-      email: '',
-      phone: '',
-      bio: 'Building our generational wealth together on Union Verify. Co-managing our 6.8% compounding joint spousal vault. 💍✨',
-      socials: {
-        instagram: '',
-        tiktok: '',
-        twitter: '',
-        whatsapp: '',
-        linkedin: '',
-        website: 'https://unionverify.com',
-      },
-      publicChatEnabled: true,
-      showPhone: true,
-      showEmail: true,
-      role: 'INVESTOR',
-      identityVerified: true,
-    }
+    const user = await prisma.user.findUnique({ where: { id: currentUserId } })
+    if (!user) return NextResponse.json({ error: 'Account not found.' }, { status: 404 })
 
-    const spouse: any = (await prisma.user.findUnique({
-      where: { id: 'usr_marcus_vance' },
-    })) || {
-      id: 'usr_marcus_vance',
-      name: 'Your Partner',
-      username: 'partner',
-      email: '',
-      phone: '',
-      bio: 'Joint Signatory on Union Verify. Committed to financial freedom, covenant growth, and mutual compound yield.',
-      socials: {
-        instagram: '',
-        tiktok: '',
-        twitter: '',
-        whatsapp: '',
-        linkedin: '',
-        website: 'https://unionverify.com',
-      },
-      publicChatEnabled: true,
-      showPhone: true,
-      showEmail: true,
-      role: 'INVESTOR',
-      identityVerified: true,
-    }
-
-    const userSlug = user.username || 'investor'
-    const spouseSlug = spouse.username || 'partner'
+    const spouseId = await resolveSpouseId(currentUserId)
+    const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId } }) : null
 
     return NextResponse.json({
       success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        username: userSlug,
-        email: user.email,
-        phone: user.phone || '',
-        bio: user.bio || 'Building our generational wealth together on Union Verify. 💍✨',
-        socials: user.socials || {
-          instagram: '',
-          tiktok: '',
-          twitter: '',
-          whatsapp: user.phone || '',
-          linkedin: '',
-          website: 'https://unionverify.com',
-        },
-        publicChatEnabled: user.publicChatEnabled !== false,
-        showPhone: user.showPhone !== false,
-        showEmail: user.showEmail !== false,
-        publicBioUrl: `/u/${userSlug}`,
-        role: user.role,
-        avatar: user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
-        identityVerified: user.identityVerified,
-      },
-      spouse: {
-        id: spouse.id,
-        name: spouse.name,
-        username: spouseSlug,
-        email: spouse.email,
-        phone: spouse.phone || '',
-        bio: spouse.bio || 'Joint Signatory on Union Verify.',
-        socials: spouse.socials || {
-          instagram: '',
-          tiktok: '',
-          twitter: '',
-          whatsapp: spouse.phone || '',
-          linkedin: '',
-          website: 'https://unionverify.com',
-        },
-        publicChatEnabled: spouse.publicChatEnabled !== false,
-        showPhone: spouse.showPhone !== false,
-        showEmail: spouse.showEmail !== false,
-        publicBioUrl: `/u/${spouseSlug}`,
-        avatar: spouse.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
-        relationship: 'Joint Signatory',
-        covenantId: 'UV-2026-98420',
-        status: 'Online',
-      },
-      covenant: {
-        seal: 'UV-2026-98420',
-        jointVault: `${user.name} & ${spouse.name} Spousal Contribution`,
-        rule: 'Rule 4.2: Mutual Matrimonial Savings Reciprocation Protocol',
-        parity: '100% Balanced',
-      },
+      user: present(user),
+      spouse: spouse ? present(spouse) : null,
     })
   } catch (error: any) {
     console.error('[GET /api/user/profile]', error)
@@ -123,77 +68,35 @@ export async function GET() {
   }
 }
 
+// Members can only edit their own profile (a spouse edits theirs from their own account)
 export async function PATCH(req: NextRequest) {
   try {
     const session = await auth()
     const currentUserId = session?.user?.id
     if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const body = await req.json()
-    const {
-      name,
-      phone,
-      bio,
-      socials,
-      publicChatEnabled,
-      showPhone,
-      showEmail,
-      username,
-      spousePhone,
-      spouseEmail,
-      spouseBio,
-      spouseSocials,
-    } = body
+    const { name, phone, bio, socials, publicChatEnabled, showPhone, showEmail, username } = body
 
-    const userUpdateData: any = {}
-    if (name) userUpdateData.name = name
-    if (phone) userUpdateData.phone = phone
-    if (bio !== undefined) userUpdateData.bio = bio
-    if (socials !== undefined) userUpdateData.socials = socials
-    if (publicChatEnabled !== undefined) userUpdateData.publicChatEnabled = Boolean(publicChatEnabled)
-    if (showPhone !== undefined) userUpdateData.showPhone = Boolean(showPhone)
-    if (showEmail !== undefined) userUpdateData.showEmail = Boolean(showEmail)
-    if (username) userUpdateData.username = username.toLowerCase().replace(/[^a-z0-9_-]/g, '')
-
-    if (Object.keys(userUpdateData).length > 0) {
-      await prisma.user.update({
-        where: { id: currentUserId },
-        data: userUpdateData,
-      })
+    const data: Record<string, unknown> = {}
+    if (name) data.name = String(name).slice(0, 80)
+    if (phone !== undefined) data.phone = String(phone).slice(0, 25)
+    if (bio !== undefined) data.bio = String(bio).slice(0, 500)
+    if (socials !== undefined) data.socials = socials
+    if (publicChatEnabled !== undefined) data.publicChatEnabled = Boolean(publicChatEnabled)
+    if (showPhone !== undefined) data.showPhone = Boolean(showPhone)
+    if (showEmail !== undefined) data.showEmail = Boolean(showEmail)
+    if (username) {
+      const clean = String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40)
+      const taken = await prisma.user.findFirst({ where: { username: clean, NOT: { id: currentUserId } } })
+      if (taken) return NextResponse.json({ success: false, error: 'That username is taken.' }, { status: 409 })
+      data.username = clean
     }
 
-    const spouseUpdateData: any = {}
-    if (spousePhone) spouseUpdateData.phone = spousePhone
-    if (spouseEmail) spouseUpdateData.email = spouseEmail
-    if (spouseBio !== undefined) spouseUpdateData.bio = spouseBio
-    if (spouseSocials !== undefined) spouseUpdateData.socials = spouseSocials
-
-    if (Object.keys(spouseUpdateData).length > 0) {
-      await prisma.user.update({
-        where: { id: 'usr_marcus_vance' },
-        data: spouseUpdateData,
-      })
+    if (Object.keys(data).length > 0) {
+      await prisma.user.update({ where: { id: currentUserId }, data })
     }
 
-    // Trigger persistent partner notification for changes made
-    await prisma.notification.create({
-      data: {
-        userId: currentUserId,
-        title: '🔔 Partner Settings & Profile Updated',
-        message: 'Your partner updated contact information, profile biography, and social links. Please review and confirm your joint details.',
-        type: 'INFO',
-        category: 'PARTNER_CHANGE',
-        requiresAction: true,
-        attended: false,
-        partnerName: 'Your Partner',
-        actionLabel: 'Review Settings',
-        link: '/settings',
-      } as any,
-    }).catch(console.error)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Contact and social profile information updated successfully.',
-    })
+    return NextResponse.json({ success: true, message: 'Saved.' })
   } catch (error: any) {
     console.error('[PATCH /api/user/profile]', error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })

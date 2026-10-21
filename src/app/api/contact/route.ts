@@ -1,49 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
+import { escapeHtml } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
 // GET /api/contact
-// Returns live advisor conversation history for the contact desk
+// Contact inquiries are private, so there is no shared history to return
 // ---------------------------------------------------------------------------
-export async function GET(req: NextRequest) {
-  try {
-    const messages = await prisma.chatMessage.findMany({
-      where: { threadId: 'advisor' },
-      orderBy: { createdAt: 'asc' },
-    })
-
-    if (!messages || messages.length === 0) {
-      // Seed default welcoming conversation starter message
-      const defaultWelcome = {
-        id: 'adv-seed-1',
-        threadId: 'advisor',
-        senderId: 'advisor_support',
-        senderName: 'Union Verify Support',
-        text: 'Welcome to Union Verify! How can we help you today? Choose one of our quick conversation starters below, or send us a message directly.',
-        timestamp: 'Active Now',
-        createdAt: new Date(),
-        read: true,
-        type: 'text',
-        proposalData: {
-          suggestions: [
-            { id: 'start_marriage', label: '💍 Get Married Online ($500)', prompt: 'We want to legally marry online and set up our joint savings vault.' },
-            { id: 'spousal_vault', label: '💰 How Joint Savings Work (6.8% APY)', prompt: 'How does the 50/50 spousal deposit matching rule and 6.8% APY work?' },
-            { id: 'wedding_registry', label: '🎁 Send Wedding Cash Gift', prompt: 'I want to contribute a wedding gift to a couple\'s cash registry fund.' },
-            { id: 'verify_certificate', label: '📜 Verify Marriage Certificate', prompt: 'I have a certificate docket number and want to verify its authenticity.' },
-            { id: 'member_bio', label: '👤 Connect with Member', prompt: 'I want to connect with a verified member through their public bio profile.' },
-          ],
-        },
-      }
-      return NextResponse.json({ success: true, messages: [defaultWelcome] })
-    }
-
-    return NextResponse.json({ success: true, messages })
-  } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
-  }
+export async function GET() {
+  // Inquiries are private: visitors never see other visitors' messages
+  return NextResponse.json({ success: true, messages: [] })
 }
 
 // ---------------------------------------------------------------------------
@@ -64,7 +32,7 @@ export async function POST(req: NextRequest) {
       actionGoal,
     } = body
 
-    const userText = (message || subject || '').trim()
+    const userText = (message || subject || '').trim().slice(0, 5000)
     if (!userText) {
       return NextResponse.json({ error: 'Message content is required.' }, { status: 400 })
     }
@@ -85,7 +53,8 @@ export async function POST(req: NextRequest) {
     const userMsg = await prisma.chatMessage.create({
       data: {
         id: `msg-contact-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        threadId: 'advisor',
+        // Each inquiry gets its own private thread
+        threadId: `contact_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
         senderId: 'guest_contact',
         senderName: `${senderName}${senderEmail ? ` (${senderEmail})` : ''}`,
         text: userText,
@@ -128,14 +97,13 @@ export async function POST(req: NextRequest) {
         html: `
           <div style="font-family: sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px;">
             <h2 style="color: #0F1C3F; border-bottom: 2px solid #C9A84C; padding-bottom: 8px;">New Contact Desk Conversation</h2>
-            <p><strong>Sender:</strong> ${senderName}</p>
-            <p><strong>Email:</strong> ${senderEmail}</p>
-            <p><strong>Phone:</strong> ${senderPhone || 'Not provided'}</p>
-            <p><strong>Department:</strong> ${department}</p>
+            <p><strong>Sender:</strong> ${escapeHtml(senderName)}</p>
+            <p><strong>Email:</strong> ${escapeHtml(senderEmail)}</p>
+            <p><strong>Phone:</strong> ${escapeHtml(senderPhone || 'Not provided')}</p>
+            <p><strong>Department:</strong> ${escapeHtml(String(department))}</p>
             <div style="background-color: #f8fafc; border-left: 4px solid #C9A84C; padding: 12px 16px; margin: 16px 0;">
-              <p style="margin: 0; font-size: 14px; color: #334155;">${userText}</p>
+              <p style="margin: 0; font-size: 14px; color: #334155;">${escapeHtml(userText)}</p>
             </div>
-            <p style="font-size: 12px; color: #94a3b8;">This conversation is connected to the Union Verify Live Chat System.</p>
           </div>
         `,
       }).catch((err) => {

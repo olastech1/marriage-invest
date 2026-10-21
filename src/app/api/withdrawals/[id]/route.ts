@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { resolveSpouseId } from '@/lib/chat'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -34,7 +35,12 @@ export async function GET(_req: NextRequest, { params }: Params) {
       },
     })
 
-    if (!withdrawal) {
+    // Visible to the requester, their spouse, or an admin
+    const requesterSpouse = await resolveSpouseId(withdrawal?.userId || '')
+    if (
+      !withdrawal ||
+      (withdrawal.userId !== userId && requesterSpouse !== userId && session?.user?.role !== 'ADMIN')
+    ) {
       return NextResponse.json({ error: 'Withdrawal request not found' }, { status: 404 })
     }
 
@@ -80,6 +86,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Withdrawal request not found' }, { status: 404 })
     }
 
+    // Only the requester's spouse can approve or decline (never the requester)
+    if (withdrawal.userId === userId || (await resolveSpouseId(withdrawal.userId)) !== userId) {
+      return NextResponse.json({ error: 'Only your spouse can approve this withdrawal.' }, { status: 403 })
+    }
+
     let currentMetadata: any = {}
     try {
       if (withdrawal.adminNote && withdrawal.adminNote.startsWith('{')) {
@@ -91,7 +102,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       currentMetadata = {}
     }
 
-    const partnerName = session?.user?.name || 'Marcus Vance'
+    const partnerName = session?.user?.name || 'Your spouse'
 
     if (action === 'partner_approve') {
       const updatedMetadata = {
@@ -101,8 +112,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         partnerApprovedAt: new Date().toISOString(),
         partnerApproverId: userId,
         partnerApproverName: partnerName,
-        partnerSignature: partnerSignature || `${partnerName} (Digital Spousal Consent)`,
-        partnerNote: partnerNote || 'Mutual spousal consent granted for fund liquidation.',
+        partnerSignature: partnerSignature || partnerName,
+        partnerNote: partnerNote || '',
       }
 
       const updated = await prisma.withdrawalRequest.update({
@@ -116,8 +127,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       await prisma.notification.create({
         data: {
           userId: withdrawal.userId,
-          title: 'Spousal Consent Granted ✓',
-          message: `${partnerName} has approved your withdrawal of $${Number(withdrawal.amount).toLocaleString()}. Your request is now proceeding to financial processing.`,
+          title: `${partnerName} approved your withdrawal`,
+          message: `${partnerName} approved your withdrawal of $${Number(withdrawal.amount).toLocaleString()}. It will now be processed.`,
           type: 'SUCCESS',
           link: '/withdrawals',
         },
@@ -125,7 +136,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       return NextResponse.json({
         success: true,
-        message: 'Spousal consent verified and granted.',
+        message: 'Withdrawal approved.',
         withdrawal: updated,
       })
     }
@@ -138,7 +149,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         partnerRejectedAt: new Date().toISOString(),
         partnerApproverId: userId,
         partnerApproverName: partnerName,
-        partnerNote: partnerNote || 'Declined by spouse to preserve compound growth and covenant vault integrity.',
+        partnerNote: partnerNote || '',
       }
 
       const updated = await prisma.withdrawalRequest.update({
@@ -154,8 +165,8 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       await prisma.notification.create({
         data: {
           userId: withdrawal.userId,
-          title: 'Withdrawal Declined by Partner',
-          message: `${partnerName} has declined the withdrawal of $${Number(withdrawal.amount).toLocaleString()}. Capital remains protected in your compounding vault.`,
+          title: `${partnerName} declined your withdrawal`,
+          message: `${partnerName} declined the withdrawal of $${Number(withdrawal.amount).toLocaleString()}. The funds stay in your joint vault.`,
           type: 'WARNING',
           link: '/withdrawals',
         },
@@ -163,7 +174,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
       return NextResponse.json({
         success: true,
-        message: 'Withdrawal declined by spouse. Funds remain protected in the vault.',
+        message: 'Withdrawal declined.',
         withdrawal: updated,
       })
     }

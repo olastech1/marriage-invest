@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -64,6 +65,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Title and message are required' }, { status: 400 })
     }
 
+    // Members may only notify themselves or their own spouse
+    if (targetUserId && targetUserId !== currentUserId && targetUserId !== (await resolveSpouseId(currentUserId))) {
+      return NextResponse.json({ success: false, error: 'Not allowed' }, { status: 403 })
+    }
+
     const newNotif = await prisma.notification.create({
       data: {
         userId: targetUserId || currentUserId,
@@ -79,7 +85,7 @@ export async function POST(req: NextRequest) {
         partnerName: partnerName || currentUserName,
         actionLabel: actionLabel || 'Review & Attend',
         metadata,
-      } as any,
+      },
     })
 
     return NextResponse.json({ success: true, notification: newNotif }, { status: 201 })

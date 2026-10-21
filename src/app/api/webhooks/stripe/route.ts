@@ -13,27 +13,23 @@ export async function POST(req: NextRequest) {
     const stripe = new Stripe(config.secretKey || 'sk_test_placeholder_key', {
       apiVersion: '2025-02-24.acacia' as Stripe.LatestApiVersion,
     })
-    const webhookSecret = config.webhookSecret || 'whsec_placeholder'
+    const webhookSecret = config.webhookSecret
+
+    // Only signed events from Stripe are accepted. Without a webhook secret,
+    // payments are still recorded via /api/payments/confirm on return from Checkout.
+    if (!webhookSecret || webhookSecret.includes('placeholder')) {
+      return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 503 })
+    }
+    if (!signature) {
+      return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
+    }
 
     let event: Stripe.Event
-
-    if (webhookSecret && !webhookSecret.includes('placeholder')) {
-      if (!signature) {
-        return NextResponse.json({ error: 'Missing stripe-signature header' }, { status: 400 })
-      }
-      try {
-        event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
-      } catch (err: any) {
-        console.error('[Stripe Webhook] Signature verification failed:', err.message)
-        return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
-      }
-    } else {
-      // Mock event in test / development environment without real webhook secret
-      try {
-        event = JSON.parse(rawBody) as Stripe.Event
-      } catch {
-        return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
-      }
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret)
+    } catch (err: any) {
+      console.error('[Stripe Webhook] Signature verification failed:', err.message)
+      return NextResponse.json({ error: 'Webhook signature verification failed' }, { status: 400 })
     }
 
     switch (event.type) {

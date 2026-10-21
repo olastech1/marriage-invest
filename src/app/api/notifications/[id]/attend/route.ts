@@ -19,15 +19,19 @@ export async function POST(req: NextRequest, { params }: Params) {
       return NextResponse.json({ success: false, error: 'Notification ID is required' }, { status: 400 })
     }
 
-    // Update notification in database
-    const updated = await prisma.notification.update({
-      where: { id },
+    // Only the notification's owner can mark it attended
+    const owned = await prisma.notification.updateMany({
+      where: { id, userId },
       data: {
         attended: true,
         read: true,
         attendedAt: new Date(),
-      } as any,
+      },
     })
+    if (owned.count === 0) {
+      return NextResponse.json({ success: false, error: 'Notification not found' }, { status: 404 })
+    }
+    const updated = await prisma.notification.findUnique({ where: { id } })
 
     // Log the attendance in AuditLog
     await prisma.auditLog.create({
@@ -38,7 +42,7 @@ export async function POST(req: NextRequest, { params }: Params) {
         entityId: id,
         after: {
           notificationId: id,
-          title: updated.title,
+          title: updated?.title,
           attendedBy: userName,
           attendedAt: new Date().toISOString(),
         },

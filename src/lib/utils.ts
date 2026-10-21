@@ -178,3 +178,13 @@ export function isAdmin(role: string): boolean {
 export function hasFinanceAccess(role: string): boolean {
   return role === 'ADMIN' || role === 'FINANCE'
 }
+
+/** Escape user-supplied text before putting it into HTML (e.g. emails). */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}

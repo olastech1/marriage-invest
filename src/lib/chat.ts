@@ -77,7 +77,12 @@ function isRealUser(id?: string | null): id is string {
  * the most recent member they have exchanged direct messages with.
  */
 export async function resolveSpouseId(userId: string): Promise<string> {
+  if (!userId) return ''
   if (DEMO_SPOUSES[userId]) return DEMO_SPOUSES[userId]
+
+  // An explicit spouse link on the account wins over chat history
+  const linked = await prisma.user.findUnique({ where: { id: userId }, select: { spouseId: true } })
+  if (linked?.spouseId) return linked.spouseId
 
   const db = await getChatDb()
   const recent = await db.chatMessage.findMany({

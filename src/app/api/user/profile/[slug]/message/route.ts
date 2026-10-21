@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { escapeHtml } from '@/lib/utils'
 import { sendEmail } from '@/lib/email'
 import { buildThreadId, createChatMessage } from '@/lib/chat'
 
@@ -22,24 +23,14 @@ export async function POST(
 
     const cleanSlug = slug.toLowerCase().trim()
 
-    // Find target user from slug (by username or ID)
-    let targetUser = await prisma.user.findFirst({
-      where: { username: cleanSlug },
-    })
-
-    if (!targetUser) {
-      if (cleanSlug.includes('marcus')) {
-        targetUser = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
-      } else if (cleanSlug.includes('jane')) {
-        targetUser = await prisma.user.findUnique({ where: { id: 'usr_jane_doe' } })
-      } else {
-        targetUser = await prisma.user.findUnique({ where: { id: cleanSlug } })
-      }
+    // Find the member by username; never fall back to someone else
+    const targetUser = await prisma.user.findUnique({ where: { username: cleanSlug } })
+    if (!targetUser || !targetUser.publicChatEnabled) {
+      return NextResponse.json({ success: false, error: 'Member not found.' }, { status: 404 })
     }
-
-    const targetUserId = targetUser?.id || (cleanSlug.includes('marcus') ? 'usr_marcus_vance' : 'usr_jane_doe')
-    const targetName = targetUser?.name || (targetUserId === 'usr_marcus_vance' ? 'Marcus Vance' : 'Jane Doe')
-    const targetEmail = targetUser?.email || `${cleanSlug}@unionverify.com`
+    const targetUserId = targetUser.id
+    const targetName = targetUser.name
+    const targetEmail = targetUser.email
 
     // Determine sender identity
     const effectiveSenderId = session?.user?.id || (senderEmail ? `guest_${senderEmail.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `guest_${Date.now().toString(36)}`)
@@ -77,7 +68,7 @@ export async function POST(
       await prisma.notification.create({
         data: {
           userId: targetUserId,
-          title: `💬 New Message from ${cleanSenderName}`,
+          title: `New message from ${cleanSenderName}`,
           message: `${cleanSenderName} (${cleanSenderContact}): "${message.slice(0, 90)}${message.length > 90 ? '...' : ''}"`,
           type: 'INFO',
           link: `/chat?recipientId=${effectiveSenderId}`,
@@ -99,11 +90,11 @@ export async function POST(
               <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #64748b; margin-top: 4px;">Direct Member Chat</p>
             </div>
             <div style="background-color: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
-              <p style="margin: 0; font-size: 13px;"><strong>From:</strong> ${cleanSenderName}</p>
-              <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact:</strong> ${cleanSenderContact}</p>
+              <p style="margin: 0; font-size: 13px;"><strong>From:</strong> ${escapeHtml(cleanSenderName)}</p>
+              <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact:</strong> ${escapeHtml(cleanSenderContact)}</p>
             </div>
             <div style="background-color: #f1f5f9; border-left: 4px solid #C9A84C; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-              <p style="margin: 0; font-style: italic; color: #0f172a; font-size: 14px;">"${message}"</p>
+              <p style="margin: 0; font-style: italic; color: #0f172a; font-size: 14px;">"${escapeHtml(message)}"</p>
             </div>
             <div style="text-align: center;">
               <a href="https://unionverify.com/chat?recipientId=${effectiveSenderId}" style="display: inline-block; background-color: #0F1C3F; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13px; padding: 12px 24px; border-radius: 10px;">
@@ -119,7 +110,7 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Message sent directly to ${targetName}!`,
+      message: `Message sent to ${targetName}.`,
       chatUrl: `/chat?recipientId=${targetUserId}`,
       chatMsg,
     })

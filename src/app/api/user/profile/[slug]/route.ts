@@ -1,111 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
+import { resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ slug: string }> }
-) {
+// Public member profile by username. Only shows what the member chose to share.
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ slug: string }> }) {
   try {
     const { slug } = await params
-    const cleanSlug = slug.toLowerCase().trim()
+    const username = slug.toLowerCase().trim()
 
-    // 1. Try to find user by username or ID
-    let user: any = await prisma.user.findFirst({
-      where: {
-        username: cleanSlug,
-      },
-    })
-
+    const user = await prisma.user.findUnique({ where: { username } })
     if (!user) {
-      if (cleanSlug.includes('jane')) {
-        user = await prisma.user.findUnique({ where: { id: 'usr_jane_doe' } })
-      } else if (cleanSlug.includes('marcus')) {
-        user = await prisma.user.findUnique({ where: { id: 'usr_marcus_vance' } })
-      } else {
-        user = await prisma.user.findFirst()
-      }
+      return NextResponse.json({ success: false, error: 'Member not found' }, { status: 404 })
     }
 
-    if (!user) {
-      user = {
-        id: 'usr_jane_doe',
-        name: 'Investor',
-        username: 'investor',
-        email: '',
-        phone: '',
-        bio: 'Building our generational wealth together on Union Verify. Co-managing our 6.8% compounding joint spousal vault. 💍✨',
-        socials: {
-          instagram: '',
-          tiktok: '',
-          twitter: '',
-          whatsapp: '',
-          linkedin: '',
-          website: 'https://unionverify.com',
-        },
-        publicChatEnabled: true,
-        showPhone: true,
-        showEmail: true,
-        role: 'INVESTOR',
-        identityVerified: true,
-      }
-    }
-
-    const isMarcus = user.id === 'usr_marcus_vance' || cleanSlug.includes('marcus')
-    const spouseId = isMarcus ? 'usr_jane_doe' : 'usr_marcus_vance'
-    const spouse: any = (await prisma.user.findUnique({ where: { id: spouseId } })) || {
-      id: spouseId,
-      name: isMarcus ? 'Jane Doe' : 'Marcus Vance',
-      username: isMarcus ? 'jane-doe' : 'marcus-vance',
-      email: '',
-      phone: '',
-      bio: isMarcus ? 'Building our generational wealth together.' : 'Husband & Joint Signatory on Union Verify.',
-    }
-
-    const primaryName = user.name || (isMarcus ? 'Marcus Vance' : 'Jane Doe')
-    const spouseName = spouse.name || (isMarcus ? 'Jane Doe' : 'Marcus Vance')
-    const username = user.username || cleanSlug
+    const spouseId = await resolveSpouseId(user.id)
+    const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { name: true } }) : null
+    const socials = (user.socials as Record<string, string> | null) || {}
 
     return NextResponse.json({
       success: true,
       profile: {
         userId: user.id,
-        name: primaryName,
+        name: user.name,
         username,
-        avatar: primaryName.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
-        bio: user.bio || 'Verified Member of Union Verify · Co-managing our joint 6.8% compounding matrimonial savings vault.',
-        identityVerified: true,
-        memberSince: '2024',
-        covenantSeal: 'UV-2026-98420',
-        vaultName: `${isMarcus ? spouseName : primaryName} & ${isMarcus ? primaryName : spouseName} Spousal Contribution`,
-        status: 'Online & Verified',
-        publicChatEnabled: user.publicChatEnabled !== false,
+        avatar: user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+        bio: user.bio || '',
+        identityVerified: user.identityVerified,
+        memberSince: String(user.createdAt.getFullYear()),
+        publicChatEnabled: user.publicChatEnabled,
         contact: {
-          email: user.showEmail !== false ? user.email : null,
-          phone: user.showPhone !== false ? (user.phone || '') : null,
-          whatsapp: user.socials?.whatsapp || user.phone || '',
+          email: user.showEmail ? user.email : null,
+          phone: user.showPhone ? user.phone || null : null,
+          whatsapp: socials.whatsapp || '',
         },
         socials: {
-          instagram: user.socials?.instagram || '',
-          tiktok: user.socials?.tiktok || '',
-          twitter: user.socials?.twitter || '',
-          linkedin: user.socials?.linkedin || '',
-          website: user.socials?.website || 'https://unionverify.com',
+          instagram: socials.instagram || '',
+          tiktok: socials.tiktok || '',
+          twitter: socials.twitter || '',
+          linkedin: socials.linkedin || '',
+          website: socials.website || '',
         },
-        spouse: {
-          name: spouseName,
-          relationship: isMarcus ? 'Wife & Joint Signatory' : 'Husband & Joint Signatory',
-          avatar: spouseName.split(' ').map((n: string) => n[0]).join('').slice(0, 2),
-          covenantId: 'UV-2026-98420',
-          email: spouse.email,
-        },
-        metrics: {
-          covenantParity: '100% Balanced',
-          compoundingApy: '6.8% APY',
-          dualApprovalEnabled: true,
-          fiduciaryCustody: 'Union Verify Standards',
-        },
+        spouse: spouse ? { name: spouse.name } : null,
       },
     })
   } catch (error: any) {
