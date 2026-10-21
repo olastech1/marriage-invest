@@ -1069,6 +1069,23 @@ export default function UnifiedChatPage() {
                               </button>
                             </form>
                           )}
+                          {/* A reminder addressed to me: one tap to pay that deposit */}
+                          {(msg.type === 'system_reminder' || msg.type === 'reminder') &&
+                            Number(amount) >= 10 &&
+                            (msg.proposalData?.toUserId
+                              ? msg.proposalData.toUserId === activeUserId
+                              : msg.text.includes(`sent ${activeUserName} a reminder`)) && (
+                              <form method="post" action="/pay/deposit">
+                                <input type="hidden" name="amount" value={Number(amount)} />
+                                <button
+                                  type="submit"
+                                  className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                                >
+                                  <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
+                                  Deposit ${Number(amount).toLocaleString()}
+                                </button>
+                              </form>
+                            )}
                           {msg.depositData?.bonusMatch ? (
                             <p className="text-[11px] font-semibold text-emerald-700">
                               +${Number(msg.depositData.bonusMatch).toLocaleString()} instant cash match

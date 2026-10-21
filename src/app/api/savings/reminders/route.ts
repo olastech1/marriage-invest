@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
           createdAt: now,
           read: false,
           type: 'system_reminder',
-          proposalData: { amount: numAmount },
+          proposalData: { amount: numAmount, fromUserId: userId, toUserId: spouse.id },
         },
         spouseOf: userId,
       })
