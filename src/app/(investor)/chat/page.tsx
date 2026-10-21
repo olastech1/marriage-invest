@@ -1125,6 +1125,42 @@ export default function UnifiedChatPage() {
                       </div>
                     )}
 
+                    {/* ACTIVITY CARD: deposit alerts, reminders, certificates and any other type */}
+                    {msg.type && msg.type !== 'text' && msg.type !== 'love_note' && !(msg.type === 'proposal' && msg.proposalData) && (() => {
+                      const kind =
+                        msg.type === 'deposit_alert'
+                          ? { label: msg.depositData?.isReciprocalMatch ? 'Deposit Matched' : 'Vault Deposit', Icon: PiggyBank, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
+                          : msg.type === 'system_reminder' || msg.type === 'reminder'
+                            ? { label: 'Deposit Reminder', Icon: Bell, tone: 'border-amber-200 bg-amber-50/60 text-amber-700' }
+                            : msg.type === 'certificate'
+                              ? { label: 'Marriage Certificate', Icon: Award, tone: 'border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#8a6d1f]' }
+                              : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
+                      const amount = msg.depositData?.amount ?? msg.proposalData?.amount
+                      return (
+                        <div className={`p-3.5 rounded-2xl border shadow-xs text-xs space-y-2 min-w-[240px] ${kind.tone}`}>
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                              <kind.Icon className="w-4 h-4" />
+                              {kind.label}
+                            </span>
+                            {amount != null && (
+                              <span className="text-sm font-bold text-[#0F1C3F]">
+                                ${Number(amount).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-gray-800 text-xs leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                            {msg.text}
+                          </p>
+                          {msg.depositData?.bonusMatch ? (
+                            <p className="text-[11px] font-semibold text-emerald-700">
+                              +${Number(msg.depositData.bonusMatch).toLocaleString()} instant cash match
+                            </p>
+                          ) : null}
+                        </div>
+                      )
+                    })()}
+
                     {/* Reactions Bar */}
                     <div className="flex items-center gap-1 mt-1 justify-end">
                       {msg.reactions &&
