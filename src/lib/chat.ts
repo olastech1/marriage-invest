@@ -68,33 +68,18 @@ export function isParticipant(threadId: string, userId: string): boolean {
 // Spouse resolution
 // ---------------------------------------------------------------------------
 
-function isRealUser(id?: string | null): id is string {
-  return !!id && id.startsWith('usr_') && id !== 'usr_admin'
-}
-
 /**
- * Resolve a user's spouse: the demo pairing for the seeded couple, otherwise
- * the most recent member they have exchanged direct messages with.
+ * Resolve a user's spouse: the demo pairing for the seeded test couple, or the
+ * account's spouse link.
  */
 export async function resolveSpouseId(userId: string): Promise<string> {
   if (!userId) return ''
   if (DEMO_SPOUSES[userId]) return DEMO_SPOUSES[userId]
 
-  // An explicit spouse link on the account wins over chat history
+  // Only an explicit link counts (union registration or an accepted spouse
+  // request). Chatting with someone never makes them your spouse.
   const linked = await prisma.user.findUnique({ where: { id: userId }, select: { spouseId: true } })
-  if (linked?.spouseId) return linked.spouseId
-
-  const db = await getChatDb()
-  const recent = await db.chatMessage.findMany({
-    where: { OR: [{ senderId: userId }, { recipientId: userId }] },
-    orderBy: { createdAt: 'desc' },
-    take: 50,
-  })
-  for (const msg of recent) {
-    const other = msg.senderId === userId ? msg.recipientId : msg.senderId
-    if (isRealUser(other) && other !== userId) return other
-  }
-  return ''
+  return linked?.spouseId || ''
 }
 
 /**

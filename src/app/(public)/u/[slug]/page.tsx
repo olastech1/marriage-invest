@@ -56,6 +56,8 @@ export default function UserPublicProfilePage() {
   const [messageText, setMessageText] = useState('')
   const [sendingMsg, setSendingMsg] = useState(false)
   const [msgSentSuccess, setMsgSentSuccess] = useState(false)
+  // Set for visitors without an account: where to sign up to keep the conversation
+  const [registerUrl, setRegisterUrl] = useState<string | null>(null)
   const [msgError, setMsgError] = useState<string | null>(null)
 
   const [copiedLink, setCopiedLink] = useState(false)
@@ -105,6 +107,7 @@ export default function UserPublicProfilePage() {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Failed to send message')
+      setRegisterUrl(data.registerUrl || null)
       setMsgSentSuccess(true)
       setMessageText('')
       setSenderName('')
@@ -409,7 +412,19 @@ export default function UserPublicProfilePage() {
                 <h4 className="text-base font-bold text-white">Message sent</h4>
                 <p className="text-xs text-gray-300 max-w-xs mx-auto">
                   Your message has been sent to {primaryName}.
+                  {registerUrl && ' Replies will be emailed to you.'}
                 </p>
+                {registerUrl && (
+                  <div className="max-w-xs mx-auto rounded-xl bg-white/5 border border-white/10 p-3 text-xs text-gray-300 space-y-2">
+                    <p>Create a free account with the same email to keep track of the whole conversation and reply in the app.</p>
+                    <Link
+                      href={registerUrl}
+                      className="inline-block px-4 py-2 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold"
+                    >
+                      Create account
+                    </Link>
+                  </div>
+                )}
                 <button
                   onClick={() => setChatModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl bg-white/10 text-white font-bold text-xs hover:bg-white/20 transition-colors"

@@ -38,6 +38,8 @@ export interface ChatUser {
   bio?: string
   avatar?: string
   online?: boolean
+  unreadCount?: number
+  guestEmail?: string | null
 }
 
 export interface ChatMessage {
@@ -53,12 +55,12 @@ export interface ChatMessage {
   createdAt?: string | Date
   read: boolean
   reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request'
   proposalData?: {
     goalName?: string
     amount?: number
     split?: string
-    status?: 'pending' | 'approved' | 'rejected'
+    status?: 'pending' | 'approved' | 'rejected' | 'accepted'
     proposedBy?: string
     approvedBy?: string
     [key: string]: any
@@ -121,9 +123,16 @@ export default function UnifiedChatPage() {
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
   // What I still owe my spouse, and which of their deposits to show the Match button on
-  const [reciprocation, setReciprocation] = useState<{ owedByMe: number; pendingMessageId: string | null } | null>(null)
+  const [reciprocation, setReciprocation] = useState<{ owedByMe: number; owedBySpouse: number; pendingMessageId: string | null } | null>(null)
+  // Reminder form (sent to the couple chat and to the spouse's email)
+  const [showReminder, setShowReminder] = useState(false)
+  const [reminderAmount, setReminderAmount] = useState('')
+  const [reminderNote, setReminderNote] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewChatModal, setShowNewChatModal] = useState(false)
+  const [newChatEmail, setNewChatEmail] = useState('')
+  const [startingChat, setStartingChat] = useState(false)
+  const [newChatResult, setNewChatResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
 
   // Derive active thread ID
@@ -204,6 +213,44 @@ export default function UnifiedChatPage() {
       )
     }
   }, [availableContacts, activeUserId, spouseId, conversations])
+
+  // New chat by email: open the member's chat, or email them an invitation
+  const handleStartChat = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStartingChat(true)
+    setNewChatResult(null)
+    try {
+      const res = await fetch('/api/chat/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newChatEmail }),
+      })
+      const data = await res.json()
+      if (!data.success) {
+        setNewChatResult({ ok: false, text: data.error || 'Something went wrong.' })
+      } else if (data.contact) {
+        setNewChatEmail('')
+        handleSelectContact({
+          id: data.contact.id,
+          name: data.contact.name,
+          username: data.contact.username || undefined,
+          avatar: data.contact.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+        })
+      } else {
+        setNewChatResult({
+          ok: true,
+          text: data.emailed
+            ? `${newChatEmail} isn't a member yet, so we emailed them an invitation. Their chat appears here once they join.`
+            : `${newChatEmail} isn't a member yet. Send them this link to join: ${data.inviteUrl}`,
+        })
+        setNewChatEmail('')
+      }
+    } catch {
+      setNewChatResult({ ok: false, text: 'Something went wrong.' })
+    } finally {
+      setStartingChat(false)
+    }
+  }
 
   // Select contact & start/open chat
   const handleSelectContact = (contact: ChatUser) => {
@@ -430,13 +477,41 @@ export default function UnifiedChatPage() {
   }
 
   // Deposit reminder to my spouse (the member chooses the amount)
-  const handleSendInstantNudge = async () => {
-    const entered = window.prompt(`How much would you like to remind ${activeRecipient.name} to deposit? (USD)`)
-    if (entered === null) return
-    const amount = Math.round(parseFloat(entered) * 100) / 100
+  const handleSpouseAction = async (body: { action: 'request'; userId: string } | { action: 'accept'; messageId: string }) => {
+    try {
+      const res = await fetch('/api/spouse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      setNudgeBanner(
+        data.success
+          ? body.action === 'request'
+            ? `Request sent to ${activeRecipient.name}.`
+            : `You are now linked with ${activeRecipient.name} as spouses.`
+          : data.error || 'Something went wrong.',
+      )
+      setTimeout(() => setNudgeBanner(''), 6000)
+      fetchMessages(false)
+      fetchConversations()
+    } catch {
+      setNudgeBanner('Something went wrong.')
+    }
+  }
+
+  // The form sits at the top of the thread: scroll it into view
+  const openReminder = (amount: number) => {
+    setReminderAmount(amount > 0 ? String(amount) : '')
+    setShowReminder(true)
+    messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleSendReminder = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const amount = Math.round(parseFloat(reminderAmount) * 100) / 100
     if (!Number.isFinite(amount) || amount <= 0) {
       setNudgeBanner('Enter an amount greater than $0 to send a reminder.')
-      setTimeout(() => setNudgeBanner(''), 4500)
       return
     }
     setIsNudging(true)
@@ -444,22 +519,19 @@ export default function UnifiedChatPage() {
       const res = await fetch('/api/savings/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'send_now',
-          amount,
-          targetPartnerId: activeRecipient.id,
-          targetPartnerName: activeRecipient.name,
-        }),
+        body: JSON.stringify({ action: 'send_now', amount, note: reminderNote }),
       })
       const data = await res.json()
+      setNudgeBanner(data.success ? data.message : data.error || 'The reminder could not be sent.')
       if (data.success) {
-        setNudgeBanner(`Deposit reminder sent to ${activeRecipient.name}.`)
+        setShowReminder(false)
+        setReminderNote('')
         fetchMessages(false)
         broadcastChannelRef.current?.postMessage({ type: 'NUDGE_SENT' })
-        setTimeout(() => setNudgeBanner(''), 4500)
       }
+      setTimeout(() => setNudgeBanner(''), 6000)
     } catch (err) {
-      console.error('Failed to dispatch nudge:', err)
+      console.error('Failed to send reminder:', err)
     } finally {
       setIsNudging(false)
     }
@@ -675,7 +747,7 @@ export default function UnifiedChatPage() {
           <div className="p-3.5 border-b border-gray-100 flex-shrink-0 space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                Direct Conversations
+                Conversations
               </span>
               <button
                 type="button"
@@ -683,7 +755,7 @@ export default function UnifiedChatPage() {
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white text-[11px] font-bold transition-all shadow-xs"
               >
                 <Plus size={13} />
-                <span>New Chat</span>
+                <span>New chat</span>
               </button>
             </div>
 
@@ -694,7 +766,7 @@ export default function UnifiedChatPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search members or contacts..."
+                placeholder="Search conversations"
                 className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-white placeholder-gray-400 focus:outline-none focus:border-[#C9A84C]"
               />
             </div>
@@ -704,7 +776,7 @@ export default function UnifiedChatPage() {
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {filteredContacts.length === 0 ? (
               <div className="p-6 text-center text-xs text-gray-400">
-                No members found matching &quot;{searchQuery}&quot;
+                {searchQuery ? `No conversations match "${searchQuery}".` : 'No conversations yet. Tap "New chat" to message or invite someone.'}
               </div>
             ) : (
               filteredContacts.map((contact) => {
@@ -745,16 +817,21 @@ export default function UnifiedChatPage() {
                             Spouse
                           </span>
                         )}
-                        {contact.id === 'usr_admin' && (
+                        {contact.role === 'Visitor' && (
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-                            isSelected ? 'bg-blue-400 text-[#0F1C3F]' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                            isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}>
-                            Support
+                            Visitor
+                          </span>
+                        )}
+                        {!isSelected && (contact.unreadCount || 0) > 0 && (
+                          <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                            {contact.unreadCount}
                           </span>
                         )}
                       </div>
                       <p className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {contact.bio || contact.email || 'Click to open conversation'}
+                        {contact.bio || 'Open conversation'}
                       </p>
                     </div>
                   </div>
@@ -836,18 +913,34 @@ export default function UnifiedChatPage() {
               </div>
             </div>
 
+            {/* Member chat, no spouse yet: ask to link as spouses */}
+            {!spouseId && activeRecipient.id && !activeRecipient.id.startsWith('guest_') && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Ask ${activeRecipient.name} to link your accounts as spouses? You'll share a joint vault and approve each other's joint withdrawals.`)) {
+                    handleSpouseAction({ action: 'request', userId: activeRecipient.id })
+                  }
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex-shrink-0 cursor-pointer"
+              >
+                <Heart className="w-3.5 h-3.5" />
+                <span>Link as spouse</span>
+              </button>
+            )}
+
             {/* Spousal Action Triggers */}
             {isChattingWithSpouse && (
               <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <button
-                  onClick={handleSendInstantNudge}
+                  onClick={() => openReminder(reciprocation?.owedBySpouse || 0)}
                   disabled={isNudging}
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
                   title="Send instant deposit reminder"
                   aria-label="Send instant deposit reminder"
                 >
                   <Bell className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden sm:inline">{isNudging ? 'Nudging...' : 'Deposit Nudge'}</span>
+                  <span className="hidden sm:inline">{isNudging ? 'Sending…' : 'Send reminder'}</span>
                 </button>
                 <button
                   onClick={() => setShowProposalModal(true)}
@@ -876,6 +969,83 @@ export default function UnifiedChatPage() {
             ref={messagesContainerRef}
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-3 sm:space-y-4 bg-gray-50/50"
           >
+            {/* Spouse: what's owed each way, with the matching action */}
+            {isChattingWithSpouse && (reciprocation?.owedByMe || 0) > 0 && (
+              <div className="sticky top-0 z-10 p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-3 shadow-xs">
+                <p className="text-xs font-semibold text-rose-900">
+                  {activeRecipient.name} deposited — you have ${reciprocation!.owedByMe.toLocaleString()} to reciprocate.
+                </p>
+                <form method="post" action="/pay/match" className="flex-shrink-0">
+                  <button type="submit" className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold cursor-pointer">
+                    Reciprocate ${reciprocation!.owedByMe.toLocaleString()}
+                  </button>
+                </form>
+              </div>
+            )}
+            {isChattingWithSpouse && (reciprocation?.owedBySpouse || 0) > 0 && (
+              <div className="sticky top-0 z-10 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 shadow-xs">
+                <p className="text-xs font-semibold text-amber-900">
+                  Waiting for {activeRecipient.name} to reciprocate ${reciprocation!.owedBySpouse.toLocaleString()}.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => openReminder(reciprocation!.owedBySpouse)}
+                  className="flex-shrink-0 px-3 py-1.5 rounded-xl border border-amber-300 bg-white text-amber-900 text-xs font-bold cursor-pointer"
+                >
+                  Send reminder
+                </button>
+              </div>
+            )}
+
+            {/* Reminder form: posts to this chat and emails the spouse */}
+            {isChattingWithSpouse && showReminder && (
+              <form onSubmit={handleSendReminder} className="p-3 rounded-2xl bg-white border border-amber-300 shadow-sm space-y-2">
+                <p className="text-xs font-bold text-[#0F1C3F]">Remind {activeRecipient.name} to deposit</p>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="1"
+                    step="0.01"
+                    inputMode="decimal"
+                    required
+                    value={reminderAmount}
+                    onChange={(e) => setReminderAmount(e.target.value)}
+                    placeholder="Amount"
+                    aria-label="Amount"
+                    className="w-28 px-3 py-2 rounded-xl border border-gray-300 text-base sm:text-sm focus:outline-none focus:border-[#C9A84C]"
+                  />
+                  <input
+                    type="text"
+                    maxLength={300}
+                    value={reminderNote}
+                    onChange={(e) => setReminderNote(e.target.value)}
+                    placeholder="Message (optional)"
+                    aria-label="Message"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-300 text-base sm:text-sm focus:outline-none focus:border-[#C9A84C]"
+                  />
+                </div>
+                <p className="text-[11px] text-gray-500">Sent here in your chat and to {activeRecipient.name}&apos;s email.</p>
+                <div className="flex gap-2 justify-end">
+                  <button type="button" onClick={() => setShowReminder(false)} className="px-3 py-1.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 cursor-pointer">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={isNudging} className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold disabled:opacity-50 cursor-pointer">
+                    {isNudging ? 'Sending…' : 'Send reminder'}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {/* Visitors have no account: replies go to their email */}
+            {activeRecipient.id.startsWith('guest_') && (
+              <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                {activeRecipient.name} is a visitor without an account.{' '}
+                {activeRecipient.guestEmail
+                  ? `Your replies are emailed to ${activeRecipient.guestEmail}, with an invitation to create an account to follow the conversation.`
+                  : 'They left no email address, so they will only see replies if they create an account.'}
+              </div>
+            )}
+
             {/* Feedback Banners */}
             {nudgeBanner && (
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 shadow-xs">
@@ -1040,7 +1210,9 @@ export default function UnifiedChatPage() {
                             ? { label: 'Deposit Reminder', Icon: Bell, tone: 'border-amber-200 bg-amber-50/60 text-amber-700' }
                             : msg.type === 'certificate'
                               ? { label: 'Marriage Certificate', Icon: Award, tone: 'border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#8a6d1f]' }
-                              : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
+                              : msg.type === 'spouse_request'
+                                ? { label: 'Spouse request', Icon: Heart, tone: 'border-rose-200 bg-rose-50/60 text-rose-700' }
+                                : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
                       const amount = msg.depositData?.amount ?? msg.proposalData?.amount
                       return (
                         <div className={`p-3.5 rounded-2xl border shadow-xs text-xs space-y-2 min-w-[240px] ${kind.tone}`}>
@@ -1069,6 +1241,21 @@ export default function UnifiedChatPage() {
                               </button>
                             </form>
                           )}
+                          {msg.type === 'spouse_request' &&
+                            (msg.proposalData?.status === 'accepted' ? (
+                              <p className="text-[11px] font-semibold text-emerald-700">Accepted — you are linked as spouses.</p>
+                            ) : msg.proposalData?.toUserId === activeUserId && !spouseId ? (
+                              <button
+                                type="button"
+                                onClick={() => handleSpouseAction({ action: 'accept', messageId: msg.id })}
+                                className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
+                              >
+                                Accept — link as spouses
+                              </button>
+                            ) : (
+                              <p className="text-[11px] text-gray-500">Waiting for a reply.</p>
+                            ))}
+
                           {/* A reminder addressed to me: one tap to pay that deposit */}
                           {(msg.type === 'system_reminder' || msg.type === 'reminder') &&
                             Number(amount) >= 10 &&
@@ -1148,60 +1335,57 @@ export default function UnifiedChatPage() {
         </div>
       </div>
 
-      {/* ── MODAL: START NEW CHAT (Member Directory) ── */}
+      {/* ── MODAL: NEW CHAT (by email: opens a member's chat or invites them) ── */}
       {showNewChatModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden flex flex-col max-h-[85vh]">
+          <form
+            onSubmit={handleStartChat}
+            className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden"
+          >
             <div className="p-4 bg-[#0F1C3F] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#C9A84C]" />
-                <h3 className="font-bold text-sm">Select Member to Message</h3>
+                <h3 className="font-bold text-sm">New chat</h3>
               </div>
               <button
-                onClick={() => setShowNewChatModal(false)}
+                type="button"
+                onClick={() => {
+                  setShowNewChatModal(false)
+                  setNewChatResult(null)
+                }}
                 className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
-
-            <div className="p-3 border-b border-gray-100">
-              <input
-                type="text"
-                placeholder="Search by name, role, or username..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3.5 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
-              />
+            <div className="p-4 space-y-3">
+              <label className="block text-xs font-semibold text-gray-600">
+                Their email address
+                <input
+                  type="email"
+                  required
+                  value={newChatEmail}
+                  onChange={(e) => setNewChatEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="mt-1 w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
+                />
+              </label>
+              <p className="text-[11px] text-gray-500">
+                If they&apos;re a member, the chat opens. If not, we email them an invitation to join you.
+              </p>
+              {newChatResult && (
+                <p className={`text-xs ${newChatResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{newChatResult.text}</p>
+              )}
+              <button
+                type="submit"
+                disabled={startingChat}
+                className="w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-sm disabled:opacity-50 cursor-pointer"
+              >
+                {startingChat ? 'Checking…' : 'Start chat or invite'}
+              </button>
             </div>
-
-            <div className="p-3 overflow-y-auto space-y-1.5 flex-1">
-              {filteredContacts.map((contact) => (
-                <div
-                  key={contact.id}
-                  onClick={() => handleSelectContact(contact)}
-                  className="p-3 rounded-2xl border border-gray-200 hover:border-[#C9A84C] hover:bg-[#C9A84C]/5 cursor-pointer transition-all flex items-center justify-between group"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-[#0F1C3F] flex-shrink-0">
-                      {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="text-xs font-bold text-[#0F1C3F] truncate group-hover:text-[#C9A84C] transition-colors">
-                        {contact.name}
-                      </h4>
-                      <p className="text-[11px] text-gray-500 truncate">
-                        {contact.role || contact.email || 'Member'}
-                      </p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-[#C9A84C] opacity-0 group-hover:opacity-100 transition-opacity">
-                    Chat →
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+          </form>
         </div>
       )}
 

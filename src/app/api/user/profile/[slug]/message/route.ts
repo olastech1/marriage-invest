@@ -33,7 +33,7 @@ export async function POST(
     const targetEmail = targetUser.email
 
     // Determine sender identity
-    const effectiveSenderId = session?.user?.id || (senderEmail ? `guest_${senderEmail.toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `guest_${Date.now().toString(36)}`)
+    const effectiveSenderId = session?.user?.id || (senderEmail ? `guest_${senderEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}` : `guest_${Date.now().toString(36)}`)
     const cleanSenderName = session?.user?.name || senderName?.trim() || 'Visitor'
     const cleanSenderContact = senderEmail?.trim() || senderPhone?.trim() || 'Direct Profile Reach'
 
@@ -60,6 +60,8 @@ export async function POST(
         createdAt: now,
         read: false,
         type: 'text',
+        // Visitors have no account: keep their email so replies can reach them
+        ...(!session?.user?.id && senderEmail?.trim() ? { proposalData: { guestEmail: senderEmail.trim().toLowerCase() } } : {}),
       },
     })
 
@@ -71,7 +73,7 @@ export async function POST(
           title: `New message from ${cleanSenderName}`,
           message: `${cleanSenderName} (${cleanSenderContact}): "${message.slice(0, 90)}${message.length > 90 ? '...' : ''}"`,
           type: 'INFO',
-          link: `/chat?recipientId=${effectiveSenderId}`,
+          link: `/chat?recipientId=${encodeURIComponent(effectiveSenderId)}&name=${encodeURIComponent(cleanSenderName)}`,
         },
       })
     } catch (notifErr) {
@@ -110,7 +112,10 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      message: `Message sent to ${targetName}.`,
+      message: session?.user?.id
+        ? `Message sent to ${targetName}.`
+        : `Message sent to ${targetName}. Replies will be emailed to you. Create a free account with this email to keep track of the conversation.`,
+      registerUrl: session?.user?.id ? null : `/register?email=${encodeURIComponent(String(senderEmail || '').trim())}`,
       chatUrl: `/chat?recipientId=${targetUserId}`,
       chatMsg,
     })

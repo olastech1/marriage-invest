@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
+import { buildThreadId } from '@/lib/chat'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -90,6 +91,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       select: { id: true, name: true, email: true },
     })
+
+    // Messages sent as a visitor with this email move into the new account
+    const guestId = `guest_${normalizedEmail.replace(/[^a-z0-9]/g, '_')}`
+    const guestMessages = await prisma.chatMessage.findMany({
+      where: { OR: [{ senderId: guestId }, { recipientId: guestId }] },
+    })
+    for (const m of guestMessages) {
+      const senderId = m.senderId === guestId ? user.id : m.senderId
+      const recipientId = m.recipientId === guestId ? user.id : m.recipientId
+      await prisma.chatMessage.update({
+        where: { id: m.id },
+        data: { senderId, recipientId, threadId: buildThreadId(senderId, recipientId || senderId) },
+      })
+    }
 
     // If a partner already registered your union with this email, link the two accounts
     const invitedBy = await prisma.marriageRegistration.findFirst({

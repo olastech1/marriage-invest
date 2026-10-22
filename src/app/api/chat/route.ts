@@ -10,6 +10,8 @@ import {
   resolveSpouseId,
 } from '@/lib/chat'
 import { getReciprocationStatus } from '@/lib/reciprocation'
+import { sendEmail } from '@/lib/email'
+import { escapeHtml } from '@/lib/utils'
 
 const DEMO_NAMES: Record<string, string> = {
   usr_jane_doe: 'Jane Doe',
@@ -34,14 +36,119 @@ async function lookupUser(id: string) {
   return user as any
 }
 
+/** The email a visitor left with their message in this thread, if any */
+async function findGuestEmail(threadId: string): Promise<string | null> {
+  const chatDb = await getChatDb()
+  const messages = await chatDb.chatMessage.findMany({ where: { threadId }, orderBy: { createdAt: 'desc' }, take: 50 })
+  for (const m of messages) {
+    const email = (m.proposalData as Record<string, unknown> | null)?.guestEmail
+    if (typeof email === 'string' && email.includes('@')) return email
+  }
+  return null
+}
+
+async function emailVisitorReply(to: string, fromName: string, text: string): Promise<boolean> {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  return sendEmail({
+    to,
+    subject: `${fromName} replied to your message on Union Verify`,
+    html: `<p>${escapeHtml(fromName)} replied:</p>
+<blockquote style="border-left:3px solid #C9A84C;margin:0;padding:8px 12px;color:#0f172a">${escapeHtml(text)}</blockquote>
+<p>To keep track of the whole conversation and reply in the app,
+<a href="${appUrl}/register?email=${encodeURIComponent(to)}">create a free Union Verify account</a> with this email address.
+Your earlier messages will appear in your account.</p>`,
+  }).catch(() => false)
+}
+
 function initials(name?: string | null) {
   return (name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+}
+
+
+type Conversation = {
+  threadId: string
+  lastMessage: { text: string; createdAt: Date | string }
+  otherUserId: string
+  otherUserName: string
+  otherUsername: string | null
+  kind: 'spouse' | 'member' | 'visitor'
+  isSpouse: boolean
+  guestEmail: string | null
+  unreadCount: number
+  updatedAt: Date | string
+}
+
+/** Everyone I have a conversation with (no member directory). Spouse first, then most recent. */
+async function buildConversations(currentUserId: string, spouseId: string): Promise<Conversation[]> {
+  const chatDb = await getChatDb()
+  const myMessages = await chatDb.chatMessage.findMany({
+    where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
+    orderBy: { createdAt: 'desc' },
+    take: 1000,
+  })
+
+  const threads = new Map<string, Conversation>()
+  for (const msg of myMessages) {
+    const otherId = otherParticipant(msg.threadId, currentUserId)
+    if (!otherId || otherId === currentUserId.toLowerCase()) continue
+    let convo = threads.get(msg.threadId)
+    if (!convo) {
+      const isVisitor = otherId.startsWith('guest_')
+      const member = isVisitor ? null : await lookupUser(otherId)
+      convo = {
+        threadId: msg.threadId,
+        lastMessage: { text: msg.text, createdAt: msg.createdAt },
+        otherUserId: otherId,
+        otherUserName:
+          member?.name ||
+          (msg.senderId === otherId ? msg.senderName : msg.recipientName) ||
+          DEMO_NAMES[otherId] ||
+          'Member',
+        otherUsername: member?.username || null,
+        kind: otherId === spouseId ? 'spouse' : isVisitor ? 'visitor' : 'member',
+        isSpouse: otherId === spouseId,
+        guestEmail: null,
+        unreadCount: 0,
+        updatedAt: msg.createdAt,
+      }
+      threads.set(msg.threadId, convo)
+    }
+    if (convo.kind === 'visitor' && !convo.guestEmail) {
+      const email = (msg.proposalData as Record<string, unknown> | null)?.guestEmail
+      if (typeof email === 'string') convo.guestEmail = email
+    }
+    if (!msg.read && msg.recipientId === currentUserId) convo.unreadCount++
+  }
+
+  // Always show the spouse, even before the first message
+  if (spouseId) {
+    const spouseThreadId = buildThreadId(currentUserId, spouseId)
+    if (!threads.has(spouseThreadId)) {
+      const spouse = await lookupUser(spouseId)
+      threads.set(spouseThreadId, {
+        threadId: spouseThreadId,
+        lastMessage: { text: 'Say hello to your spouse.', createdAt: new Date() },
+        otherUserId: spouseId,
+        otherUserName: spouse?.name || DEMO_NAMES[spouseId] || 'Your spouse',
+        otherUsername: spouse?.username || null,
+        kind: 'spouse',
+        isSpouse: true,
+        guestEmail: null,
+        unreadCount: 0,
+        updatedAt: new Date(),
+      })
+    }
+  }
+
+  return [...threads.values()].sort((a, b) =>
+    a.isSpouse !== b.isSpouse ? (a.isSpouse ? -1 : 1) : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+  )
 }
 
 // ---------------------------------------------------------------------------
 // GET /api/chat
 // Supports:
-//   - ?users=true                 -> directory of members you can message
+//   - ?users=true                 -> my contacts (people I have conversations with)
 //   - ?list=true                  -> conversation threads for current user
 //   - ?recipientId=<id>           -> messages between current user and recipient
 //   - ?thread=<id>|spouse         -> messages for a thread the user belongs to
@@ -59,81 +166,31 @@ export async function GET(req: NextRequest) {
     const currentUserId = currentUser.id
     const chatDb = await getChatDb()
 
-    // ── 1. USER DIRECTORY ──
-    if (listUsers) {
-      const allUsers = await prisma.user.findMany()
-      const contacts = allUsers
-        .filter((u: any) => u.id !== currentUserId)
-        .map((u: any) => ({
-          id: u.id,
-          name: u.name,
-          username: u.username || u.name?.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-          email: u.email,
-          role: u.role,
-          bio: u.bio || `${u.role === 'ADMIN' ? 'Platform Administrator' : 'Verified Member'}`,
-          avatar: initials(u.name),
-          online: true,
-        }))
+    const spouseId = await resolveSpouseId(currentUserId)
 
+    // ── 1. MY CONTACTS (people I already talk to; not a member directory) ──
+    if (listUsers) {
+      const conversations = await buildConversations(currentUserId, spouseId)
+      const contacts = conversations.map((c) => ({
+        id: c.otherUserId,
+        name: c.otherUserName,
+        username: c.otherUsername || undefined,
+        role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
+        bio: c.lastMessage.text.slice(0, 80),
+        avatar: initials(c.otherUserName),
+        unreadCount: c.unreadCount,
+        guestEmail: c.guestEmail,
+      }))
       return NextResponse.json({ success: true, users: contacts, currentUserId })
     }
 
-    const spouseId = await resolveSpouseId(currentUserId)
 
     // ── 2. CONVERSATION LIST ──
     if (listConversations) {
-      const myMessages = await chatDb.chatMessage.findMany({
-        where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
-        orderBy: { createdAt: 'desc' },
-        take: 500,
-      })
-
-      const threadMap = new Map<string, any>()
-      for (const msg of myMessages) {
-        const tid = msg.threadId
-        const otherId = otherParticipant(tid, currentUserId)
-        if (!otherId || otherId === currentUserId.toLowerCase()) continue
-
-        if (!threadMap.has(tid)) {
-          const otherName =
-            (msg.senderId === otherId ? msg.senderName : msg.recipientName) ||
-            (await lookupUser(otherId))?.name ||
-            DEMO_NAMES[otherId] ||
-            otherId
-          threadMap.set(tid, {
-            threadId: tid,
-            lastMessage: msg,
-            otherUserId: otherId,
-            otherUserName: otherName,
-            isSpouse: otherId === spouseId,
-            unreadCount: 0,
-            updatedAt: msg.createdAt,
-          })
-        }
-        if (!msg.read && msg.recipientId === currentUserId) {
-          threadMap.get(tid).unreadCount++
-        }
-      }
-
-      // Always surface the spouse thread, even before the first message
-      if (spouseId) {
-        const spouseThreadId = buildThreadId(currentUserId, spouseId)
-        if (!threadMap.has(spouseThreadId)) {
-          threadMap.set(spouseThreadId, {
-            threadId: spouseThreadId,
-            lastMessage: { text: 'Mutual matrimonial vault and joint messaging active.', createdAt: new Date() },
-            otherUserId: spouseId,
-            otherUserName: (await lookupUser(spouseId))?.name || DEMO_NAMES[spouseId] || spouseId,
-            isSpouse: true,
-            unreadCount: 0,
-            updatedAt: new Date(),
-          })
-        }
-      }
-
+      const conversations = await buildConversations(currentUserId, spouseId)
       return NextResponse.json({
         success: true,
-        conversations: Array.from(threadMap.values()),
+        conversations,
         currentUserId,
         spouseId,
       })
@@ -189,6 +246,7 @@ export async function GET(req: NextRequest) {
         recipientId === spouseId
           ? await getReciprocationStatus(currentUserId).then((r) => ({
               owedByMe: r.owedByMe,
+              owedBySpouse: r.owedBySpouse,
               pendingMessageId: r.pending?.messageId || null,
             }))
           : null,
@@ -275,15 +333,22 @@ export async function POST(req: Request) {
       },
     })
 
+    // Visitors have no account: email them the reply (they gave their address with their message)
+    if (effectiveRecipientId.startsWith('guest_')) {
+      const guestEmail = await findGuestEmail(buildThreadId(sender.id, effectiveRecipientId))
+      const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name, text || '') : false
+      return NextResponse.json({ success: true, message: newMsg, emailed })
+    }
+
     // In-app notification for the recipient
     try {
       await prisma.notification.create({
         data: {
           userId: effectiveRecipientId,
-          title: `New Message from ${sender.name}`,
+          title: `New message from ${sender.name}`,
           message: text ? text.slice(0, 100) : 'You received a new message.',
           type: 'INFO',
-          link: `/chat?recipientId=${encodeURIComponent(sender.id)}`,
+          link: `/chat?recipientId=${encodeURIComponent(sender.id)}&name=${encodeURIComponent(sender.name)}`,
         },
       })
     } catch {

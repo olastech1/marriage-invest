@@ -50,7 +50,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Together',
     items: [
-      { href: '/chat', label: 'Spouse chat', icon: MessageSquareHeart },
+      { href: '/chat', label: 'Chat', icon: MessageSquareHeart },
       { href: '/certificate', label: 'Union & certificate', icon: Award },
     ],
   },
@@ -261,11 +261,11 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
             <NotificationBellDropdown />
             <Link
               href="/chat"
-              aria-label="Spouse chat"
+              aria-label="Chat"
               className="relative flex p-2 rounded-xl text-slate-600 hover:text-[#0F1C3F] hover:bg-slate-100 transition-colors items-center gap-1.5 text-xs font-bold"
             >
               <MessageSquareHeart size={19} />
-              <span className="hidden lg:inline">Spouse chat</span>
+              <span className="hidden lg:inline">Chat</span>
               {unread > 0 && (
                 <span className="absolute top-1 right-1 lg:static h-2.5 w-2.5 rounded-full bg-rose-500" aria-label={`${unread} unread`} />
               )}
