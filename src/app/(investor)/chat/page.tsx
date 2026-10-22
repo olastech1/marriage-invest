@@ -55,7 +55,7 @@ export interface ChatMessage {
   createdAt?: string | Date
   read: boolean
   reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite'
   proposalData?: {
     goalName?: string
     amount?: number
@@ -943,11 +943,11 @@ export default function UnifiedChatPage() {
                   onClick={() => openReminder(reciprocation?.owedBySpouse || 0)}
                   disabled={isNudging}
                   className="inline-flex items-center gap-1 px-2 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold bg-amber-50 text-amber-800 hover:bg-amber-100 transition-colors border border-amber-200 disabled:opacity-50"
-                  title="Send instant deposit reminder"
-                  aria-label="Send instant deposit reminder"
+                  title="Request money"
+                  aria-label="Request money"
                 >
                   <Bell className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden sm:inline">{isNudging ? 'Sending…' : 'Send reminder'}</span>
+                  <span className="hidden sm:inline">{isNudging ? 'Sending…' : 'Request money'}</span>
                 </button>
                 <button
                   onClick={() => setShowProposalModal(true)}
@@ -1026,7 +1026,7 @@ export default function UnifiedChatPage() {
             {/* Reminder form: posts to this chat and emails the spouse */}
             {isChattingWithSpouse && showReminder && (
               <form onSubmit={handleSendReminder} className="p-3 rounded-2xl bg-white border border-amber-300 shadow-sm space-y-2">
-                <p className="text-xs font-bold text-[#0F1C3F]">Remind {activeRecipient.name} to deposit</p>
+                <p className="text-xs font-bold text-[#0F1C3F]">Request money from {activeRecipient.name}</p>
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -1045,18 +1045,20 @@ export default function UnifiedChatPage() {
                     maxLength={300}
                     value={reminderNote}
                     onChange={(e) => setReminderNote(e.target.value)}
-                    placeholder="Message (optional)"
-                    aria-label="Message"
+                    placeholder="What it's for (optional)"
+                    aria-label="What it's for"
                     className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-300 text-base sm:text-sm focus:outline-none focus:border-[#C9A84C]"
                   />
                 </div>
-                <p className="text-[11px] text-gray-500">Sent here in your chat and to {activeRecipient.name}&apos;s email.</p>
+                <p className="text-[11px] text-gray-500">
+                  Sent here in your chat and to {activeRecipient.name}&apos;s email. They pay with one tap; the money goes into your joint vault.
+                </p>
                 <div className="flex gap-2 justify-end">
                   <button type="button" onClick={() => setShowReminder(false)} className="px-3 py-1.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-700 cursor-pointer">
                     Cancel
                   </button>
                   <button type="submit" disabled={isNudging} className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold disabled:opacity-50 cursor-pointer">
-                    {isNudging ? 'Sending…' : 'Send reminder'}
+                    {isNudging ? 'Sending…' : 'Send request'}
                   </button>
                 </div>
               </form>
@@ -1233,11 +1235,13 @@ export default function UnifiedChatPage() {
                         msg.type === 'deposit_alert'
                           ? { label: msg.depositData?.isReciprocalMatch ? 'Reciprocated' : 'Vault Deposit', Icon: PiggyBank, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
                           : msg.type === 'system_reminder' || msg.type === 'reminder'
-                            ? { label: 'Deposit Reminder', Icon: Bell, tone: 'border-amber-200 bg-amber-50/60 text-amber-700' }
+                            ? { label: 'Money request', Icon: Bell, tone: 'border-amber-200 bg-amber-50/60 text-amber-700' }
                             : msg.type === 'certificate'
                               ? { label: 'Marriage Certificate', Icon: Award, tone: 'border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#8a6d1f]' }
                               : msg.type === 'spouse_request'
                                 ? { label: 'Spouse request', Icon: Heart, tone: 'border-rose-200 bg-rose-50/60 text-rose-700' }
+                                : msg.type === 'invest_invite'
+                                  ? { label: 'Invitation to invest', Icon: Sparkles, tone: 'border-indigo-200 bg-indigo-50/60 text-indigo-700' }
                                 : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
                       const amount = msg.depositData?.amount ?? msg.proposalData?.amount
                       return (
@@ -1283,7 +1287,27 @@ export default function UnifiedChatPage() {
                               <p className="text-[11px] text-gray-500">Waiting for a reply.</p>
                             ))}
 
-                          {/* A reminder addressed to me: one tap to pay that deposit */}
+                          {msg.type === 'invest_invite' && msg.proposalData?.slug && (
+                            <div className="flex gap-2 pt-1">
+                              {msg.proposalData.toUserId === activeUserId && Number(amount) > 0 && (
+                                <form method="post" action="/pay/invest" className="flex-1">
+                                  <input type="hidden" name="opportunityId" value={msg.proposalData.opportunityId} />
+                                  <input type="hidden" name="amount" value={Number(amount)} />
+                                  <button type="submit" className="w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer">
+                                    Invest ${Number(amount).toLocaleString()}
+                                  </button>
+                                </form>
+                              )}
+                              <Link
+                                href={`/investments/${msg.proposalData.slug}`}
+                                className="flex-1 py-2.5 rounded-xl border border-indigo-300 bg-white text-indigo-800 font-bold text-xs text-center"
+                              >
+                                View fund
+                              </Link>
+                            </div>
+                          )}
+
+                          {/* A money request addressed to me: one tap to pay it */}
                           {(msg.type === 'system_reminder' || msg.type === 'reminder') &&
                             Number(amount) >= 10 &&
                             (msg.proposalData?.toUserId
@@ -1296,7 +1320,7 @@ export default function UnifiedChatPage() {
                                   className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                                 >
                                   <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
-                                  Deposit ${Number(amount).toLocaleString()}
+                                  Pay ${Number(amount).toLocaleString()}
                                 </button>
                               </form>
                             )}

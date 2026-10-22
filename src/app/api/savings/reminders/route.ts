@@ -67,8 +67,8 @@ export async function POST(req: NextRequest) {
         .create({
           data: {
             userId: spouse.id,
-            title: `Deposit reminder from ${userName}`,
-            message: `${userName} reminded you to deposit $${numAmount.toLocaleString()} into your joint vault.${cleanNote ? ` "${cleanNote}"` : ''}`,
+            title: `${userName} requested $${numAmount.toLocaleString()}`,
+            message: `${userName} asked you to add $${numAmount.toLocaleString()} to your joint vault${cleanNote ? ` for "${cleanNote}"` : ''}. Pay from your chat.`,
             type: 'ALERT',
             link: `/save?amount=${numAmount}`,
             category: 'PARTNER_CHANGE',
@@ -88,8 +88,8 @@ export async function POST(req: NextRequest) {
           id: `sys-remind-${Date.now()}`,
           threadId: 'spouse',
           senderId: 'system_reminder',
-          senderName: 'Reminder',
-          text: `${userName} sent ${spouse.name} a reminder to deposit $${numAmount.toLocaleString()}.${cleanNote ? ` "${cleanNote}"` : ''}`,
+          senderName: 'Money request',
+          text: `${userName} requested $${numAmount.toLocaleString()} from ${spouse.name}${cleanNote ? ` for "${cleanNote}"` : ''}.`,
           timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(now),
           createdAt: now,
           read: false,
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
       }
       return NextResponse.json({
         success: true,
-        message: `Reminder sent to ${spouse.name} by ${sent.join(', ')}.`,
+        message: `Request sent to ${spouse.name} by ${sent.join(', ')}.`,
         details: { recipient: spouse.name, amount: numAmount, channels: sent, sentAt: now.toISOString() },
       })
     }

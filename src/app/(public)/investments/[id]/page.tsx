@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import InvestForm from '@/components/investments/InvestForm'
+import InviteToInvest from '@/components/investments/InviteToInvest'
 import { formatAnnualRate } from '@/lib/utils'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
@@ -227,11 +228,14 @@ export default async function OpportunityDetailPage({ params }: PageProps) {
 
               {session?.user ? (
                 opportunity.status === 'ACTIVE' ? (
-                  <InvestForm
-                    opportunityId={opportunity.id}
-                    minAmount={Number(opportunity.minAmount)}
-                    maxAmount={opportunity.maxAmount ? Number(opportunity.maxAmount) : null}
-                  />
+                  <div className="space-y-3">
+                    <InvestForm
+                      opportunityId={opportunity.id}
+                      minAmount={Number(opportunity.minAmount)}
+                      maxAmount={opportunity.maxAmount ? Number(opportunity.maxAmount) : null}
+                    />
+                    <InviteToInvest opportunityId={opportunity.id} minAmount={Number(opportunity.minAmount)} />
+                  </div>
                 ) : (
                   <p className="text-sm text-gray-500 text-center">This opportunity is not open for new investments.</p>
                 )

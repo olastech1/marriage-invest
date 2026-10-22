@@ -242,7 +242,7 @@ function SavePageContent() {
         {/* Reminder */}
         <form onSubmit={handleSendReminder} className="rounded-2xl border border-gray-200 bg-white p-5 space-y-4">
           <h2 className="font-bold text-[#0F1C3F] flex items-center gap-2">
-            <Bell className="w-5 h-5 text-[#C9A84C]" /> Remind {spouseName}
+            <Bell className="w-5 h-5 text-[#C9A84C]" /> Request money from {spouseName}
           </h2>
           {!hasSpouse ? (
             <p className="text-sm text-gray-500">Connect with your spouse first.</p>
@@ -264,8 +264,8 @@ function SavePageContent() {
                 maxLength={300}
                 value={reminderNote}
                 onChange={(e) => setReminderNote(e.target.value)}
-                placeholder="Message (optional)"
-                aria-label="Reminder message"
+                placeholder="What it's for (optional)"
+                aria-label="What it's for"
                 className="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-base sm:text-sm focus:outline-none focus:border-[#C9A84C]"
               />
               {reminderResult && (
@@ -276,7 +276,7 @@ function SavePageContent() {
                 disabled={sendingReminder || !(parseFloat(reminderAmount) > 0)}
                 className="w-full py-2.5 rounded-xl border border-[#0F1C3F] text-[#0F1C3F] font-bold text-sm hover:bg-gray-50 disabled:opacity-40 cursor-pointer"
               >
-                {sendingReminder ? 'Sending…' : 'Send reminder'}
+                {sendingReminder ? 'Sending…' : 'Send request'}
               </button>
             </>
           )}

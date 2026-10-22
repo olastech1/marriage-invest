@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { formatAnnualRate } from '@/lib/utils'
+import InviteToInvest from '@/components/investments/InviteToInvest'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,11 +32,8 @@ export default async function SoloInvestmentPage() {
             const funded = Number(o.fundedAmount)
             const target = Number(o.targetAmount)
             return (
-              <Link
-                key={o.id}
-                href={`/investments/${o.slug}`}
-                className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-[#C9A84C] transition-colors space-y-2"
-              >
+              <div key={o.id} className="rounded-2xl border border-gray-200 bg-white p-5 hover:border-[#C9A84C] transition-colors space-y-3">
+              <Link href={`/investments/${o.slug}`} className="block space-y-2">
                 <h2 className="font-bold text-[#0F1C3F]">{o.title}</h2>
                 <p className="text-xs text-gray-500">{o.shortDescription}</p>
                 <dl className="grid grid-cols-3 gap-2 text-xs pt-2">
@@ -56,6 +54,13 @@ export default async function SoloInvestmentPage() {
                   {usd(funded)} of {usd(target)} raised · risk {o.riskLevel.toLowerCase()}
                 </p>
               </Link>
+              <div className="flex gap-2 flex-wrap">
+                <Link href={`/investments/${o.slug}`} className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold">
+                  Invest
+                </Link>
+                <InviteToInvest opportunityId={o.id} minAmount={Number(o.minAmount)} compact />
+              </div>
+              </div>
             )
           })}
         </div>
