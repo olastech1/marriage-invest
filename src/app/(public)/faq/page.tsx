@@ -41,8 +41,8 @@ const categories = [
         a: 'It depends on the opportunity: monthly, quarterly, annually or at maturity, as shown on each opportunity’s page. Distributions, if any, are credited to your account balance.',
       },
       {
-        q: 'What fees does the platform charge?',
-        a: 'Registering your union costs $500 and the certificate costs $500. Withdrawals currently have a 2% processing fee plus a 1% early-withdrawal charge, deducted from the amount withdrawn.',
+        q: 'Are there any fees?',
+        a: 'Any fee is shown in your account before you confirm a payment or withdrawal, so you always see the amount first.',
       },
     ],
   },

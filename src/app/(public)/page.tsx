@@ -70,7 +70,7 @@ export default async function HomePage() {
           </h1>
 
           <p className="text-base sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-            One partner registers and invites their spouse. Both partners digitally sign your <strong>Union Verify certificate</strong>, pay the registration and certificate fees to download it, and then save and invest together in USD.
+            One partner registers and invites their spouse. Together you register your union, receive your <strong>Union Verify certificate</strong>, and save and invest together in USD.
           </p>
 
           {/* Hero CTAs */}
@@ -105,7 +105,7 @@ export default async function HomePage() {
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
               <Lock className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-              <span className="font-medium">4. Pay & Download</span>
+              <span className="font-medium">4. Save Together</span>
             </div>
           </div>
         </div>
@@ -151,9 +151,9 @@ export default async function HomePage() {
               },
               {
                 step: '04',
-                title: 'Pay Certificate Fees',
+                title: 'Get Your Certificate',
                 description:
-                  'Pay the $500 registration fee and $500 certificate fee to remove the watermark and download your certificate.',
+                  'Complete your registration to receive your Union Verify certificate, ready to print or save as a PDF.',
                 icon: Lock,
               },
               {
@@ -203,7 +203,7 @@ export default async function HomePage() {
             The Union Verify Certificate
           </h2>
           <p className="text-sm text-gray-600 leading-relaxed">
-            A digital certificate both partners sign on Union Verify. Paying the $500 registration fee and $500 certificate fee removes the watermark and unlocks the PDF download. It is a Union Verify platform document, not a government-issued marriage certificate.
+            A digital certificate for both partners, issued when you register your union on Union Verify. It is a Union Verify platform document, not a government-issued marriage certificate.
           </p>
         </div>
 
@@ -218,14 +218,14 @@ export default async function HomePage() {
               <div className="absolute bottom-3 left-3 w-8 h-8 border-b-2 border-l-2 border-[#C9A84C]" />
               <div className="absolute bottom-3 right-3 w-8 h-8 border-b-2 border-r-2 border-[#C9A84C]" />
 
-              {/* Watermark Ribbon */}
+              {/* "Example" ribbon */}
               <div className="absolute inset-0 bg-white/20 backdrop-blur-[0.5px] pointer-events-none z-10 flex items-center justify-center">
                 <div className="transform -rotate-12 px-6 py-3 border-2 border-dashed border-red-500/70 rounded-xl bg-white/95 shadow-xl text-center">
                   <span className="text-red-600 font-extrabold text-sm sm:text-base tracking-widest uppercase block">
-                    $500 REGISTRATION / $500 CERTIFICATE
+                    EXAMPLE
                   </span>
                   <span className="text-[10px] text-gray-600 font-medium">
-                    EXAMPLE · PAY FEES TO UNLOCK THE PDF
+                    SAMPLE CERTIFICATE
                   </span>
                 </div>
               </div>
@@ -290,22 +290,23 @@ export default async function HomePage() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-[#0F1C3F] rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider mb-4">
-                <Lock className="w-3.5 h-3.5" />
-                $500 Reg · $500 Cert
+                <Award className="w-3.5 h-3.5" />
+                Your Certificate
               </div>
 
               <h4 className="text-xl font-bold mb-3">
-                Why Pay Registration & Certificate Fees?
+                What Your Certificate Includes
               </h4>
 
               <p className="text-xs text-gray-300 leading-relaxed mb-6">
-                Both fees are paid once, together ($1,000) or separately. Until they are paid, your certificate is shown as a watermarked preview.
+                Issued once your registration is complete and kept in both partners&apos; accounts.
               </p>
 
               <div className="space-y-3 mb-6">
                 {[
-                  'Removes the watermark',
-                  'Unlocks the printable PDF download',
+                  'Both partners named',
+                  'A unique registration and certificate number',
+                  'Ready to print or save as PDF',
                 ].map((feat, idx) => (
                   <div key={idx} className="flex items-center gap-2 text-xs text-gray-200">
                     <Check className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
@@ -318,7 +319,7 @@ export default async function HomePage() {
                 href="/get-married"
                 className="w-full py-3.5 px-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-md flex items-center justify-center gap-2 text-center"
               >
-                Register Your Union ($500)
+                Register Your Union
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -381,27 +382,6 @@ export default async function HomePage() {
                 Not married yet? Complete the online registration together. Both partners sign digitally and receive a Union Verify certificate (not a government-issued marriage certificate) and access to the joint savings vault.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0 text-[#C9A84C] font-bold text-xs">
-                    $500
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-white">Marriage Registration Fee</span>
-                    <span className="text-[11px] text-gray-400">Paid once when you register your union</span>
-                  </div>
-                </div>
-
-                <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#C9A84C]/20 flex items-center justify-center flex-shrink-0 text-[#C9A84C] font-bold text-xs">
-                    $500
-                  </div>
-                  <div>
-                    <span className="block text-xs font-bold text-white">Certificate Fee</span>
-                    <span className="text-[11px] text-gray-400">Removes the watermark and unlocks the PDF download</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row lg:flex-col gap-3 flex-shrink-0">
@@ -409,12 +389,9 @@ export default async function HomePage() {
                 href="/get-married"
                 className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm tracking-wide transition-all shadow-lg shadow-[#C9A84C]/20 text-center"
               >
-                Register Online ($500)
+                Register Online
                 <ArrowRight className="w-4 h-4" />
               </Link>
-              <span className="text-[11px] text-gray-400 text-center">
-                Or pay both fees together: $1,000
-              </span>
             </div>
           </div>
         </div>
@@ -651,10 +628,6 @@ export default async function HomePage() {
               {
                 q: 'How does one partner invite their spouse?',
                 a: 'Once the first partner creates an account, they can enter their spouse’s name and email on the certificate page and share the invitation link. The partner opens the link, creates their own account, and can then review and co-sign the certificate.',
-              },
-              {
-                q: 'What are the fees for marriage registration and certificates?',
-                a: 'There is a $500 registration fee and a $500 certificate fee, which can be paid together ($1,000) at checkout. Paying them removes the watermark from your certificate and unlocks the PDF download.',
               },
               {
                 q: 'Do both partners need to sign the certificate?',
