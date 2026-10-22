@@ -5,6 +5,14 @@ import { escapeHtml } from '@/lib/utils'
 
 const PASSWORD_MASK = '••••••••'
 
+// The live site sends through Resend when RESEND_API_KEY is set (see src/lib/email.ts),
+// so the admin test uses the same connection by default.
+const RESEND = process.env.RESEND_API_KEY
+const DEFAULT_HOST = RESEND ? 'smtp.resend.com' : process.env.SMTP_HOST || ''
+const DEFAULT_PORT = RESEND ? 465 : Number(process.env.SMTP_PORT || 465)
+const DEFAULT_USER = RESEND ? 'resend' : process.env.SMTP_USER || ''
+const DEFAULT_PASS = RESEND || process.env.SMTP_PASS || ''
+
 export async function GET() {
   try {
     const session = await auth()
@@ -13,13 +21,14 @@ export async function GET() {
     }
 
     return NextResponse.json({
-      configured: Boolean(process.env.SMTP_HOST),
-      host: process.env.SMTP_HOST || '',
-      port: process.env.SMTP_PORT || '465',
-      encryption: (process.env.SMTP_PORT === '465' || !process.env.SMTP_PORT) ? 'SSL/TLS' : 'STARTTLS',
-      user: process.env.SMTP_USER || '',
-      // Never send the stored password to the browser
-      pass: process.env.SMTP_PASS ? PASSWORD_MASK : '',
+      configured: Boolean(DEFAULT_HOST && DEFAULT_PASS),
+      provider: RESEND ? 'Resend' : 'SMTP',
+      host: DEFAULT_HOST,
+      port: String(DEFAULT_PORT),
+      encryption: DEFAULT_PORT === 465 ? 'SSL/TLS' : 'STARTTLS',
+      user: DEFAULT_USER,
+      // Never send the stored password / API key to the browser
+      pass: DEFAULT_PASS ? PASSWORD_MASK : '',
       fromEmail: process.env.EMAIL_FROM || 'support@unionverify.com',
       fromName: process.env.EMAIL_FROM_NAME || 'Union Verify',
     })
@@ -37,9 +46,9 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json()
     const {
-      host = process.env.SMTP_HOST || '',
-      port = Number(process.env.SMTP_PORT || 465),
-      user = process.env.SMTP_USER || '',
+      host = DEFAULT_HOST,
+      port = DEFAULT_PORT,
+      user = DEFAULT_USER,
       pass: rawPass,
       secure = false,
       fromEmail = process.env.EMAIL_FROM || 'support@unionverify.com',
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest) {
       toEmail,
       sendTest = false,
     } = body
-    const pass = !rawPass || rawPass === PASSWORD_MASK ? process.env.SMTP_PASS || '' : rawPass
+    const pass = !rawPass || rawPass === PASSWORD_MASK ? DEFAULT_PASS : rawPass
 
     if (!host) {
       return NextResponse.json({ error: 'SMTP Host is required' }, { status: 400 })
