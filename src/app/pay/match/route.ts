@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
-import { getReciprocationStatus } from '@/lib/reciprocation'
+import { findPendingDeposit } from '@/lib/reciprocation'
 
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
-// /pay/match — one tap to reciprocate the spouse's deposit.
-// Opens Stripe Checkout for exactly what the signed-in user still owes (the
-// amount always comes from the server, never from the link). The
-// reciprocation is recorded only after the payment succeeds.
+// /pay/match?deposit=<id> — one tap to reciprocate ONE of the spouse's deposits.
+// Opens Stripe Checkout for that deposit's amount only (never a running total;
+// the amount always comes from the server). Without a deposit id, the oldest
+// pending deposit is used. Recorded only after the payment succeeds.
 // ---------------------------------------------------------------------------
-async function reciprocate(req: NextRequest) {
+async function reciprocate(req: NextRequest, depositId: string | null) {
   const origin = req.nextUrl.origin
   const session = await auth()
   if (!session?.user?.id) {
     return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat')}`, 303)
   }
 
-  const { owedByMe, spouseName } = await getReciprocationStatus(session.user.id)
-  if (owedByMe <= 0) return NextResponse.redirect(`${origin}/chat`, 303)
+  const deposit = await findPendingDeposit(session.user.id, depositId)
+  if (!deposit) return NextResponse.redirect(`${origin}/chat`, 303)
 
+  const day = new Date(deposit.depositedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   try {
     const checkoutUrl = await startPayment({
       purpose: 'VAULT_DEPOSIT',
-      amount: owedByMe,
+      amount: deposit.amount,
       userId: session.user.id,
       userName: session.user.name || 'Member',
       email: session.user.email,
-      title: `Reciprocate ${spouseName}'s deposit`,
-      description: `Joint vault reciprocation for ${spouseName}`,
-      payload: { isReciprocalMatch: true },
+      title: `Reciprocate ${deposit.depositorName}'s $${deposit.amount.toLocaleString()} deposit`,
+      description: `Deposit made on ${day}${deposit.note ? ` — "${deposit.note}"` : ''}`,
+      payload: { isReciprocalMatch: true, forDepositId: deposit.messageId },
       origin,
       cancelPath: '/chat',
     })
@@ -42,9 +43,11 @@ async function reciprocate(req: NextRequest) {
 }
 
 export function GET(req: NextRequest) {
-  return reciprocate(req)
+  return reciprocate(req, req.nextUrl.searchParams.get('deposit'))
 }
 
-export function POST(req: NextRequest) {
-  return reciprocate(req)
+export async function POST(req: NextRequest) {
+  const form = await req.formData().catch(() => null)
+  const depositId = (form?.get('deposit') as string | null) || req.nextUrl.searchParams.get('deposit')
+  return reciprocate(req, depositId)
 }

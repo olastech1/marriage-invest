@@ -143,6 +143,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       paymentRef,
       note: payload.note || '',
       isReciprocalMatch: !!payload.isReciprocalMatch,
+      forDepositId: payload.forDepositId || undefined,
     })
     return {
       purpose: 'VAULT_DEPOSIT',

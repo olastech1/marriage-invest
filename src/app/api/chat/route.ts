@@ -248,6 +248,9 @@ export async function GET(req: NextRequest) {
               owedByMe: r.owedByMe,
               owedBySpouse: r.owedBySpouse,
               pendingMessageId: r.pending?.messageId || null,
+              // Each deposit is reciprocated on its own
+              pendingDeposits: r.pendingDeposits,
+              spousePendingDeposits: r.spousePendingDeposits,
             }))
           : null,
       recipient: {

@@ -22,6 +22,7 @@ interface Reciprocation {
   partnerName: string
   owedByMe: number
   owedBySpouse: number
+  pendingDeposits: { messageId: string; depositorName: string; amount: number; depositedAt: string; note: string }[]
 }
 
 const usd = (n: number) =>
@@ -63,7 +64,6 @@ function SavePageContent() {
 
   const spouseName = reciprocation?.partnerName || 'your spouse'
   const hasSpouse = !!reciprocation?.partnerId
-  const owedByMe = reciprocation?.owedByMe || 0
   const owedBySpouse = reciprocation?.owedBySpouse || 0
   const total = deposits.reduce((sum, d) => sum + d.amount, 0)
   const myTotal = deposits.filter((d) => d.isCurrentUser).reduce((sum, d) => sum + d.amount, 0)
@@ -146,26 +146,37 @@ function SavePageContent() {
         </div>
       </div>
 
-      {/* Reciprocation */}
-      {owedByMe > 0 && reciprocation?.pendingReciprocation && (
-        <div className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Spouse deposits to reciprocate, each on its own */}
+      {(reciprocation?.pendingDeposits?.length || 0) > 0 && (
+        <div className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-5 space-y-3">
           <div>
             <p className="text-sm font-bold text-rose-900">
-              {reciprocation.pendingReciprocation.depositorName} deposited — reciprocate {usd(owedByMe)}
+              {reciprocation!.pendingDeposits.length === 1
+                ? `${spouseName}'s deposit to reciprocate`
+                : `${reciprocation!.pendingDeposits.length} deposits from ${spouseName} to reciprocate`}
             </p>
-            {reciprocation.pendingReciprocation.partnerNote && (
-              <p className="text-xs text-rose-800 mt-1">&ldquo;{reciprocation.pendingReciprocation.partnerNote}&rdquo;</p>
-            )}
-            <p className="text-xs text-rose-800/80 mt-1">Joint withdrawals stay locked until you reciprocate.</p>
+            <p className="text-xs text-rose-800/80 mt-1">Reciprocate each one separately. Joint withdrawals stay locked until they&apos;re all reciprocated.</p>
           </div>
-          <form method="post" action="/pay/match">
-            <button
-              type="submit"
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-sm cursor-pointer"
-            >
-              Reciprocate {usd(owedByMe)}
-            </button>
-          </form>
+          <ul className="space-y-2">
+            {reciprocation!.pendingDeposits.map((d) => (
+              <li key={d.messageId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-white border border-rose-200 px-4 py-3">
+                <div className="text-sm text-rose-950">
+                  <span className="font-bold">{usd(d.amount)}</span>
+                  <span className="text-rose-800/80"> · deposited {new Date(d.depositedAt).toLocaleDateString()}</span>
+                  {d.note && <span className="block text-xs text-rose-800/80">&ldquo;{d.note}&rdquo;</span>}
+                </div>
+                <form method="post" action="/pay/match" className="flex-shrink-0">
+                  <input type="hidden" name="deposit" value={d.messageId} />
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
+                  >
+                    Reciprocate {usd(d.amount)}
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       {owedBySpouse > 0 && (

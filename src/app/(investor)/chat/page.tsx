@@ -123,7 +123,14 @@ export default function UnifiedChatPage() {
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
   // What I still owe my spouse, and which of their deposits to show the Match button on
-  const [reciprocation, setReciprocation] = useState<{ owedByMe: number; owedBySpouse: number; pendingMessageId: string | null } | null>(null)
+  type PendingDeposit = { messageId: string; depositorName: string; amount: number; depositedAt: string; note: string }
+  const [reciprocation, setReciprocation] = useState<{
+    owedByMe: number
+    owedBySpouse: number
+    pendingMessageId: string | null
+    pendingDeposits?: PendingDeposit[]
+    spousePendingDeposits?: PendingDeposit[]
+  } | null>(null)
   // Reminder form (sent to the couple chat and to the spouse's email)
   const [showReminder, setShowReminder] = useState(false)
   const [reminderAmount, setReminderAmount] = useState('')
@@ -970,26 +977,45 @@ export default function UnifiedChatPage() {
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-3 sm:space-y-4 bg-gray-50/50"
           >
             {/* Spouse: what's owed each way, with the matching action */}
-            {isChattingWithSpouse && (reciprocation?.owedByMe || 0) > 0 && (
-              <div className="sticky top-0 z-10 p-3 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between gap-3 shadow-xs">
-                <p className="text-xs font-semibold text-rose-900">
-                  {activeRecipient.name} deposited — you have ${reciprocation!.owedByMe.toLocaleString()} to reciprocate.
+            {isChattingWithSpouse && (reciprocation?.pendingDeposits?.length || 0) > 0 && (
+              <div className="sticky top-0 z-10 p-3 rounded-2xl bg-rose-50 border border-rose-200 shadow-xs space-y-2">
+                <p className="text-xs font-bold text-rose-900">
+                  {reciprocation!.pendingDeposits!.length === 1
+                    ? `${activeRecipient.name}'s deposit to reciprocate`
+                    : `${reciprocation!.pendingDeposits!.length} deposits from ${activeRecipient.name} to reciprocate`}
                 </p>
-                <form method="post" action="/pay/match" className="flex-shrink-0">
-                  <button type="submit" className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-xs font-bold cursor-pointer">
-                    Reciprocate ${reciprocation!.owedByMe.toLocaleString()}
-                  </button>
-                </form>
+                {reciprocation!.pendingDeposits!.slice(0, 3).map((d) => (
+                  <div key={d.messageId} className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2">
+                    <div className="min-w-0 text-[11px] text-rose-900">
+                      <span className="font-bold">${d.amount.toLocaleString()}</span> ·{' '}
+                      {new Date(d.depositedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {d.note && <span className="block truncate text-rose-800/80">&ldquo;{d.note}&rdquo;</span>}
+                    </div>
+                    <form method="post" action="/pay/match" className="flex-shrink-0">
+                      <input type="hidden" name="deposit" value={d.messageId} />
+                      <button type="submit" className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white text-[11px] font-bold cursor-pointer">
+                        Reciprocate ${d.amount.toLocaleString()}
+                      </button>
+                    </form>
+                  </div>
+                ))}
+                {reciprocation!.pendingDeposits!.length > 3 && (
+                  <p className="text-[11px] text-rose-800">+{reciprocation!.pendingDeposits!.length - 3} more below in the chat</p>
+                )}
               </div>
             )}
             {isChattingWithSpouse && (reciprocation?.owedBySpouse || 0) > 0 && (
               <div className="sticky top-0 z-10 p-3 rounded-2xl bg-amber-50 border border-amber-200 flex items-center justify-between gap-3 shadow-xs">
                 <p className="text-xs font-semibold text-amber-900">
-                  Waiting for {activeRecipient.name} to reciprocate ${reciprocation!.owedBySpouse.toLocaleString()}.
+                  Waiting for {activeRecipient.name} to reciprocate{' '}
+                  {reciprocation!.spousePendingDeposits && reciprocation!.spousePendingDeposits.length > 1
+                    ? `${reciprocation!.spousePendingDeposits.length} of your deposits`
+                    : `your $${reciprocation!.owedBySpouse.toLocaleString()} deposit`}
+                  .
                 </p>
                 <button
                   type="button"
-                  onClick={() => openReminder(reciprocation!.owedBySpouse)}
+                  onClick={() => openReminder(reciprocation!.spousePendingDeposits?.[0]?.amount || reciprocation!.owedBySpouse)}
                   className="flex-shrink-0 px-3 py-1.5 rounded-xl border border-amber-300 bg-white text-amber-900 text-xs font-bold cursor-pointer"
                 >
                   Send reminder
@@ -1230,14 +1256,15 @@ export default function UnifiedChatPage() {
                           <p className="text-gray-800 text-xs leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                             {msg.text}
                           </p>
-                          {reciprocation && reciprocation.owedByMe > 0 && reciprocation.pendingMessageId === msg.id && (
+                          {reciprocation?.pendingDeposits?.some((d) => d.messageId === msg.id) && (
                             <form method="post" action="/pay/match">
+                              <input type="hidden" name="deposit" value={msg.id} />
                               <button
                                 type="submit"
                                 className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                               >
                                 <PiggyBank className="w-4 h-4 text-[#C9A84C]" />
-                                Reciprocate ${reciprocation.owedByMe.toLocaleString()}
+                                Reciprocate ${Number(amount).toLocaleString()}
                               </button>
                             </form>
                           )}

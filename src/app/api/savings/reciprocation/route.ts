@@ -23,6 +23,8 @@ export async function GET() {
       partnerId: status.spouseId,
       partnerName: status.spouseName,
       owedByMe: status.owedByMe,
+      pendingDeposits: status.pendingDeposits,
+      spousePendingDeposits: status.spousePendingDeposits,
       owedBySpouse: status.owedBySpouse,
       withdrawalsLocked: !!status.pending,
     })

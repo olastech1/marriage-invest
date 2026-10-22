@@ -221,8 +221,6 @@ export default async function DashboardPage() {
   })
 
   // A spouse deposit I still need to reciprocate
-  const hasPendingReciprocation = !!reciprocation.pending
-  const pendingRecipAmount = reciprocation.pending?.amount ?? 0
   const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your spouse'
   const spouseName = reciprocation.spouseName || 'your spouse'
 
@@ -256,37 +254,46 @@ export default async function DashboardPage() {
         partnerName={spouseName}
       />
 
-      {/* ── Reciprocation Due Banner ───────────────────────────────── */}
-      {hasPendingReciprocation && (
-        <div className="rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-transparent border-2 border-rose-300 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-pulse-subtle">
+      {/* ── Deposits to reciprocate: each one on its own ─────────────── */}
+      {reciprocation.pendingDeposits.length > 0 && (
+        <div className="rounded-2xl bg-gradient-to-r from-rose-500/15 via-amber-500/10 to-transparent border-2 border-rose-300 p-4 sm:p-5 shadow-sm space-y-3">
           <div className="flex items-start gap-3.5">
             <div className="w-10 h-10 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md">
               <Sparkles className="w-5 h-5 text-amber-200" />
             </div>
             <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase tracking-widest bg-rose-200/80 text-rose-900 px-2.5 py-0.5 rounded-full">
-                  Reciprocation Needed
-                </span>
-              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest bg-rose-200/80 text-rose-900 px-2.5 py-0.5 rounded-full">
+                Reciprocation Needed
+              </span>
               <h3 className="text-base font-bold text-rose-950">
-                {pendingDepositorName} deposited — reciprocate ${pendingRecipAmount.toLocaleString()}
+                {reciprocation.pendingDeposits.length === 1
+                  ? `${pendingDepositorName} made a deposit for you to reciprocate`
+                  : `${pendingDepositorName} made ${reciprocation.pendingDeposits.length} deposits for you to reciprocate`}
               </h3>
-              <p className="text-xs text-rose-900/80 leading-relaxed max-w-2xl">
-                Joint withdrawals stay locked until you reciprocate.
-              </p>
+              <p className="text-xs text-rose-900/80">Reciprocate each one separately. Joint withdrawals stay locked until they&apos;re all reciprocated.</p>
             </div>
           </div>
-          {/* One tap: /pay/match goes to Stripe, or records it directly when Stripe isn't set up */}
-          <form method="post" action="/pay/match" className="flex-shrink-0">
-            <button
-              type="submit"
-              className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs shadow-md hover:bg-[#1a2f64] transition-colors cursor-pointer"
-            >
-              Reciprocate ${pendingRecipAmount.toLocaleString()}
-              <ArrowRight size={14} />
-            </button>
-          </form>
+          <ul className="space-y-2">
+            {reciprocation.pendingDeposits.map((d) => (
+              <li key={d.messageId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-white/80 border border-rose-200 px-4 py-3">
+                <div className="text-sm text-rose-950">
+                  <span className="font-bold">${d.amount.toLocaleString()}</span>
+                  <span className="text-rose-800/80"> · deposited {new Date(d.depositedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  {d.note && <span className="block text-xs text-rose-800/80">&ldquo;{d.note}&rdquo;</span>}
+                </div>
+                <form method="post" action="/pay/match" className="flex-shrink-0">
+                  <input type="hidden" name="deposit" value={d.messageId} />
+                  <button
+                    type="submit"
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-[#0F1C3F] text-white font-bold text-xs hover:bg-[#1a2f64] transition-colors cursor-pointer"
+                  >
+                    Reciprocate ${d.amount.toLocaleString()}
+                    <ArrowRight size={14} />
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 

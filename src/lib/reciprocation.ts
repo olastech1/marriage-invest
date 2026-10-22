@@ -1,13 +1,12 @@
 /**
  * Spousal deposit reciprocation, derived from the couple's chat thread.
  *
- * Every vault deposit posts exactly one `deposit_alert` message into the
- * couple thread (stored in the shared Postgres chat store), so that thread is
- * the single source of truth both spouses see:
- *   - a spouse's regular deposit adds to what I owe
- *   - my deposit flagged `isReciprocalMatch` pays that down
- * Matches made before a deposit still count toward it, so this always agrees
- * with the first-in-first-out ledger in getCoupleDeposits.
+ * Every paid vault deposit posts exactly one `deposit_alert` message into the
+ * couple thread, so that thread is the single source of truth both spouses see.
+ * Each regular deposit is reciprocated on its own:
+ *   - a reciprocation names the deposit it pays for (`forDepositId`)
+ *   - older reciprocations without one are applied to the oldest unmatched
+ *     deposits first (only a fully covered deposit counts as matched)
  */
 
 import { prisma } from '@/lib/db'
@@ -25,6 +24,22 @@ function isPaidDeposit(deposit: { amount?: unknown; reference?: unknown }): bool
   return Number(deposit.amount) > 0 && (ref.startsWith('pi_') || ref.startsWith('cs_'))
 }
 
+function noteFromText(text: string): string {
+  const match = text.match(/Note: "([^"]*)"/)
+  return match ? match[1] : ''
+}
+
+/** One deposit waiting to be reciprocated */
+export interface PendingDeposit {
+  messageId: string
+  depositorName: string
+  amount: number
+  depositedAt: string
+  dueDate: string
+  note: string
+}
+
+/** Kept for existing callers: the most recent pending deposit */
 export interface PendingReciprocation {
   messageId: string
   depositorName: string
@@ -39,15 +54,16 @@ export interface PendingReciprocation {
 export interface ReciprocationStatus {
   spouseId: string
   spouseName: string
+  /** Sum of the spouse's deposits I still have to reciprocate */
   owedByMe: number
+  /** Sum of my deposits my spouse still has to reciprocate */
   owedBySpouse: number
+  /** Each of the spouse's deposits I still have to reciprocate, oldest first */
+  pendingDeposits: PendingDeposit[]
+  /** Each of my deposits my spouse still has to reciprocate, oldest first */
+  spousePendingDeposits: PendingDeposit[]
   pending: PendingReciprocation | null
   history: { id: string; action: string; createdAt: string; details: Record<string, unknown> }[]
-}
-
-function noteFromText(text: string): string {
-  const match = text.match(/Note: "([^"]*)"/)
-  return match ? match[1] : ''
 }
 
 export async function getSpouseName(spouseId: string, fallback?: string): Promise<string> {
@@ -63,82 +79,112 @@ export async function getSpouseName(spouseId: string, fallback?: string): Promis
   return lastSent?.senderName || fallback || 'your spouse'
 }
 
-export async function getReciprocationStatus(userId: string): Promise<ReciprocationStatus> {
-  const spouseId = await resolveSpouseId(userId)
-  const empty: ReciprocationStatus = {
-    spouseId,
-    spouseName: await getSpouseName(spouseId),
-    owedByMe: 0,
-    owedBySpouse: 0,
-    pending: null,
-    history: [],
-  }
-  if (!spouseId) return empty
+type DepositMessage = Awaited<ReturnType<typeof loadCoupleDeposits>>[number]
 
+async function loadCoupleDeposits(userId: string, spouseId: string) {
   const db = await getChatDb()
   const messages = await db.chatMessage.findMany({
     where: { threadId: buildThreadId(userId, spouseId), type: 'deposit_alert' },
     orderBy: { createdAt: 'asc' },
   })
+  return messages
+    .map((msg) => ({ msg, deposit: (msg.depositData || {}) as Record<string, any> }))
+    .filter(({ msg, deposit }) => isPaidDeposit(deposit) && (msg.senderId === userId || msg.senderId === spouseId))
+}
 
-  let owedByMe = 0
-  let owedBySpouse = 0
-  let lastSpouseDeposit: (typeof messages)[number] | null = null
-  let spouseName = empty.spouseName
-  const history: ReciprocationStatus['history'] = []
+/** Which regular deposits have been reciprocated (message id → matched) */
+function matchDeposits(rows: DepositMessage[]): Map<string, boolean> {
+  const matched = new Map<string, boolean>()
+  for (const { msg, deposit } of rows) if (!deposit.isReciprocalMatch) matched.set(msg.id, false)
 
-  for (const msg of messages) {
-    const deposit = (msg.depositData || {}) as { amount?: number; isReciprocalMatch?: boolean; reference?: string }
-    if (!isPaidDeposit(deposit)) continue
-    const amount = Number(deposit.amount)
-    const fromMe = msg.senderId === userId
-    const fromSpouse = msg.senderId === spouseId
-    if (!fromMe && !fromSpouse) continue
-    if (fromSpouse && msg.senderName) spouseName = msg.senderName
-
-    if (deposit.isReciprocalMatch) {
-      if (fromMe) owedByMe -= amount
-      else owedBySpouse -= amount
-    } else if (fromSpouse) {
-      owedByMe += amount
-      lastSpouseDeposit = msg
-    } else {
-      owedBySpouse += amount
-    }
-
-    history.push({
-      id: msg.id,
-      action: deposit.isReciprocalMatch ? 'RECIPROCATION_OBLIGATION_FULFILLED' : 'RECIPROCATION_OBLIGATION_CREATED',
-      createdAt: new Date(msg.createdAt).toISOString(),
-      details: { depositorName: msg.senderName, amount, text: msg.text },
-    })
+  // 1. Reciprocations that name their deposit
+  for (const { msg, deposit } of rows) {
+    if (!deposit.isReciprocalMatch || !deposit.forDepositId) continue
+    const target = rows.find((r) => r.msg.id === deposit.forDepositId)
+    if (target && target.msg.senderId !== msg.senderId) matched.set(target.msg.id, true)
   }
 
-  // Same rule as the ledger: total regular deposits minus total matches
-  owedByMe = Math.max(0, owedByMe)
-  owedBySpouse = Math.max(0, owedBySpouse)
+  // 2. Older reciprocations without one: oldest unmatched deposits first
+  const credit: Record<string, number> = {}
+  for (const { msg, deposit } of rows) {
+    if (deposit.isReciprocalMatch && !deposit.forDepositId) credit[msg.senderId] = (credit[msg.senderId] || 0) + Number(deposit.amount)
+  }
+  for (const { msg, deposit } of rows) {
+    if (deposit.isReciprocalMatch || matched.get(msg.id)) continue
+    const matcherCredit = Object.entries(credit).find(([senderId]) => senderId !== msg.senderId)
+    if (matcherCredit && matcherCredit[1] >= Number(deposit.amount)) {
+      matched.set(msg.id, true)
+      credit[matcherCredit[0]] = matcherCredit[1] - Number(deposit.amount)
+    }
+  }
+  return matched
+}
 
-  const pending: PendingReciprocation | null =
-    owedByMe > 0 && lastSpouseDeposit
-      ? {
-          messageId: lastSpouseDeposit.id,
-          depositorName: spouseName,
-          amount: Math.round(owedByMe * 100) / 100,
-          depositedAt: new Date(lastSpouseDeposit.createdAt).toISOString(),
-          dueDate: new Date(new Date(lastSpouseDeposit.createdAt).getTime() + MATCH_WINDOW_MS).toISOString(),
-          partnerNote: noteFromText(lastSpouseDeposit.text),
-          status: 'PENDING',
-          isObligationOnCurrentUser: true,
-        }
-      : null
+function toPending(row: DepositMessage): PendingDeposit {
+  const createdAt = new Date(row.msg.createdAt)
+  return {
+    messageId: row.msg.id,
+    depositorName: row.msg.senderName,
+    amount: Number(row.deposit.amount),
+    depositedAt: createdAt.toISOString(),
+    dueDate: new Date(createdAt.getTime() + MATCH_WINDOW_MS).toISOString(),
+    note: noteFromText(row.msg.text),
+  }
+}
+
+const round = (n: number) => Math.round(n * 100) / 100
+
+export async function getReciprocationStatus(userId: string): Promise<ReciprocationStatus> {
+  const spouseId = await resolveSpouseId(userId)
+  const spouseName = await getSpouseName(spouseId)
+  const empty: ReciprocationStatus = {
+    spouseId,
+    spouseName,
+    owedByMe: 0,
+    owedBySpouse: 0,
+    pendingDeposits: [],
+    spousePendingDeposits: [],
+    pending: null,
+    history: [],
+  }
+  if (!spouseId) return empty
+
+  const rows = await loadCoupleDeposits(userId, spouseId)
+  const matched = matchDeposits(rows)
+  const unmatched = rows.filter(({ msg, deposit }) => !deposit.isReciprocalMatch && !matched.get(msg.id))
+  const pendingDeposits = unmatched.filter(({ msg }) => msg.senderId === spouseId).map(toPending)
+  const spousePendingDeposits = unmatched.filter(({ msg }) => msg.senderId === userId).map(toPending)
+  const latest = pendingDeposits[pendingDeposits.length - 1]
 
   return {
     spouseId,
     spouseName,
-    owedByMe: Math.round(owedByMe * 100) / 100,
-    owedBySpouse: Math.round(owedBySpouse * 100) / 100,
-    pending,
-    history: history.reverse().slice(0, 10),
+    owedByMe: round(pendingDeposits.reduce((sum, d) => sum + d.amount, 0)),
+    owedBySpouse: round(spousePendingDeposits.reduce((sum, d) => sum + d.amount, 0)),
+    pendingDeposits,
+    spousePendingDeposits,
+    pending: latest
+      ? {
+          messageId: latest.messageId,
+          depositorName: latest.depositorName,
+          amount: latest.amount,
+          depositedAt: latest.depositedAt,
+          dueDate: latest.dueDate,
+          partnerNote: latest.note,
+          status: 'PENDING',
+          isObligationOnCurrentUser: true,
+        }
+      : null,
+    history: rows
+      .slice()
+      .reverse()
+      .slice(0, 10)
+      .map(({ msg, deposit }) => ({
+        id: msg.id,
+        action: deposit.isReciprocalMatch ? 'RECIPROCATION_OBLIGATION_FULFILLED' : 'RECIPROCATION_OBLIGATION_CREATED',
+        createdAt: new Date(msg.createdAt).toISOString(),
+        details: { depositorName: msg.senderName, amount: Number(deposit.amount), text: msg.text },
+      })),
   }
 }
 
@@ -158,59 +204,41 @@ export interface CoupleDeposit {
   createdAt: string
 }
 
-/**
- * Every deposit in the couple thread, newest first. Regular deposits are
- * matched first-in-first-out by the other spouse's match deposits; anything
- * not yet covered is PENDING_MATCH.
- */
+/** Every deposit in the couple thread, newest first, each with its own status */
 export async function getCoupleDeposits(userId: string): Promise<CoupleDeposit[]> {
   const spouseId = await resolveSpouseId(userId)
   if (!spouseId) return []
   const spouseName = await getSpouseName(spouseId)
+  const rows = await loadCoupleDeposits(userId, spouseId)
+  const matched = matchDeposits(rows)
 
-  const db = await getChatDb()
-  const messages = await db.chatMessage.findMany({
-    where: { threadId: buildThreadId(userId, spouseId), type: 'deposit_alert' },
-    orderBy: { createdAt: 'asc' },
-  })
-
-  // Remaining match credit each spouse has paid toward the other's deposits
-  const matchCredit: Record<string, number> = {}
-  const rows = messages
-    .map((msg) => ({ msg, deposit: (msg.depositData || {}) as Record<string, any> }))
-    .filter(({ msg, deposit }) => isPaidDeposit(deposit) && (msg.senderId === userId || msg.senderId === spouseId))
-
-  for (const { msg, deposit } of rows) {
-    if (deposit.isReciprocalMatch) matchCredit[msg.senderId] = (matchCredit[msg.senderId] || 0) + Number(deposit.amount)
-  }
-
-  const result: CoupleDeposit[] = []
-  for (const { msg, deposit } of rows) {
-    const amount = Number(deposit.amount)
-    const isCurrentUser = msg.senderId === userId
-    let pending = false
-    if (!deposit.isReciprocalMatch) {
-      const matcher = isCurrentUser ? spouseId : userId
-      const credit = matchCredit[matcher] || 0
-      pending = credit < amount
-      matchCredit[matcher] = Math.max(0, credit - amount)
-    }
-    const waitingOn = isCurrentUser ? spouseName : 'you'
-    result.push({
-      id: msg.id,
-      reference: deposit.reference,
-      amount,
-      depositorName: msg.senderName,
-      isCurrentUser,
-      isReciprocalMatch: !!deposit.isReciprocalMatch,
-      vaultTitle: deposit.vaultTitle || 'Joint Vault',
-      status: pending ? 'PENDING_MATCH' : 'APPROVED',
-      statusLabel: deposit.isReciprocalMatch ? 'Match deposit' : pending ? `Waiting for ${waitingOn} to match` : 'Matched',
-      canRemind: pending && isCurrentUser,
-      partnerEmail: '',
-      partnerName: spouseName,
-      createdAt: new Date(msg.createdAt).toISOString(),
+  return rows
+    .map(({ msg, deposit }) => {
+      const isCurrentUser = msg.senderId === userId
+      const pending = !deposit.isReciprocalMatch && !matched.get(msg.id)
+      const waitingOn = isCurrentUser ? spouseName : 'you'
+      return {
+        id: msg.id,
+        reference: deposit.reference,
+        amount: Number(deposit.amount),
+        depositorName: msg.senderName,
+        isCurrentUser,
+        isReciprocalMatch: !!deposit.isReciprocalMatch,
+        vaultTitle: deposit.vaultTitle || 'Joint Vault',
+        status: pending ? ('PENDING_MATCH' as const) : ('APPROVED' as const),
+        statusLabel: deposit.isReciprocalMatch ? 'Reciprocation' : pending ? `Waiting for ${waitingOn} to reciprocate` : 'Reciprocated',
+        canRemind: pending && isCurrentUser,
+        partnerEmail: '',
+        partnerName: spouseName,
+        createdAt: new Date(msg.createdAt).toISOString(),
+      }
     })
-  }
-  return result.reverse()
+    .reverse()
+}
+
+/** Is this deposit one of the spouse's deposits that I still have to reciprocate? */
+export async function findPendingDeposit(userId: string, messageId?: string | null): Promise<PendingDeposit | null> {
+  const { pendingDeposits } = await getReciprocationStatus(userId)
+  if (messageId) return pendingDeposits.find((d) => d.messageId === messageId) || null
+  return pendingDeposits[0] || null // oldest first when none is named
 }

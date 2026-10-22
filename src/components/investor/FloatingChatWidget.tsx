@@ -42,7 +42,7 @@ export function FloatingChatWidget() {
   }, [messages.length, isOpen])
   // Who the server says we are, and our spouse (resolved server-side from the session)
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
-  const [pendingMatch, setPendingMatch] = useState<{ owedByMe: number; pendingMessageId: string | null } | null>(null)
+  const [pendingMatch, setPendingMatch] = useState<{ pendingDeposits?: { messageId: string; amount: number }[] } | null>(null)
 
   const displayPartnerName = partner?.name || 'Your spouse'
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
@@ -314,13 +314,14 @@ export function FloatingChatWidget() {
                         <span className="text-[10px] font-bold text-[#C9A84C]">
                           {m.type === 'deposit_alert' ? 'Vault deposit' : 'Reminder'}
                         </span>
-                        {pendingMatch && pendingMatch.owedByMe > 0 && pendingMatch.pendingMessageId === m.id && (
+                        {pendingMatch?.pendingDeposits?.some((d) => d.messageId === m.id) && (
                           <form method="post" action="/pay/match">
+                            <input type="hidden" name="deposit" value={m.id} />
                             <button
                               type="submit"
                               className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#0F1C3F] text-[#C9A84C] font-bold text-[10px] hover:bg-[#1a2f64] transition-colors border border-[#C9A84C]/30 cursor-pointer"
                             >
-                              Reciprocate ${pendingMatch.owedByMe.toLocaleString()}
+                              Reciprocate ${Number(m.amount || 0).toLocaleString()}
                             </button>
                           </form>
                         )}
