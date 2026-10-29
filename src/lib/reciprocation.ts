@@ -95,7 +95,8 @@ async function loadCoupleDeposits(userId: string, spouseId: string) {
 /** Which regular deposits have been reciprocated (message id → matched) */
 function matchDeposits(rows: DepositMessage[]): Map<string, boolean> {
   const matched = new Map<string, boolean>()
-  for (const { msg, deposit } of rows) if (!deposit.isReciprocalMatch) matched.set(msg.id, false)
+  // Shares of an approved proposal are paid by both spouses: nothing to reciprocate
+  for (const { msg, deposit } of rows) if (!deposit.isReciprocalMatch) matched.set(msg.id, !!deposit.proposalId)
 
   // 1. Reciprocations that name their deposit
   for (const { msg, deposit } of rows) {
@@ -226,7 +227,13 @@ export async function getCoupleDeposits(userId: string): Promise<CoupleDeposit[]
         isReciprocalMatch: !!deposit.isReciprocalMatch,
         vaultTitle: deposit.vaultTitle || 'Joint Vault',
         status: pending ? ('PENDING_MATCH' as const) : ('APPROVED' as const),
-        statusLabel: deposit.isReciprocalMatch ? 'Reciprocation' : pending ? `Waiting for ${waitingOn} to reciprocate` : 'Reciprocated',
+        statusLabel: deposit.proposalId
+          ? 'Shared plan'
+          : deposit.isReciprocalMatch
+            ? 'Reciprocation'
+            : pending
+              ? `Waiting for ${waitingOn} to reciprocate`
+              : 'Reciprocated',
         canRemind: pending && isCurrentUser,
         partnerEmail: '',
         partnerName: spouseName,

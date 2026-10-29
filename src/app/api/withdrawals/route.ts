@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { resolveSpouseId } from '@/lib/chat'
+import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { getReciprocationStatus, getSpouseName } from '@/lib/reciprocation'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
@@ -207,10 +208,12 @@ export async function POST(req: NextRequest) {
 
     const spouseId = await resolveSpouseId(userId)
     const partnerName = spouseId ? await getSpouseName(spouseId) : (customPartnerName || 'your spouse')
+    // Without a linked spouse there is nobody to approve, so it goes straight to review
+    const needsPartner = !isSolo && !!spouseId
 
     const partnerMetadata = {
-      requiresPartnerApproval: !isSolo,
-      partnerApprovalStatus: isSolo ? 'NOT_REQUIRED' : 'AWAITING_PARTNER',
+      requiresPartnerApproval: needsPartner,
+      partnerApprovalStatus: needsPartner ? 'AWAITING_PARTNER' : 'NOT_REQUIRED',
       requestedByName: userName,
       partnerName,
       initiatedAt: new Date().toISOString(),
@@ -235,18 +238,46 @@ export async function POST(req: NextRequest) {
       },
     })
 
-    // If joint account, create partner notification
-    if (!isSolo) {
+    const usd = `$${amount.toLocaleString()}`
+    const fund = investment.opportunity?.title || 'your investment'
+
+    // Joint withdrawal: the spouse has to approve it, so they hear about it everywhere
+    if (needsPartner) {
       await prisma.notification.create({
         data: {
-          userId,
-          title: 'Your spouse needs to approve this withdrawal',
-          message: `Your withdrawal request of $${amount.toLocaleString()} is waiting for ${partnerName} to approve it.`,
+          userId: spouseId,
+          title: `${userName} wants to withdraw ${usd}`,
+          message: `${userName} requested a withdrawal of ${usd} from ${fund}. It needs your approval.`,
           type: 'INFO',
           link: '/withdrawals',
         },
       }).catch(console.error)
+      await postToCoupleChat(userId, userName, {
+        type: 'withdrawal',
+        text: `Requested a withdrawal of ${usd} from ${fund}. ${partnerName}, please approve or decline it.`,
+        depositData: { amount, withdrawalId: withdrawal.id, status: 'AWAITING_PARTNER', vaultTitle: fund },
+      })
+      await emailMember(spouseId, {
+        subject: `${userName} needs your approval to withdraw ${usd}`,
+        heading: 'Withdrawal waiting for your approval',
+        paragraphs: [
+          `${userName} requested a withdrawal of ${usd} from ${fund}.`,
+          'Joint withdrawals need both of you. Approve or decline it from your withdrawals page.',
+        ],
+        ctaLabel: 'Review withdrawal',
+        ctaPath: '/withdrawals',
+      })
     }
+    await emailMember(userId, {
+      subject: `Withdrawal request received: ${usd}`,
+      heading: 'Withdrawal request received',
+      paragraphs: [
+        `We received your request to withdraw ${usd} from ${fund}. After fees you will receive $${netAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}.`,
+        needsPartner ? `${partnerName} needs to approve it before it is processed.` : 'It is now with our team for review.',
+      ],
+      ctaLabel: 'View withdrawals',
+      ctaPath: '/withdrawals',
+    })
 
     // Create Audit Log
     await prisma.auditLog.create({
@@ -260,7 +291,7 @@ export async function POST(req: NextRequest) {
           fee: fee + penalty,
           netAmount,
           investmentId,
-          partnerApprovalRequired: !isSolo,
+          partnerApprovalRequired: needsPartner,
         },
       },
     })
@@ -269,11 +300,13 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         withdrawal,
-        partnerApprovalRequired: !isSolo,
+        partnerApprovalRequired: needsPartner,
         partnerName,
         message: isSolo
           ? 'Solo withdrawal submitted for review.'
-          : `Withdrawal submitted. ${partnerName} needs to approve it before it is processed.`,
+          : needsPartner
+            ? `Withdrawal submitted. ${partnerName} needs to approve it before it is processed.`
+            : 'Withdrawal submitted for review.',
       },
       { status: 201 },
     )

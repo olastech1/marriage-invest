@@ -19,8 +19,23 @@ interface FloatingMessage {
   sender: 'user' | 'partner'
   text: string
   time: string
-  type?: 'text' | 'proposal' | 'love_note' | 'deposit_alert' | 'system_reminder' | 'reminder'
+  type?: string
   amount?: number
+  isReciprocalMatch?: boolean
+}
+
+/** Label for each card type; plain text messages have none */
+const CARD_LABELS: Record<string, string> = {
+  proposal: 'Shared deposit proposal',
+  deposit_alert: 'Vault deposit',
+  system_reminder: 'Money request',
+  reminder: 'Money request',
+  invest_invite: 'Invitation to invest',
+  investment: 'Investment',
+  withdrawal: 'Withdrawal',
+  certificate: 'Certificate',
+  spouse_request: 'Spouse request',
+  love_note: 'Love note',
 }
 
 export function FloatingChatWidget() {
@@ -64,6 +79,7 @@ export function FloatingChatWidget() {
           time: m.timestamp || new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           type: m.type,
           amount: m.depositData?.amount || m.proposalData?.amount,
+          isReciprocalMatch: !!m.depositData?.isReciprocalMatch,
         }))
 
         if (formatted.length > prevCountRef.current && prevCountRef.current > 0) {
@@ -309,10 +325,11 @@ export function FloatingChatWidget() {
                     }`}
                   >
                     <p>{m.text}</p>
-                    {(m.type === 'proposal' || m.type === 'deposit_alert' || m.type === 'system_reminder') && (
+                    {m.type && CARD_LABELS[m.type] && (
                       <div className="mt-2 pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold text-[#C9A84C]">
-                          {m.type === 'deposit_alert' ? 'Vault deposit' : 'Reminder'}
+                          {m.isReciprocalMatch ? 'Reciprocated' : CARD_LABELS[m.type]}
+                          {m.amount ? ` · $${Number(m.amount).toLocaleString()}` : ''}
                         </span>
                         {pendingMatch?.pendingDeposits?.some((d) => d.messageId === m.id) && (
                           <form method="post" action="/pay/match">

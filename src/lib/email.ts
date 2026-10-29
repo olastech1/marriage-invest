@@ -588,3 +588,37 @@ export async function sendDepositReminderEmail({
     html,
   })
 }
+
+// ---------------------------------------------------------------------------
+// Activity email (deposits, reciprocations, requests, investments, withdrawals…)
+// ---------------------------------------------------------------------------
+
+const escapeText = (v: string) =>
+  v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+/**
+ * A short branded email about something that happened on the account.
+ * All text is plain (escaped); `ctaPath` is an app path like "/chat".
+ */
+export async function sendActivityEmail({
+  to,
+  subject,
+  heading,
+  paragraphs,
+  ctaLabel,
+  ctaPath,
+}: {
+  to: string
+  subject: string
+  heading: string
+  paragraphs: string[]
+  ctaLabel?: string
+  ctaPath?: string
+}): Promise<boolean> {
+  const body = `
+    <h2>${escapeText(heading)}</h2>
+    ${paragraphs.map((p) => `<p>${escapeText(p)}</p>`).join('')}
+    ${ctaLabel && ctaPath ? `<p style="text-align:center;margin-top:24px"><a class="btn" href="${APP_URL.replace(/\/$/, '')}${ctaPath}">${escapeText(ctaLabel)}</a></p>` : ''}
+  `
+  return sendEmail({ to, subject, html: baseTemplate(body, heading) })
+}

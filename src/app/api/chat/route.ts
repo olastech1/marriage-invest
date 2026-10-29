@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { Prisma } from '@prisma/client'
+import { emailMember } from '@/lib/activity'
 import {
   buildThreadId,
   createChatMessage,
@@ -273,20 +275,27 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const {
-      text,
-      type = 'text',
-      senderId,
-      senderName,
-      recipientId,
-      recipientName,
-      threadId: threadIdParam,
-      proposalData,
-      loveNoteTitle,
-      voiceDuration,
-    } = body
+    const { recipientId, recipientName, threadId: threadIdParam, loveNoteTitle, voiceDuration } = body
 
-    if (!text && !proposalData && !loveNoteTitle && type !== 'system_reminder') {
+    // Members can only post these; system cards (deposits, requests, spouse links…)
+    // are created by the server, never by the browser
+    const type: 'text' | 'love_note' | 'proposal' = ['text', 'love_note', 'proposal'].includes(body.type) ? body.type : 'text'
+    const text = String(body.text || '').slice(0, 4000)
+    const proposalAmount = Math.round(Number(body.proposalData?.amount) * 100) / 100
+    const proposalData =
+      type === 'proposal'
+        ? {
+            goalName: String(body.proposalData?.goalName || 'Our plan').slice(0, 120),
+            amount: proposalAmount,
+            split: `50/50 ($${(proposalAmount / 2).toFixed(2)} each)`,
+            status: 'pending',
+          }
+        : undefined
+    if (type === 'proposal' && !(proposalAmount >= 2)) {
+      return NextResponse.json({ success: false, error: 'Enter an amount for the proposal.' }, { status: 400 })
+    }
+
+    if (!text.trim() && !proposalData && !loveNoteTitle) {
       return NextResponse.json({ success: false, error: 'Message content cannot be empty' }, { status: 400 })
     }
 
@@ -324,13 +333,13 @@ export async function POST(req: Request) {
         senderName: sender.name,
         recipientId: effectiveRecipientId,
         recipientName: effectiveRecipientName,
-        text: text ? text.trim() : (proposalData ? `Proposed deposit for ${proposalData.goalName}` : (loveNoteTitle || 'Matrimonial Love Note')),
+        text: text.trim() ? text.trim() : (proposalData ? `Proposed deposit for ${proposalData.goalName}` : (loveNoteTitle || 'Love note')),
         timestamp: formattedTime,
         createdAt: now,
         read: false,
         type,
-        proposalData,
-        loveNoteTitle,
+        proposalData: proposalData ? { ...proposalData, proposedBy: sender.name } : undefined,
+        loveNoteTitle: loveNoteTitle ? String(loveNoteTitle).slice(0, 80) : undefined,
         voiceDuration,
         reactions: {},
       },
@@ -341,6 +350,25 @@ export async function POST(req: Request) {
       const guestEmail = await findGuestEmail(buildThreadId(sender.id, effectiveRecipientId))
       const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name, text || '') : false
       return NextResponse.json({ success: true, message: newMsg, emailed })
+    }
+
+    // Email the recipient: always for a proposal; for messages only the first unread one
+    // from this sender (so a conversation doesn't flood their inbox)
+    const earlierUnread = await prisma.chatMessage.count({
+      where: { threadId: newMsg.threadId, senderId: sender.id, recipientId: effectiveRecipientId, read: false, NOT: { id: newMsg.id } },
+    })
+    if (type === 'proposal' || earlierUnread === 0) {
+      const plan = proposalData?.goalName ? String(proposalData.goalName) : ''
+      await emailMember(effectiveRecipientId, {
+        subject:
+          type === 'proposal'
+            ? `${sender.name} proposed a $${Number(proposalData?.amount || 0).toLocaleString()} plan${plan ? ` for "${plan}"` : ''}`
+            : `New message from ${sender.name}`,
+        heading: type === 'proposal' ? 'New savings proposal' : `${sender.name} sent you a message`,
+        paragraphs: [newMsg.text.slice(0, 500)],
+        ctaLabel: type === 'proposal' ? 'Review proposal' : 'Reply in chat',
+        ctaPath: `/chat?recipientId=${encodeURIComponent(sender.id)}&name=${encodeURIComponent(sender.name)}`,
+      })
     }
 
     // In-app notification for the recipient
@@ -372,7 +400,7 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json()
-    const { messageId, action, reaction, approvedBy, partnerName, senderId } = body
+    const { messageId, action, reaction } = body
 
     if (!messageId) {
       return NextResponse.json({ success: false, error: 'messageId is required' }, { status: 400 })
@@ -387,27 +415,71 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ success: false, error: 'Message not found' }, { status: 404 })
     }
 
-    if (action === 'approve_proposal') {
+    if (action === 'approve_proposal' || action === 'decline_proposal') {
+      const data = ((existing.proposalData as Record<string, unknown>) || {}) as Record<string, unknown>
+      // Only the person it was sent to can answer, and only once
+      if (existing.type !== 'proposal' || existing.senderId === currentUser.id) {
+        return NextResponse.json({ success: false, error: 'Only the other person can answer this proposal.' }, { status: 403 })
+      }
+      if (data.status !== 'pending') {
+        return NextResponse.json({ success: false, error: 'This proposal was already answered.' }, { status: 409 })
+      }
+      const approved = action === 'approve_proposal'
       const updated = await chatDb.chatMessage.update({
         where: { id: messageId },
         data: {
           proposalData: {
-            ...((existing.proposalData as any) || {}),
-            status: 'approved',
-            approvedBy: currentUser.name,
-          },
+            ...data,
+            status: approved ? 'approved' : 'rejected',
+            ...(approved ? { approvedBy: currentUser.name } : { declinedBy: currentUser.name }),
+          } as Prisma.InputJsonValue,
         },
+      })
+      const plan = String(data.goalName || 'the plan')
+      const amount = Number(data.amount) || 0
+      const share = Math.round((amount / 2) * 100) / 100
+      await createChatMessage({
+        data: {
+          threadId: existing.threadId,
+          senderId: currentUser.id,
+          senderName: currentUser.name,
+          recipientId: existing.senderId,
+          recipientName: existing.senderName,
+          text: approved
+            ? `${currentUser.name} approved the $${amount.toLocaleString()} plan for "${plan}". Each of you pays $${share.toLocaleString()}.`
+            : `${currentUser.name} declined the $${amount.toLocaleString()} plan for "${plan}".`,
+          timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
+          type: 'text',
+        },
+      })
+      await emailMember(existing.senderId, {
+        subject: `${currentUser.name} ${approved ? 'approved' : 'declined'} your "${plan}" proposal`,
+        heading: approved ? 'Proposal approved' : 'Proposal declined',
+        paragraphs: approved
+          ? [`${currentUser.name} approved your $${amount.toLocaleString()} plan for "${plan}".`, `Pay your $${share.toLocaleString()} share from your chat.`]
+          : [`${currentUser.name} declined your $${amount.toLocaleString()} plan for "${plan}".`],
+        ctaLabel: 'Open chat',
+        ctaPath: '/chat',
       })
       return NextResponse.json({ success: true, message: updated })
     }
 
     if (action === 'react' && reaction) {
-      const currentReactions: Record<string, number> = { ...((existing.reactions as any) || {}) }
-      currentReactions[reaction] = (currentReactions[reaction] || 0) + 1
+      // One reaction per person per emoji; tapping again removes it
+      const raw = ((existing.reactions as Record<string, unknown>) || {}) as Record<string, unknown>
+      const reactions: Record<string, string[]> = {}
+      for (const [emoji, value] of Object.entries(raw)) {
+        if (Array.isArray(value)) reactions[emoji] = value.map(String)
+      }
+      const users = new Set(reactions[reaction] || [])
+      if (users.has(currentUser.id)) users.delete(currentUser.id)
+      else users.add(currentUser.id)
+      if (users.size) reactions[reaction] = [...users]
+      else delete reactions[reaction]
 
       const updated = await chatDb.chatMessage.update({
         where: { id: messageId },
-        data: { reactions: currentReactions },
+        data: { reactions },
       })
       return NextResponse.json({ success: true, message: updated })
     }

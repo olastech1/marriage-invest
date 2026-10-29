@@ -16,6 +16,7 @@ import { resolveSpouseId } from '@/lib/chat'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { recordVaultDeposit } from '@/lib/vaultDeposits'
+import { emailMember, postToCoupleChat } from '@/lib/activity'
 
 export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE'
 
@@ -144,6 +145,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       note: payload.note || '',
       isReciprocalMatch: !!payload.isReciprocalMatch,
       forDepositId: payload.forDepositId || undefined,
+      proposalId: payload.proposalId || undefined,
     })
     return {
       purpose: 'VAULT_DEPOSIT',
@@ -205,10 +207,33 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
         },
       })
     })
-    return { purpose: 'INVESTMENT', nextUrl: '/portfolio', message: `Your $${amount.toLocaleString()} investment in ${opportunity.title} is active.` }
+    const usd = `$${amount.toLocaleString()}`
+    await postToCoupleChat(userId, userName, {
+      type: 'investment',
+      text: `Invested ${usd} in ${opportunity.title}.`,
+      proposalData: { goalName: opportunity.title, amount, slug: opportunity.slug },
+    })
+    await emailMember(userId, {
+      subject: `Investment confirmed: ${usd} in ${opportunity.title}`,
+      heading: 'Your investment is active',
+      paragraphs: [
+        `Your ${usd} investment in ${opportunity.title} is active (reference ${referenceNumber}).`,
+        `Term: ${opportunity.termMonths} months. Returns are projections, not guarantees.`,
+      ],
+      ctaLabel: 'View portfolio',
+      ctaPath: '/portfolio',
+    })
+    await emailMember(await resolveSpouseId(userId), {
+      subject: `${userName} invested ${usd} in ${opportunity.title}`,
+      heading: `${userName} made an investment`,
+      paragraphs: [`${userName} invested ${usd} in ${opportunity.title}.`],
+      ctaLabel: 'View the opportunity',
+      ctaPath: `/investments/${opportunity.slug}`,
+    })
+    return { purpose: 'INVESTMENT', nextUrl: '/portfolio', message: `Your ${usd} investment in ${opportunity.title} is active.` }
   },
 
-  async MARRIAGE_REGISTRATION({ userId, amount, payload, paymentRef }) {
+  async MARRIAGE_REGISTRATION({ userId, userName, amount, payload, paymentRef }) {
     const includesCertificate = payload.option === 'both' || payload.option === 'certificate'
     const includesRegistration = payload.option === 'both' || payload.option === 'registration'
     const registration = await prisma.marriageRegistration.create({
@@ -227,6 +252,22 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     })
     await recordFee(userId, amount, paymentRef, `Union Verify registration ${registration.docketNumber}`)
     await linkOrInviteSpouse(userId, payload.partner1Name, payload.partner2Email)
+    const registeredText = `Our union is registered with Union Verify (docket ${registration.docketNumber})${includesCertificate ? ` and our certificate ${registration.certificateNumber} is ready` : ''}.`
+    await postToCoupleChat(userId, userName, { type: 'certificate', text: registeredText })
+    const partner = await prisma.user.findUnique({ where: { email: String(payload.partner2Email || '').toLowerCase() }, select: { id: true } })
+    for (const id of [userId, partner?.id]) {
+      await emailMember(id, {
+        subject: `Your union is registered (${registration.docketNumber})`,
+        heading: 'Union registered',
+        paragraphs: [
+          `${payload.partner1Name} and ${payload.partner2Name} are registered with Union Verify. Docket: ${registration.docketNumber}.`,
+          includesCertificate ? `Certificate number: ${registration.certificateNumber}.` : 'You can add the certificate any time from the certificate page.',
+          'This is a Union Verify platform record, not a government-issued marriage certificate.',
+        ],
+        ctaLabel: 'View certificate',
+        ctaPath: '/certificate',
+      })
+    }
     return {
       purpose: 'MARRIAGE_REGISTRATION',
       nextUrl: '/certificate',
@@ -234,7 +275,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     }
   },
 
-  async CERTIFICATE({ userId, amount, payload, paymentRef }) {
+  async CERTIFICATE({ userId, userName, amount, payload, paymentRef }) {
     const registration = await prisma.marriageRegistration.findFirst({ where: { id: payload.registrationId, userId } })
     if (!registration) throw new Error('Registration not found')
     if (!registration.certificatePaid) {
@@ -244,6 +285,17 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       })
     }
     await recordFee(userId, amount, paymentRef, `Union Verify certificate for ${registration.docketNumber}`)
+    await postToCoupleChat(userId, userName, { type: 'certificate', text: `Our Union Verify certificate is ready (docket ${registration.docketNumber}).` })
+    const partner = await prisma.user.findUnique({ where: { email: registration.partner2Email }, select: { id: true } })
+    for (const id of [userId, partner?.id]) {
+      await emailMember(id, {
+        subject: 'Your Union Verify certificate is ready',
+        heading: 'Certificate ready',
+        paragraphs: [`The certificate for ${registration.partner1Name} and ${registration.partner2Name} (docket ${registration.docketNumber}) is ready to view and print.`],
+        ctaLabel: 'View certificate',
+        ctaPath: '/certificate',
+      })
+    }
     return { purpose: 'CERTIFICATE', nextUrl: '/certificate', message: 'Your certificate is ready.' }
   },
 }

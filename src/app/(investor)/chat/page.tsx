@@ -24,6 +24,8 @@ import {
   Plus,
   Users,
   ExternalLink,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -54,8 +56,8 @@ export interface ChatMessage {
   timestamp: string
   createdAt?: string | Date
   read: boolean
-  reactions?: Record<string, number>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite'
+  reactions?: Record<string, number | string[]>
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite' | 'investment' | 'withdrawal'
   proposalData?: {
     goalName?: string
     amount?: number
@@ -72,6 +74,9 @@ export interface ChatMessage {
     depositorName?: string
     reference?: string
     isReciprocalMatch?: boolean
+    withdrawalId?: string
+    proposalId?: string
+    status?: string
   }
   loveNoteTitle?: string
 }
@@ -555,29 +560,26 @@ export default function UnifiedChatPage() {
     }
   }
 
-  // Approve Proposal
-  const handleApproveProposal = async (msgId: string) => {
+  // Approve or decline a proposal (only the person it was sent to)
+  const handleAnswerProposal = async (msgId: string, action: 'approve_proposal' | 'decline_proposal') => {
     setIsApprovingId(msgId)
     try {
       const res = await fetch('/api/chat', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messageId: msgId,
-          action: 'approve_proposal',
-          senderId: activeUserId,
-          approvedBy: activeUserName,
-          partnerName: activeUserName,
-        }),
+        body: JSON.stringify({ messageId: msgId, action }),
       })
       const data = await res.json()
       if (data.success) {
         playNotificationChime()
         fetchMessages(false)
-        broadcastChannelRef.current?.postMessage({ type: 'PROPOSAL_APPROVED' })
+        broadcastChannelRef.current?.postMessage({ type: 'PROPOSAL_ANSWERED' })
+      } else {
+        setNudgeBanner(data.error || 'Something went wrong.')
+        setTimeout(() => setNudgeBanner(''), 5000)
       }
     } catch (err) {
-      console.error('Failed to approve proposal:', err)
+      console.error('Failed to answer proposal:', err)
     } finally {
       setIsApprovingId(null)
     }
@@ -1178,10 +1180,12 @@ export default function UnifiedChatPage() {
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               msg.proposalData.status === 'approved'
                                 ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-amber-100 text-amber-800'
+                                : msg.proposalData.status === 'rejected'
+                                  ? 'bg-gray-100 text-gray-600'
+                                  : 'bg-amber-100 text-amber-800'
                             }`}
                           >
-                            {msg.proposalData.status === 'approved' ? 'Approved' : 'Awaiting approval'}
+                            {msg.proposalData.status === 'approved' ? 'Approved' : msg.proposalData.status === 'rejected' ? 'Declined' : 'Awaiting approval'}
                           </span>
                         </div>
 
@@ -1207,28 +1211,62 @@ export default function UnifiedChatPage() {
 
                         {msg.proposalData.status === 'pending' ? (
                           !isMe ? (
-                            <button
-                              onClick={() => handleApproveProposal(msg.id)}
-                              disabled={isApprovingId === msg.id}
-                              className="w-full py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                            >
-                              {isApprovingId === msg.id ? (
-                                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Check className="w-4 h-4" />
-                              )}
-                              <span>Approve</span>
-                            </button>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAnswerProposal(msg.id, 'approve_proposal')}
+                                disabled={isApprovingId === msg.id}
+                                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-black text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                              >
+                                {isApprovingId === msg.id ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-4 h-4" />}
+                                <span>Approve</span>
+                              </button>
+                              <button
+                                onClick={() => handleAnswerProposal(msg.id, 'decline_proposal')}
+                                disabled={isApprovingId === msg.id}
+                                className="px-4 py-2.5 rounded-xl border border-gray-300 bg-white text-gray-700 font-bold text-xs cursor-pointer disabled:opacity-50"
+                              >
+                                Decline
+                              </button>
+                            </div>
                           ) : (
                             <div className="p-2 rounded-lg bg-amber-50 text-amber-800 text-[11px] text-center font-medium border border-amber-200">
                               Waiting for {activeRecipient.name} to approve
                             </div>
                           )
-                        ) : (
-                          <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] text-center font-semibold flex items-center justify-center gap-1.5 border border-emerald-200">
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                            <span>Approved{msg.proposalData.approvedBy ? ` by ${msg.proposalData.approvedBy}` : ''}</span>
+                        ) : msg.proposalData.status === 'rejected' ? (
+                          <div className="p-2 rounded-lg bg-gray-50 text-gray-600 text-[11px] text-center font-semibold border border-gray-200">
+                            Declined
                           </div>
+                        ) : (
+                          (() => {
+                            // Each partner pays half; a share is paid once its deposit card exists
+                            const share = Math.round((Number(msg.proposalData.amount) / 2) * 100) / 100
+                            const paidBy = (id: string) =>
+                              messages.some((m) => m.type === 'deposit_alert' && m.senderId === id && m.depositData?.proposalId === msg.id)
+                            const iPaid = paidBy(activeUserId)
+                            const theyPaid = paidBy(activeRecipient.id)
+                            return (
+                              <div className="space-y-2">
+                                <div className="p-2 rounded-lg bg-emerald-50 text-emerald-800 text-[11px] font-semibold border border-emerald-200 space-y-0.5">
+                                  <p className="flex items-center gap-1.5">
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                    Approved{msg.proposalData.approvedBy ? ` by ${msg.proposalData.approvedBy}` : ''} · ${share.toLocaleString()} each
+                                  </p>
+                                  <p className="font-medium">
+                                    You: {iPaid ? 'paid ✓' : 'not paid yet'} · {activeRecipient.name}: {theyPaid ? 'paid ✓' : 'not paid yet'}
+                                  </p>
+                                </div>
+                                {!iPaid && (
+                                  <form method="post" action="/pay/deposit">
+                                    <input type="hidden" name="proposal" value={msg.id} />
+                                    <button type="submit" className="w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer">
+                                      Pay my ${share.toLocaleString()} share
+                                    </button>
+                                  </form>
+                                )}
+                              </div>
+                            )
+                          })()
                         )}
                       </div>
                     )}
@@ -1257,7 +1295,11 @@ export default function UnifiedChatPage() {
                                 ? { label: 'Spouse request', Icon: Heart, tone: 'border-rose-200 bg-rose-50/60 text-rose-700' }
                                 : msg.type === 'invest_invite'
                                   ? { label: 'Invitation to invest', Icon: Sparkles, tone: 'border-indigo-200 bg-indigo-50/60 text-indigo-700' }
-                                : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
+                                  : msg.type === 'investment'
+                                    ? { label: 'Investment', Icon: TrendingUp, tone: 'border-indigo-200 bg-indigo-50/60 text-indigo-700' }
+                                    : msg.type === 'withdrawal'
+                                      ? { label: 'Withdrawal', Icon: Wallet, tone: 'border-sky-200 bg-sky-50/60 text-sky-700' }
+                                      : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
                       const amount = msg.depositData?.amount ?? msg.proposalData?.amount
                       return (
                         <div className={`p-3.5 rounded-2xl border shadow-xs text-xs space-y-2 min-w-[240px] ${kind.tone}`}>
@@ -1313,6 +1355,33 @@ export default function UnifiedChatPage() {
                               <p className="text-[11px] text-gray-500">Waiting for a reply.</p>
                             ))}
 
+                          {msg.type === 'investment' && msg.proposalData?.slug && (
+                            <Link
+                              href={`/investments/${msg.proposalData.slug}`}
+                              className="block py-2 rounded-xl border border-indigo-300 bg-white text-indigo-800 font-bold text-xs text-center"
+                            >
+                              View fund
+                            </Link>
+                          )}
+
+                          {/* A withdrawal waiting for my approval (until a decision card for it exists) */}
+                          {msg.type === 'withdrawal' &&
+                            msg.depositData?.status === 'AWAITING_PARTNER' &&
+                            !isMe &&
+                            !messages.some(
+                              (m) =>
+                                m.type === 'withdrawal' &&
+                                m.depositData?.withdrawalId === msg.depositData?.withdrawalId &&
+                                m.depositData?.status !== 'AWAITING_PARTNER',
+                            ) && (
+                            <Link
+                              href="/withdrawals"
+                              className="block py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs text-center"
+                            >
+                              Review withdrawal
+                            </Link>
+                          )}
+
                           {msg.type === 'invest_invite' && msg.proposalData?.slug && (
                             <div className="flex gap-2 pt-1">
                               {msg.proposalData.toUserId === activeUserId && Number(amount) > 0 && (
@@ -1362,17 +1431,25 @@ export default function UnifiedChatPage() {
                     {/* Reactions Bar */}
                     <div className="flex items-center gap-1 mt-1 justify-end">
                       {msg.reactions &&
-                        Object.entries(msg.reactions).map(([emoji, count]) => (
-                          <button
-                            key={emoji}
-                            onClick={() => handleToggleReaction(msg.id, emoji)}
-                            className="px-2 py-0.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold flex items-center gap-1 hover:border-[#C9A84C] transition-colors shadow-2xs"
-                          >
-                            <span>{emoji}</span>
-                            <span className="text-gray-500 font-mono text-[10px]">{count}</span>
-                          </button>
-                        ))}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 ml-1">
+                        // Only real reactions (who reacted); old seeded counts aren't shown
+                        Object.entries(msg.reactions)
+                          .filter(([, who]) => Array.isArray(who) && who.length > 0)
+                          .map(([emoji, who]) => {
+                            const mine = (who as string[]).includes(activeUserId)
+                            return (
+                              <button
+                                key={emoji}
+                                onClick={() => handleToggleReaction(msg.id, emoji)}
+                                className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs ${
+                                  mine ? 'bg-[#C9A84C]/15 border-[#C9A84C]' : 'bg-white border-gray-200 hover:border-[#C9A84C]'
+                                }`}
+                              >
+                                <span>{emoji}</span>
+                                <span className="text-gray-500 font-mono text-[10px]">{(who as string[]).length}</span>
+                              </button>
+                            )
+                          })}
+                      <div className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 ml-1">
                         {['❤️', '👍', '🔥'].map((emoji) => (
                           <button
                             key={emoji}

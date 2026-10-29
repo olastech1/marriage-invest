@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { resolveSpouseId } from '@/lib/chat'
+import { emailMember, postToCoupleChat } from '@/lib/activity'
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -102,7 +103,14 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       currentMetadata = {}
     }
 
+    if (withdrawal.status !== 'PENDING' || currentMetadata.partnerApprovalStatus !== 'AWAITING_PARTNER') {
+      return NextResponse.json({ error: 'This withdrawal has already been decided.' }, { status: 409 })
+    }
+
     const partnerName = session?.user?.name || 'Your spouse'
+    const usd = `$${Number(withdrawal.amount).toLocaleString()}`
+    const fund = withdrawal.investment?.opportunity?.title || 'your investment'
+    const card = { amount: Number(withdrawal.amount), withdrawalId: withdrawal.id, vaultTitle: fund }
 
     if (action === 'partner_approve') {
       const updatedMetadata = {
@@ -133,6 +141,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           link: '/withdrawals',
         },
       }).catch(console.error)
+      await postToCoupleChat(userId, partnerName, {
+        type: 'withdrawal',
+        text: `Approved the withdrawal of ${usd} from ${fund}.${partnerNote ? ` Note: "${String(partnerNote).slice(0, 300)}"` : ''}`,
+        depositData: { ...card, status: 'PARTNER_APPROVED' },
+      })
+      await emailMember(withdrawal.userId, {
+        subject: `${partnerName} approved your ${usd} withdrawal`,
+        heading: 'Your spouse approved the withdrawal',
+        paragraphs: [`${partnerName} approved your withdrawal of ${usd} from ${fund}. It is now with our team for processing.`],
+        ctaLabel: 'View withdrawals',
+        ctaPath: '/withdrawals',
+      })
 
       return NextResponse.json({
         success: true,
@@ -171,6 +191,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           link: '/withdrawals',
         },
       }).catch(console.error)
+      await postToCoupleChat(userId, partnerName, {
+        type: 'withdrawal',
+        text: `Declined the withdrawal of ${usd} from ${fund}. The money stays invested.${partnerNote ? ` Note: "${String(partnerNote).slice(0, 300)}"` : ''}`,
+        depositData: { ...card, status: 'PARTNER_REJECTED' },
+      })
+      await emailMember(withdrawal.userId, {
+        subject: `${partnerName} declined your ${usd} withdrawal`,
+        heading: 'Your spouse declined the withdrawal',
+        paragraphs: [`${partnerName} declined your withdrawal of ${usd} from ${fund}. The money stays invested.`],
+        ctaLabel: 'View withdrawals',
+        ctaPath: '/withdrawals',
+      })
 
       return NextResponse.json({
         success: true,

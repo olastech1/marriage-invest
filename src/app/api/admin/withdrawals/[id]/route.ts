@@ -2,8 +2,55 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
+import { resolveSpouseId } from '@/lib/chat'
+import { emailMember, postToCoupleChat } from '@/lib/activity'
 
 type Params = { params: Promise<{ id: string }> }
+
+/** Tell the member (and their spouse) about the decision: bell, couple chat and email */
+async function announceDecision(
+  withdrawal: { id: string; userId: string; amount: unknown; netAmount: unknown; user: { name: string | null }; investment: { opportunity: { title: string } | null } | null },
+  decision: 'approved' | 'rejected',
+  adminNote?: string,
+) {
+  const usd = `$${Number(withdrawal.amount).toLocaleString()}`
+  const fund = withdrawal.investment?.opportunity?.title || 'your investment'
+  const name = withdrawal.user.name || 'Member'
+  const text =
+    decision === 'approved'
+      ? `Withdrawal of ${usd} from ${fund} approved. $${Number(withdrawal.netAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} is on its way to ${name}'s bank account.`
+      : `Withdrawal of ${usd} from ${fund} was not approved.${adminNote?.trim() ? ` Reason: ${adminNote.trim().replace(/[.!?]*$/, '.')}` : ''} The money stays invested.`
+  const spouseId = await resolveSpouseId(withdrawal.userId)
+
+  for (const id of [withdrawal.userId, spouseId].filter(Boolean)) {
+    await prisma.notification.create({
+      data: {
+        userId: id,
+        title: decision === 'approved' ? `Withdrawal of ${usd} approved` : `Withdrawal of ${usd} not approved`,
+        message: text,
+        type: decision === 'approved' ? 'SUCCESS' : 'WARNING',
+        link: '/withdrawals',
+      },
+    }).catch(console.error)
+    await emailMember(id, {
+      subject: decision === 'approved' ? `Withdrawal approved: ${usd}` : `Withdrawal not approved: ${usd}`,
+      heading: decision === 'approved' ? 'Withdrawal approved' : 'Withdrawal not approved',
+      paragraphs: [text],
+      ctaLabel: 'View withdrawals',
+      ctaPath: '/withdrawals',
+    })
+  }
+  await postToCoupleChat(
+    withdrawal.userId,
+    name,
+    {
+      type: 'withdrawal',
+      text,
+      depositData: { amount: Number(withdrawal.amount), withdrawalId: withdrawal.id, status: decision === 'approved' ? 'APPROVED' : 'REJECTED', vaultTitle: fund },
+    },
+    { fromPlatform: true },
+  )
+}
 
 export async function PATCH(req: NextRequest, { params }: Params) {
   try {
@@ -22,6 +69,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     const withdrawal = await prisma.withdrawalRequest.findUnique({
       where: { id },
+      include: { user: { select: { name: true } }, investment: { select: { opportunity: { select: { title: true } } } } },
     })
 
     if (!withdrawal) {
@@ -33,6 +81,18 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         { status: 409 },
       )
     }
+
+    // Keep the spouse-approval record on the request; the admin's note is added to it
+    let meta: Record<string, unknown> | null = null
+    try {
+      if (withdrawal.adminNote?.startsWith('{')) meta = JSON.parse(withdrawal.adminNote)
+    } catch {
+      meta = null
+    }
+    if (action === 'approve' && meta?.partnerApprovalStatus === 'AWAITING_PARTNER') {
+      return NextResponse.json({ error: 'The spouse has not approved this withdrawal yet.' }, { status: 409 })
+    }
+    const decisionNote = meta ? JSON.stringify({ ...meta, adminDecisionNote: adminNote || '' }) : adminNote || null
 
     if (action === 'approve') {
       const txnRef = `TXN-WD-${new Date().getFullYear()}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`
@@ -46,7 +106,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
             approvedById: session.user.id,
             approvedAt: new Date(),
             processedAt: new Date(),
-            adminNote: adminNote || null,
+            adminNote: decisionNote,
           },
         })
         if (updated.count === 0) throw new Error('ALREADY_DECIDED')
@@ -79,17 +139,19 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         })
       })
 
+      await announceDecision(withdrawal, 'approved', adminNote)
       return NextResponse.json({ success: true, message: 'Withdrawal approved successfully' })
     } else {
-      // Reject
-      await prisma.withdrawalRequest.update({
-        where: { id },
+      // Reject (only if still pending)
+      const updated = await prisma.withdrawalRequest.updateMany({
+        where: { id, status: 'PENDING' },
         data: {
           status: 'REJECTED',
           rejectedAt: new Date(),
-          adminNote: adminNote || null,
+          adminNote: decisionNote,
         },
       })
+      if (updated.count === 0) throw new Error('ALREADY_DECIDED')
 
       await prisma.auditLog.create({
         data: {
@@ -101,6 +163,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
         },
       })
 
+      await announceDecision(withdrawal, 'rejected', adminNote)
       return NextResponse.json({ success: true, message: 'Withdrawal rejected' })
     }
   } catch (error) {
