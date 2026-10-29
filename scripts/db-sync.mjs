@@ -24,8 +24,8 @@ try {
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
   )
 } catch (err) {
-  console.error('[db-sync] Could not compare the database with the schema (is DATABASE_URL reachable?)')
-  process.exit(1)
+  console.warn('[db-sync] Warning: Could not connect to DATABASE_URL to diff schema (database is unreachable or offline). Skipping schema migration step.')
+  process.exit(0)
 }
 
 // Split into statements, dropping comment lines

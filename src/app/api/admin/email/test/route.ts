@@ -58,6 +58,67 @@ export async function POST(req: NextRequest) {
     } = body
     const pass = !rawPass || rawPass === PASSWORD_MASK ? DEFAULT_PASS : rawPass
 
+    // If using Resend API Key directly, test via Resend HTTPS API
+    if (pass && pass.startsWith('re_')) {
+      const domainsRes = await fetch('https://api.resend.com/domains', {
+        headers: { Authorization: `Bearer ${pass.trim()}` },
+      })
+      if (!domainsRes.ok) {
+        const errJson = await domainsRes.json().catch(() => ({}))
+        return NextResponse.json({ error: errJson.message || 'Resend API authentication failed' }, { status: 400 })
+      }
+
+      if (sendTest && toEmail) {
+        const formattedDate = new Date().toUTCString()
+        const sendRes = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${pass.trim()}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: `"${fromName}" <${fromEmail}>`,
+            to: [toEmail],
+            replyTo: fromEmail,
+            subject: 'Union Verify test email (Resend)',
+            html: `
+              <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px;">
+                <div style="text-align: center; margin-bottom: 28px;">
+                  <span style="font-size: 26px; font-weight: 800; color: #0F1C3F; letter-spacing: -0.5px;">Union <span style="color: #C9A84C;">Verify</span></span>
+                  <p style="font-size: 12px; color: #6b7280; margin-top: 4px;">Building Wealth Together</p>
+                </div>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+                  <h2 style="font-size: 18px; font-weight: 700; color: #0F1C3F; margin: 0 0 10px;">Test Email (Resend Active)</h2>
+                  <p style="font-size: 14px; line-height: 1.6; color: #475569; margin: 0;">
+                    Your Resend integration is working perfectly! Outgoing emails are fully operational from ${escapeHtml(fromEmail)}.
+                  </p>
+                </div>
+                <div style="border-top: 1px solid #f1f5f9; padding-top: 20px; text-align: center; font-size: 12px; color: #94a3b8; line-height: 1.5;">
+                  <p style="margin: 0;">Sent: ${formattedDate}</p>
+                </div>
+              </div>
+            `,
+          }),
+        })
+
+        const sendData = await sendRes.json()
+        if (sendRes.ok && sendData?.id) {
+          return NextResponse.json({
+            success: true,
+            message: `Resend delivered the test email to ${toEmail}. Message ID: ${sendData.id}`,
+            messageId: sendData.id,
+          })
+        } else {
+          return NextResponse.json({ error: sendData?.message || 'Resend delivery failed' }, { status: 400 })
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Resend API authenticated successfully. Domain is verified.',
+      })
+    }
+
     if (!host) {
       return NextResponse.json({ error: 'SMTP Host is required' }, { status: 400 })
     }

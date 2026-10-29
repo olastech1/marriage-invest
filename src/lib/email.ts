@@ -179,19 +179,52 @@ function fmtDate(d: Date | string): string {
  */
 export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
   const { to, subject, html, text } = options
+  const recipients = Array.isArray(to) ? to : [to]
 
+  // 1. Primary: If RESEND_API_KEY is present, send via Resend HTTPS REST API (fastest & most reliable on serverless)
+  const resendApiKey = process.env.RESEND_API_KEY?.trim()
+  if (resendApiKey) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: FROM,
+          to: recipients,
+          subject,
+          html,
+          text: text ?? html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim(),
+        }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data?.id) {
+        console.info('[resend] email sent:', data.id, '→', to)
+        return true
+      } else {
+        console.error('[resend] API error response:', data)
+      }
+    } catch (apiErr) {
+      console.error('[resend] HTTPS request failed, attempting SMTP fallback:', apiErr)
+    }
+  }
+
+  // 2. Fallback: SMTP transporter (Nodemailer)
   try {
     const transporter = getTransporter()
     const info = await transporter.sendMail({
       from: FROM,
-      to: Array.isArray(to) ? to.join(', ') : to,
+      to: recipients.join(', '),
       subject,
       html,
       text: text ?? html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim(),
     })
 
     if (process.env.NODE_ENV === 'development') {
-      console.info('[email] sent:', info.messageId, '→', to)
+      console.info('[email] sent via SMTP:', info.messageId, '→', to)
     }
 
     return true
