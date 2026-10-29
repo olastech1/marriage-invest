@@ -198,6 +198,7 @@ export async function sendEmail(options: SendEmailOptions): Promise<boolean> {
           html,
           text: text ?? html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim(),
         }),
+        signal: AbortSignal.timeout(5000),
       })
 
       const data = await res.json()
