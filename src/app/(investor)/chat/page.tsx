@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 import {
   Heart,
   Send,
@@ -62,7 +63,7 @@ export interface ChatMessage {
     goalName?: string
     amount?: number
     split?: string
-    status?: 'pending' | 'approved' | 'rejected' | 'accepted'
+    status?: 'pending' | 'approved' | 'rejected' | 'accepted' | 'declined'
     proposedBy?: string
     approvedBy?: string
     [key: string]: any
@@ -128,6 +129,8 @@ export default function UnifiedChatPage() {
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
+  // Spouse requests waiting for my answer (null until loaded)
+  const [spouseRequests, setSpouseRequests] = useState<SpouseRequest[] | null>(null)
   // What I still owe my spouse, and which of their deposits to show the Match button on
   type PendingDeposit = { messageId: string; depositorName: string; amount: number; depositedAt: string; note: string }
   const [reciprocation, setReciprocation] = useState<{
@@ -179,6 +182,16 @@ export default function UnifiedChatPage() {
     }
   }, [activeUserId])
 
+  const fetchSpouseRequests = useCallback(async () => {
+    try {
+      const res = await fetch('/api/spouse')
+      const data = await res.json()
+      setSpouseRequests(data.success && Array.isArray(data.requests) ? data.requests : [])
+    } catch {
+      setSpouseRequests([])
+    }
+  }, [])
+
   // Handle URL parameters for direct deep-linking (e.g. from /u/[slug] or notifications)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -225,17 +238,28 @@ export default function UnifiedChatPage() {
               avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
             }
       )
-    } else if (availableContacts.length > 0) {
+    } else if (!activeRecipient.id && spouseRequests?.length) {
+      // Someone asked to link as spouses: open that chat first
+      const { fromUserId, fromName } = spouseRequests[0]
+      setActiveRecipient(
+        availableContacts.find((c) => c.id === fromUserId) || {
+          id: fromUserId,
+          name: fromName,
+          avatar: fromName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+        }
+      )
+      setMobileTab('chat')
+    } else if (availableContacts.length > 0 && spouseRequests) {
       // No spouse yet: open the most recent conversation instead of an empty placeholder
       if (!activeRecipient.id) {
         setActiveRecipient(availableContacts[0])
         setMobileTab('chat')
       }
-    } else if (contactsLoaded) {
+    } else if (contactsLoaded && spouseRequests) {
       // Nothing to open: show the conversation list (with "New chat")
       setMobileTab('contacts')
     }
-  }, [availableContacts, contactsLoaded, activeRecipient.id, activeUserId, spouseId, conversations])
+  }, [availableContacts, contactsLoaded, activeRecipient.id, activeUserId, spouseId, conversations, spouseRequests])
 
   // New chat by email: open the member's chat, or email them an invitation
   const handleStartChat = async (e: React.FormEvent) => {
@@ -404,6 +428,7 @@ export default function UnifiedChatPage() {
   useEffect(() => {
     fetchContacts()
     fetchConversations()
+    fetchSpouseRequests()
     fetchMessages(true)
 
     // Poll for new messages every 2s
@@ -427,7 +452,7 @@ export default function UnifiedChatPage() {
       clearInterval(pollInterval)
       if (bc) bc.close()
     }
-  }, [fetchContacts, fetchConversations, fetchMessages])
+  }, [fetchContacts, fetchConversations, fetchSpouseRequests, fetchMessages])
 
   // -------------------------------------------------------------------------
   // 4. Send Message
@@ -500,7 +525,10 @@ export default function UnifiedChatPage() {
   }
 
   // Deposit reminder to my spouse (the member chooses the amount)
-  const handleSpouseAction = async (body: { action: 'request'; userId: string } | { action: 'accept'; messageId: string }) => {
+  const handleSpouseAction = async (
+    body: { action: 'request'; userId: string } | { action: 'accept' | 'decline'; messageId: string },
+  ) => {
+    if (body.action === 'decline' && !window.confirm(`Decline ${activeRecipient.name}'s request to link as spouses?`)) return
     try {
       const res = await fetch('/api/spouse', {
         method: 'POST',
@@ -510,14 +538,17 @@ export default function UnifiedChatPage() {
       const data = await res.json()
       setNudgeBanner(
         data.success
-          ? body.action === 'request'
-            ? `Request sent to ${activeRecipient.name}${data.emailed ? ' (in chat and by email)' : ' in chat'}.`
-            : `You are now linked with ${activeRecipient.name} as spouses.`
+          ? body.action === 'decline'
+            ? 'Request declined.'
+            : data.linked
+              ? `You are now linked with ${activeRecipient.name} as spouses.`
+              : `Request sent to ${activeRecipient.name}${data.emailed ? ' (in chat and by email)' : ' in chat'}.`
           : data.error || 'Something went wrong.',
       )
       setTimeout(() => setNudgeBanner(''), 6000)
       fetchMessages(false)
       fetchConversations()
+      fetchSpouseRequests()
     } catch {
       setNudgeBanner('Something went wrong.')
     }
@@ -1091,6 +1122,16 @@ export default function UnifiedChatPage() {
               </div>
             )}
 
+            {/* Spouse requests from people other than the one in this chat */}
+            <SpouseRequestBanner
+              requests={(spouseRequests || []).filter((r) => r.fromUserId !== activeRecipient.id)}
+              onDone={() => {
+                fetchSpouseRequests()
+                fetchConversations()
+                fetchMessages(false)
+              }}
+            />
+
             {/* Feedback Banners */}
             {nudgeBanner && (
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 shadow-xs">
@@ -1140,6 +1181,10 @@ export default function UnifiedChatPage() {
 
             {/* Messages Rendering */}
             {messages.map((msg) => {
+              // A resend can leave older copies of the same request: show only the newest
+              if (msg.type === 'spouse_request' && messages.some((m) => m.type === 'spouse_request' && m.senderId === msg.senderId && m.createdAt && msg.createdAt && new Date(m.createdAt) > new Date(msg.createdAt))) {
+                return null
+              }
               const isMe = msg.senderId ? msg.senderId === activeUserId : (msg.senderName === activeUserName)
 
               return (
@@ -1330,19 +1375,34 @@ export default function UnifiedChatPage() {
                             </form>
                           )}
                           {msg.type === 'spouse_request' &&
-                            (msg.proposalData?.status === 'accepted' ? (
+                            ((!!spouseId && spouseId === activeRecipient.id) || msg.proposalData?.status === 'accepted' ? (
                               <p className="text-[11px] font-semibold text-emerald-700">Accepted — you are linked as spouses.</p>
-                            ) : msg.proposalData?.toUserId === activeUserId && !spouseId ? (
-                              <button
-                                type="button"
-                                onClick={() => handleSpouseAction({ action: 'accept', messageId: msg.id })}
-                                className="mt-1 w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
-                              >
-                                Accept — link as spouses
-                              </button>
+                            ) : msg.proposalData?.status === 'declined' ? (
+                              <p className="text-[11px] font-semibold text-gray-500">Declined.</p>
+                            ) : msg.proposalData?.toUserId === activeUserId ? (
+                              <div className={`grid gap-2 mt-1 ${spouseId ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                                {spouseId ? (
+                                  <p className="text-[11px] text-gray-500">You are already linked to a spouse.</p>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSpouseAction({ action: 'accept', messageId: msg.id })}
+                                    className="py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
+                                  >
+                                    Accept
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSpouseAction({ action: 'decline', messageId: msg.id })}
+                                  className="py-2.5 rounded-xl border border-rose-300 bg-white text-rose-800 font-bold text-xs cursor-pointer"
+                                >
+                                  Decline
+                                </button>
+                              </div>
                             ) : msg.senderId === activeUserId ? (
                               <p className="text-[11px] text-gray-500">
-                                Waiting for {activeRecipient.name} to accept.{' '}
+                                Only {activeRecipient.name} can accept this. They&apos;ll see Accept on their dashboard and in this chat when they sign in, and we emailed them.{' '}
                                 <button
                                   type="button"
                                   onClick={() => handleSpouseAction({ action: 'request', userId: activeRecipient.id })}

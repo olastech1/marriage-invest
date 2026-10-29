@@ -1,7 +1,7 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getReciprocationStatus } from '@/lib/reciprocation'
-import { resolveSpouseId } from '@/lib/chat'
+import { getIncomingSpouseRequests, resolveSpouseId } from '@/lib/chat'
 import { getSettings } from '@/lib/settings'
 import { formatAnnualRate } from '@/lib/utils'
 import { redirect } from 'next/navigation'
@@ -10,6 +10,7 @@ import { Decimal } from '@prisma/client/runtime/library'
 import DashboardStatsPanel, { type DashboardStats } from '@/components/investor/DashboardStats'
 import AccountRatingCard from '@/components/investor/AccountRatingCard'
 import UrgentNotificationCenter from '@/components/investor/UrgentNotificationCenter'
+import SpouseRequestBanner from '@/components/investor/SpouseRequestBanner'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
@@ -97,6 +98,7 @@ export default async function DashboardPage() {
     allPendingWithdrawals,
     reciprocation,
     settings,
+    spouseRequests,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -148,6 +150,7 @@ export default async function DashboardPage() {
     ),
     getReciprocationStatus(userId),
     getSettings(),
+    getIncomingSpouseRequests(userId),
   ])
 
   // ── compute real stats (strictly excluding demo deposits & investments) ─
@@ -248,9 +251,12 @@ export default async function DashboardPage() {
         )}
       </div>
 
+      {/* ── Someone asked to link as spouses ───────────────────────── */}
+      <SpouseRequestBanner requests={spouseRequests} />
+
       {/* ── Notifications that need action ─────────────────────────── */}
       <UrgentNotificationCenter
-        initialNotifications={notifications as any}
+        initialNotifications={notifications.filter((n) => n.category !== 'SPOUSE_REQUEST') as any}
         partnerName={spouseName}
       />
 

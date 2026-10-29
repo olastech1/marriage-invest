@@ -82,6 +82,24 @@ export async function resolveSpouseId(userId: string): Promise<string> {
   return linked?.spouseId || ''
 }
 
+/** Spouse requests waiting for this user's answer: the newest one from each person */
+export async function getIncomingSpouseRequests(userId: string) {
+  if (!userId || (await resolveSpouseId(userId))) return []
+  const rows = await prisma.chatMessage.findMany({
+    where: { type: 'spouse_request', proposalData: { path: ['toUserId'], equals: userId } },
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, senderId: true, senderName: true, proposalData: true },
+  })
+  const seen = new Set<string>()
+  const requests: { messageId: string; fromUserId: string; fromName: string }[] = []
+  for (const row of rows) {
+    if ((row.proposalData as Record<string, string> | null)?.status !== 'pending' || seen.has(row.senderId)) continue
+    seen.add(row.senderId)
+    requests.push({ messageId: row.id, fromUserId: row.senderId, fromName: row.senderName || 'Member' })
+  }
+  return requests
+}
+
 /**
  * Create a chat message. A `threadId` of 'spouse' is resolved to the private
  * couple thread of `spouseOf` (defaults to the sender) — never a single thread
