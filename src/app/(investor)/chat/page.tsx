@@ -119,6 +119,7 @@ export default function UnifiedChatPage() {
   })
 
   const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([])
+  const [contactsLoaded, setContactsLoaded] = useState(false)
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
@@ -152,6 +153,7 @@ export default function UnifiedChatPage() {
       const data = await res.json()
       if (data.success && Array.isArray(data.users)) {
         setAvailableContacts(data.users)
+        setContactsLoaded(true)
       }
     } catch (err) {
       console.warn('Failed to fetch user directory:', err)
@@ -218,8 +220,17 @@ export default function UnifiedChatPage() {
               avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
             }
       )
+    } else if (availableContacts.length > 0) {
+      // No spouse yet: open the most recent conversation instead of an empty placeholder
+      if (!activeRecipient.id) {
+        setActiveRecipient(availableContacts[0])
+        setMobileTab('chat')
+      }
+    } else if (contactsLoaded) {
+      // Nothing to open: show the conversation list (with "New chat")
+      setMobileTab('contacts')
     }
-  }, [availableContacts, activeUserId, spouseId, conversations])
+  }, [availableContacts, contactsLoaded, activeRecipient.id, activeUserId, spouseId, conversations])
 
   // New chat by email: open the member's chat, or email them an invitation
   const handleStartChat = async (e: React.FormEvent) => {
@@ -495,7 +506,7 @@ export default function UnifiedChatPage() {
       setNudgeBanner(
         data.success
           ? body.action === 'request'
-            ? `Request sent to ${activeRecipient.name}.`
+            ? `Request sent to ${activeRecipient.name}${data.emailed ? ' (in chat and by email)' : ' in chat'}.`
             : `You are now linked with ${activeRecipient.name} as spouses.`
           : data.error || 'Something went wrong.',
       )
@@ -921,7 +932,11 @@ export default function UnifiedChatPage() {
             </div>
 
             {/* Member chat, no spouse yet: ask to link as spouses */}
-            {!spouseId && activeRecipient.id && !activeRecipient.id.startsWith('guest_') && (
+            {!spouseId &&
+              activeRecipient.id &&
+              !activeRecipient.id.startsWith('guest_') &&
+              // Not while a request is already waiting in this chat (either direction)
+              !messages.some((m) => m.type === 'spouse_request' && m.proposalData?.status === 'pending') && (
               <button
                 type="button"
                 onClick={() => {
@@ -1283,6 +1298,17 @@ export default function UnifiedChatPage() {
                               >
                                 Accept — link as spouses
                               </button>
+                            ) : msg.senderId === activeUserId ? (
+                              <p className="text-[11px] text-gray-500">
+                                Waiting for {activeRecipient.name} to accept.{' '}
+                                <button
+                                  type="button"
+                                  onClick={() => handleSpouseAction({ action: 'request', userId: activeRecipient.id })}
+                                  className="font-bold text-rose-700 underline cursor-pointer"
+                                >
+                                  Resend
+                                </button>
+                              </p>
                             ) : (
                               <p className="text-[11px] text-gray-500">Waiting for a reply.</p>
                             ))}
