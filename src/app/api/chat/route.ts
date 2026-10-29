@@ -122,6 +122,27 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     if (!msg.read && msg.recipientId === currentUserId) convo.unreadCount++
   }
 
+  // People I added, before we've chatted
+  const saved = await prisma.contact.findMany({ where: { ownerId: currentUserId } }).catch(() => [])
+  for (const c of saved) {
+    const threadId = buildThreadId(currentUserId, c.contactId)
+    if (threads.has(threadId)) continue
+    const member = await lookupUser(c.contactId)
+    if (!member) continue
+    threads.set(threadId, {
+      threadId,
+      lastMessage: { text: 'Added to your chats. Say hello.', createdAt: c.createdAt },
+      otherUserId: c.contactId,
+      otherUserName: member.name,
+      otherUsername: member.username || null,
+      kind: c.contactId === spouseId ? 'spouse' : 'member',
+      isSpouse: c.contactId === spouseId,
+      guestEmail: null,
+      unreadCount: 0,
+      updatedAt: c.createdAt,
+    })
+  }
+
   // Always show the spouse, even before the first message
   if (spouseId) {
     const spouseThreadId = buildThreadId(currentUserId, spouseId)

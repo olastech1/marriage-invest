@@ -82,12 +82,30 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/spouse  spouse requests waiting for my answer
+// GET /api/spouse  my spouse, requests waiting for my answer, and requests I sent
 // ---------------------------------------------------------------------------
 export async function GET() {
   const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
-  return NextResponse.json({ success: true, requests: await getIncomingSpouseRequests(session.user.id) })
+  const me = session?.user?.id
+  if (!me) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
+  const spouseId = await resolveSpouseId(me)
+  const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, username: true } }) : null
+  const sent = spouseId
+    ? []
+    : await prisma.chatMessage.findMany({ where: { type: 'spouse_request', senderId: me }, orderBy: { createdAt: 'desc' } })
+  const outgoing = new Map<string, { toUserId: string; toName: string }>()
+  for (const m of sent) {
+    const data = (m.proposalData || {}) as Record<string, string>
+    if (data.status === 'pending' && data.toUserId && !outgoing.has(data.toUserId)) {
+      outgoing.set(data.toUserId, { toUserId: data.toUserId, toName: m.recipientName || 'Member' })
+    }
+  }
+  return NextResponse.json({
+    success: true,
+    spouse,
+    requests: await getIncomingSpouseRequests(me),
+    outgoing: [...outgoing.values()],
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +173,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.action === 'request') {
-    const other = await prisma.user.findUnique({ where: { id: String(body.userId || '') }, select: { id: true, name: true, email: true } })
+    const other = await prisma.user.findFirst({ where: { id: String(body.userId || ''), role: 'INVESTOR' }, select: { id: true, name: true, email: true } })
     if (!other || other.id === me) return NextResponse.json({ success: false, error: 'Member not found.' }, { status: 404 })
     if (await resolveSpouseId(other.id)) {
       return NextResponse.json({ success: false, error: `${other.name} is already linked to a spouse.` }, { status: 400 })

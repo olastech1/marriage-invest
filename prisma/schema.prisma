@@ -366,6 +366,18 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+/// People a member added to their chat list
+model Contact {
+  id        String   @id @default(cuid())
+  ownerId   String
+  contactId String
+  createdAt DateTime @default(now())
+
+  @@unique([ownerId, contactId])
+  @@index([ownerId])
+  @@map("contacts")
+}
+
 model DepositReminder {
   id                String   @id @default(cuid())
   userId            String

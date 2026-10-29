@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import SpouseLinkPanel from '@/components/investor/SpouseLinkPanel'
 import {
   User,
   CheckCircle2,
@@ -143,6 +144,9 @@ export default function InvestorSettingsPage() {
         </p>
       </div>
 
+      {/* ── ACCOUNT ID & SPOUSE LINK ── */}
+      <SpouseLinkPanel />
+
       {/* ── PUBLIC BIO LINK (only once a username is saved) ── */}
       {publicBioPath && publicBioUrl && (
         <div className="rounded-3xl bg-gradient-to-r from-[#0F1C3F] via-[#152654] to-[#0F1C3F] p-6 text-white shadow-xl border border-[#C9A84C]/30 relative overflow-hidden">
@@ -255,7 +259,7 @@ export default function InvestorSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Username (your bio link)
+                Account ID / username (your bio link)
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono">
@@ -514,7 +518,7 @@ export default function InvestorSettingsPage() {
                 </div>
               </>
             ) : (
-              <p className="text-xs text-gray-500">No spouse is linked to your account yet.</p>
+              <p className="text-xs text-gray-500">No spouse is linked yet. Find your spouse by account ID under &ldquo;Your spouse&rdquo; at the top of this page.</p>
             )}
           </div>
         </div>

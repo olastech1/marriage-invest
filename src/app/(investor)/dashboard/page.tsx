@@ -11,6 +11,8 @@ import DashboardStatsPanel, { type DashboardStats } from '@/components/investor/
 import AccountRatingCard from '@/components/investor/AccountRatingCard'
 import UrgentNotificationCenter from '@/components/investor/UrgentNotificationCenter'
 import SpouseRequestBanner from '@/components/investor/SpouseRequestBanner'
+import MyAccountId from '@/components/investor/MyAccountId'
+import { ensureAccountId } from '@/lib/accountId'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
@@ -102,7 +104,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { identityVerified: true },
+      select: { identityVerified: true, username: true },
     }),
     prisma.investment.findMany({
       where: { userId },
@@ -211,6 +213,7 @@ export default async function DashboardPage() {
   )
 
   const unreadCount = notifications.filter((n) => !n.read).length
+  const accountId = userRecord?.username || (await ensureAccountId(userId))
 
   // My spouse's withdrawal requests that are waiting for my approval
   const pendingSpousalApprovals = allPendingWithdrawals.filter((w) => {
@@ -238,6 +241,14 @@ export default async function DashboardPage() {
           <p className="text-sm text-slate-500">
             {new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(now)}
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <MyAccountId accountId={accountId} />
+            {!reciprocation.spouseId && spouseRequests.length === 0 && (
+              <Link href="/settings#spouse" className="text-xs font-bold text-rose-700 underline">
+                Link your spouse
+              </Link>
+            )}
+          </div>
         </div>
         {/* Only shown while an admin has a deposit match promo switched on */}
         {settings.bonusMatchRate > 0 && (

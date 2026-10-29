@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
+import FindMember from '@/components/investor/FindMember'
+import MyAccountId from '@/components/investor/MyAccountId'
 import {
   Heart,
   Send,
@@ -146,9 +148,6 @@ export default function UnifiedChatPage() {
   const [reminderNote, setReminderNote] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewChatModal, setShowNewChatModal] = useState(false)
-  const [newChatEmail, setNewChatEmail] = useState('')
-  const [startingChat, setStartingChat] = useState(false)
-  const [newChatResult, setNewChatResult] = useState<{ ok: boolean; text: string } | null>(null)
   const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
 
   // Derive active thread ID
@@ -260,44 +259,6 @@ export default function UnifiedChatPage() {
       setMobileTab('contacts')
     }
   }, [availableContacts, contactsLoaded, activeRecipient.id, activeUserId, spouseId, conversations, spouseRequests])
-
-  // New chat by email: open the member's chat, or email them an invitation
-  const handleStartChat = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setStartingChat(true)
-    setNewChatResult(null)
-    try {
-      const res = await fetch('/api/chat/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: newChatEmail }),
-      })
-      const data = await res.json()
-      if (!data.success) {
-        setNewChatResult({ ok: false, text: data.error || 'Something went wrong.' })
-      } else if (data.contact) {
-        setNewChatEmail('')
-        handleSelectContact({
-          id: data.contact.id,
-          name: data.contact.name,
-          username: data.contact.username || undefined,
-          avatar: data.contact.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
-        })
-      } else {
-        setNewChatResult({
-          ok: true,
-          text: data.emailed
-            ? `${newChatEmail} isn't a member yet, so we emailed them an invitation. Their chat appears here once they join.`
-            : `${newChatEmail} isn't a member yet. Send them this link to join: ${data.inviteUrl}`,
-        })
-        setNewChatEmail('')
-      }
-    } catch {
-      setNewChatResult({ ok: false, text: 'Something went wrong.' })
-    } finally {
-      setStartingChat(false)
-    }
-  }
 
   // Select contact & start/open chat
   const handleSelectContact = (contact: ChatUser) => {
@@ -827,7 +788,7 @@ export default function UnifiedChatPage() {
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
             {filteredContacts.length === 0 ? (
               <div className="p-6 text-center text-xs text-gray-400">
-                {searchQuery ? `No conversations match "${searchQuery}".` : 'No conversations yet. Tap "New chat" to message or invite someone.'}
+                {searchQuery ? `No conversations match "${searchQuery}".` : 'No conversations yet. Tap "New chat" to find someone by account ID or email.'}
               </div>
             ) : (
               filteredContacts.map((contact) => {
@@ -1549,13 +1510,10 @@ export default function UnifiedChatPage() {
         </div>
       </div>
 
-      {/* ── MODAL: NEW CHAT (by email: opens a member's chat or invites them) ── */}
+      {/* ── MODAL: NEW CHAT (find a member by account ID or email) ── */}
       {showNewChatModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <form
-            onSubmit={handleStartChat}
-            className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden"
-          >
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
             <div className="p-4 bg-[#0F1C3F] text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-[#C9A84C]" />
@@ -1563,10 +1521,7 @@ export default function UnifiedChatPage() {
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setShowNewChatModal(false)
-                  setNewChatResult(null)
-                }}
+                onClick={() => setShowNewChatModal(false)}
                 className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
                 aria-label="Close"
               >
@@ -1574,32 +1529,25 @@ export default function UnifiedChatPage() {
               </button>
             </div>
             <div className="p-4 space-y-3">
-              <label className="block text-xs font-semibold text-gray-600">
-                Their email address
-                <input
-                  type="email"
-                  required
-                  value={newChatEmail}
-                  onChange={(e) => setNewChatEmail(e.target.value)}
-                  placeholder="name@example.com"
-                  className="mt-1 w-full px-3.5 py-2.5 text-base sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
-                />
-              </label>
-              <p className="text-[11px] text-gray-500">
-                If they&apos;re a member, the chat opens. If not, we email them an invitation to join you.
+              <p className="text-xs text-gray-600">
+                Find a member by their account ID or email to chat, add them, or link as spouses. An email that isn&apos;t a member gets an invitation to join.
               </p>
-              {newChatResult && (
-                <p className={`text-xs ${newChatResult.ok ? 'text-emerald-700' : 'text-rose-700'}`}>{newChatResult.text}</p>
-              )}
-              <button
-                type="submit"
-                disabled={startingChat}
-                className="w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-sm disabled:opacity-50 cursor-pointer"
-              >
-                {startingChat ? 'Checking…' : 'Start chat or invite'}
-              </button>
+              <FindMember
+                hasSpouse={!!spouseId}
+                onChat={(m) =>
+                  handleSelectContact({ id: m.id, name: m.name, username: m.username || undefined, avatar: m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() })
+                }
+                onChange={() => {
+                  fetchContacts()
+                  fetchConversations()
+                }}
+              />
+              <div className="pt-2 border-t border-gray-100">
+                <p className="text-[11px] text-gray-500 mb-1.5">Share your ID so others can find you:</p>
+                <MyAccountId />
+              </div>
             </div>
-          </form>
+          </div>
         </div>
       )}
 
