@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart } from 'lucide-react'
+import { formatAccountNumber } from '@/lib/utils'
 import FindMember from '@/components/investor/FindMember'
 import MyAccountId from '@/components/investor/MyAccountId'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 
 type Status = {
-  spouse: { id: string; name: string; username: string | null } | null
+  spouse: { id: string; name: string; accountNumber: string | null } | null
   requests: SpouseRequest[]
   outgoing: { toUserId: string; toName: string }[]
 }
@@ -43,7 +44,10 @@ export default function SpouseLinkPanel() {
       ) : status.spouse ? (
         <p className="text-sm text-gray-700">
           You are linked with <strong>{status.spouse.name}</strong>
-          {status.spouse.username && <span className="font-mono text-gray-500"> (ID: {status.spouse.username})</span>}.{' '}
+          {status.spouse.accountNumber && (
+            <span className="font-mono text-gray-500"> (ID: {formatAccountNumber(status.spouse.accountNumber)})</span>
+          )}
+          .{' '}
           <Link
             href={`/chat?recipientId=${encodeURIComponent(status.spouse.id)}&name=${encodeURIComponent(status.spouse.name)}`}
             className="font-semibold text-[#0F1C3F] underline"

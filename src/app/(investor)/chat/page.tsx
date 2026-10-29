@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
+import { formatAccountNumber } from '@/lib/utils'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 import FindMember from '@/components/investor/FindMember'
 import MyAccountId from '@/components/investor/MyAccountId'
@@ -26,7 +27,6 @@ import {
   Search,
   Plus,
   Users,
-  ExternalLink,
   TrendingUp,
   Wallet,
 } from 'lucide-react'
@@ -38,6 +38,7 @@ export interface ChatUser {
   id: string
   name: string
   username?: string
+  accountNumber?: string
   email?: string
   role?: string
   bio?: string
@@ -45,6 +46,9 @@ export interface ChatUser {
   online?: boolean
   unreadCount?: number
   guestEmail?: string | null
+  /** Last message in the conversation (empty before the first one) */
+  lastAt?: string | Date | null
+  lastFromMe?: boolean
 }
 
 export interface ChatMessage {
@@ -88,11 +92,28 @@ export interface ConversationItem {
   threadId: string
   otherUserId: string
   otherUserName: string
+  otherUsername?: string | null
+  otherAccountNumber?: string | null
+  kind?: 'spouse' | 'member' | 'visitor'
+  guestEmail?: string | null
   lastMessage?: {
     text: string
-    createdAt?: string | Date
+    createdAt?: string | Date | null
+    fromMe?: boolean
   }
   unreadCount?: number
+}
+
+/** Chat list time: "11:58 AM" today, "Yesterday", then "Oct 27" */
+function listTime(value?: string | Date | null): string {
+  if (!value) return ''
+  const date = new Date(value)
+  const now = new Date()
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  const yesterday = new Date(now)
+  yesterday.setDate(now.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString()) return 'Yesterday'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
 // ---------------------------------------------------------------------------
@@ -153,28 +174,31 @@ export default function UnifiedChatPage() {
   // Derive active thread ID
   const activeThreadId = getThreadId(activeUserId, activeRecipient.id)
 
-  // Load Contacts Directory from API
-  const fetchContacts = useCallback(async () => {
-    try {
-      const res = await fetch('/api/chat?users=true')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.users)) {
-        setAvailableContacts(data.users)
-        setContactsLoaded(true)
-      }
-    } catch (err) {
-      console.warn('Failed to fetch user directory:', err)
-    }
-  }, [])
-
-  // Load Active Conversations List
+  // The chat list (kept fresh by the poll below)
   const fetchConversations = useCallback(async () => {
     try {
       const res = await fetch('/api/chat?list=true')
       const data = await res.json()
       if (data.success && Array.isArray(data.conversations)) {
-        setConversations(data.conversations)
+        const list: ConversationItem[] = data.conversations
+        setConversations(list)
         setSpouseId(data.spouseId || '')
+        setAvailableContacts(
+          list.map((c) => ({
+            id: c.otherUserId,
+            name: c.otherUserName,
+            username: c.otherUsername || undefined,
+            accountNumber: c.otherAccountNumber || undefined,
+            role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
+            bio: c.lastMessage?.text.slice(0, 80),
+            avatar: c.otherUserName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+            unreadCount: c.unreadCount,
+            guestEmail: c.guestEmail,
+            lastAt: c.lastMessage?.createdAt,
+            lastFromMe: c.lastMessage?.fromMe,
+          })),
+        )
+        setContactsLoaded(true)
       }
     } catch (err) {
       console.warn('Failed to fetch conversations:', err)
@@ -191,7 +215,9 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // Handle URL parameters for direct deep-linking (e.g. from /u/[slug] or notifications)
+  // Handle URL parameters for direct deep-linking (e.g. from /u/[slug] or notifications).
+  // The link opens its chat once; after that the member can go back to the list.
+  const openedLinkRef = useRef('')
   useEffect(() => {
     if (typeof window === 'undefined') return
     const params = new URLSearchParams(window.location.search)
@@ -203,26 +229,37 @@ export default function UnifiedChatPage() {
       const matched = availableContacts.find(
         (c) => c.id.toLowerCase() === recId.toLowerCase() || c.username?.toLowerCase() === recId.toLowerCase()
       )
-      if (matched) {
-        setActiveRecipient(matched)
-      } else {
-        // Not in the directory: use the name from the link; no username, so no profile link
+      if (openedLinkRef.current !== recId) {
+        openedLinkRef.current = recId
+        // Not in my list yet: use the name from the link
         const cleanName = recName ? decodeURIComponent(recName) : 'Member'
-        setActiveRecipient({
-          id: recId,
-          name: cleanName,
-          avatar: cleanName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-        })
+        setActiveRecipient(
+          matched || {
+            id: recId,
+            name: cleanName,
+            avatar: cleanName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+          }
+        )
+        setMobileTab('chat')
+      } else if (matched) {
+        // Fill in their details (account ID, profile) once the list has them
+        setActiveRecipient((prev) =>
+          prev.id.toLowerCase() === matched.id.toLowerCase() && (prev.accountNumber !== matched.accountNumber || prev.username !== matched.username)
+            ? matched
+            : prev
+        )
       }
-      setMobileTab('chat')
     } else if (threadParam === 'advisor' || threadParam === 'support') {
-      setActiveRecipient({
-        id: 'usr_admin',
-        name: 'Union Verify Support',
-        role: 'Support',
-        avatar: 'UV',
-      })
-      setMobileTab('chat')
+      if (openedLinkRef.current !== threadParam) {
+        openedLinkRef.current = threadParam
+        setActiveRecipient({
+          id: 'usr_admin',
+          name: 'Union Verify Support',
+          role: 'Support',
+          avatar: 'UV',
+        })
+        setMobileTab('chat')
+      }
     } else if (spouseId) {
       // Default to the user's spouse
       const spouseConvo = conversations.find((c) => c.otherUserId === spouseId)
@@ -387,7 +424,6 @@ export default function UnifiedChatPage() {
 
   // Initial setup + polling interval + BroadcastChannel
   useEffect(() => {
-    fetchContacts()
     fetchConversations()
     fetchSpouseRequests()
     fetchMessages(true)
@@ -413,7 +449,7 @@ export default function UnifiedChatPage() {
       clearInterval(pollInterval)
       if (bc) bc.close()
     }
-  }, [fetchContacts, fetchConversations, fetchSpouseRequests, fetchMessages])
+  }, [fetchConversations, fetchSpouseRequests, fetchMessages])
 
   // -------------------------------------------------------------------------
   // 4. Send Message
@@ -677,8 +713,10 @@ export default function UnifiedChatPage() {
     if (c.id === activeUserId) return false // don't list yourself
     if (!searchQuery.trim()) return true
     const q = searchQuery.toLowerCase()
+    const digits = q.replace(/[\s#-]/g, '')
     return (
       c.name.toLowerCase().includes(q) ||
+      (!!digits && /^\d+$/.test(digits) && !!c.accountNumber?.includes(digits)) ||
       c.username?.toLowerCase().includes(q) ||
       c.email?.toLowerCase().includes(q)
     )
@@ -778,7 +816,7 @@ export default function UnifiedChatPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search conversations"
+                placeholder="Search chats by name or ID"
                 className="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-gray-200 bg-white placeholder-gray-400 focus:outline-none focus:border-[#C9A84C]"
               />
             </div>
@@ -794,77 +832,81 @@ export default function UnifiedChatPage() {
               filteredContacts.map((contact) => {
                 const isSelected = activeRecipient.id === contact.id
                 const isSpouse = !!spouseId && contact.id === spouseId
+                const unread = !isSelected && (contact.unreadCount || 0) > 0
 
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={contact.id}
                     onClick={() => handleSelectContact(contact)}
-                    className={`p-3 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
+                    className={`w-full text-left p-3 rounded-2xl cursor-pointer transition-all flex items-center gap-3 border ${
                       isSelected
                         ? 'bg-[#0F1C3F] text-white shadow-md border-transparent'
-                        : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                        : unread
+                          ? 'bg-white text-gray-700 border-rose-200'
+                          : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className="relative flex-shrink-0">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs shadow-xs ${
-                        isSelected
-                          ? 'bg-[#C9A84C] text-[#0F1C3F]'
-                          : isSpouse
+                    <div className={`w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xs shadow-xs ${
+                      isSelected
+                        ? 'bg-[#C9A84C] text-[#0F1C3F]'
+                        : isSpouse
                           ? 'bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F]'
                           : 'bg-slate-100 text-slate-700 border border-slate-200'
-                      }`}>
-                        {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </div>
+                    }`}>
+                      {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[13px] font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
                           {contact.name}
                         </span>
                         {isSpouse && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                             isSelected ? 'bg-[#C9A84C] text-[#0F1C3F]' : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
                             Spouse
                           </span>
                         )}
                         {contact.role === 'Visitor' && (
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                             isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}>
                             Visitor
                           </span>
                         )}
-                        {!isSelected && (contact.unreadCount || 0) > 0 && (
-                          <span className="ml-auto min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        <span className={`ml-auto pl-1 text-[10px] flex-shrink-0 ${
+                          isSelected ? 'text-gray-300' : unread ? 'text-rose-600 font-bold' : 'text-gray-400'
+                        }`}>
+                          {listTime(contact.lastAt)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={`flex-1 text-[11px] truncate ${
+                          isSelected ? 'text-gray-300' : unread ? 'text-gray-900 font-semibold' : 'text-gray-500'
+                        }`}>
+                          {contact.lastFromMe ? 'You: ' : ''}
+                          {contact.bio || 'Open conversation'}
+                        </p>
+                        {unread && (
+                          <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                             {contact.unreadCount}
                           </span>
                         )}
                       </div>
-                      <p className={`text-[11px] truncate mt-0.5 ${isSelected ? 'text-gray-300' : 'text-gray-500'}`}>
-                        {contact.bio || 'Open conversation'}
-                      </p>
+                      {contact.accountNumber && (
+                        <p className="text-[10px] font-mono mt-0.5 text-gray-400">
+                          ID {formatAccountNumber(contact.accountNumber)}
+                        </p>
+                      )}
                     </div>
-                  </div>
+                  </button>
                 )
               })
             )}
           </div>
 
-          {/* Public profile of the open conversation (only if they have a username) */}
-          {activeRecipient.username && (
-            <div className="p-3 border-t border-gray-100 bg-white/60 flex-shrink-0 space-y-2">
-              <Link
-                href={`/u/${activeRecipient.username}`}
-                target="_blank"
-                className="w-full py-2 px-3 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[11px] transition-colors border border-blue-200 flex items-center justify-center gap-1.5"
-              >
-                <ExternalLink size={13} className="text-blue-600" />
-                <span>View {activeRecipient.name}&apos;s Public Profile</span>
-              </Link>
-            </div>
-          )}
         </div>
 
         {/* ── RIGHT AREA: ACTIVE CHAT THREAD ── */}
@@ -902,8 +944,14 @@ export default function UnifiedChatPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
-                  {activeRecipient.username && (
+                  {activeRecipient.accountNumber && (
                     <>
+                      <span className="font-mono">ID {formatAccountNumber(activeRecipient.accountNumber)}</span>
+                      <span>·</span>
+                    </>
+                  )}
+                  {activeRecipient.username && (
+                    <span className="hidden sm:inline-flex items-center gap-1.5">
                       <Link
                         href={`/u/${activeRecipient.username}`}
                         target="_blank"
@@ -912,7 +960,7 @@ export default function UnifiedChatPage() {
                         Profile
                       </Link>
                       <span>·</span>
-                    </>
+                    </span>
                   )}
                   <button
                     type="button"
@@ -1535,12 +1583,15 @@ export default function UnifiedChatPage() {
               <FindMember
                 hasSpouse={!!spouseId}
                 onChat={(m) =>
-                  handleSelectContact({ id: m.id, name: m.name, username: m.username || undefined, avatar: m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() })
+                  handleSelectContact({
+                    id: m.id,
+                    name: m.name,
+                    username: m.username || undefined,
+                    accountNumber: m.accountNumber || undefined,
+                    avatar: m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+                  })
                 }
-                onChange={() => {
-                  fetchContacts()
-                  fetchConversations()
-                }}
+                onChange={fetchConversations}
               />
               <div className="pt-2 border-t border-gray-100">
                 <p className="text-[11px] text-gray-500 mb-1.5">Share your ID so others can find you:</p>

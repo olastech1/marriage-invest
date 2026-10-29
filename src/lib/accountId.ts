@@ -1,30 +1,26 @@
 /**
- * Account IDs. A member's username is their account ID: other members find
- * them by it to chat, add them or link as spouses. New IDs are the first name
- * plus digits (e.g. chad4821) so nobody's full name can be guessed; members can
- * pick their own in Settings. scripts/assign-account-ids.mjs fills in any
- * account that has none on every build.
+ * Account IDs: a permanent 8-digit number on every account (e.g. 48213907).
+ * Names repeat, numbers don't: members find each other by it to chat, add them
+ * or link as spouses. scripts/assign-account-ids.mjs gives one to any account
+ * without it on every build.
  */
 
 import { prisma } from '@/lib/db'
 
-/** A fresh candidate ID: first name + 4 digits (6 once 4 keep colliding) */
-export function candidateAccountId(name: string, attempt: number): string {
-  const base = (name.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'member'
-  const size = attempt < 15 ? 1000 : 100000
-  return `${base}${size + Math.floor(Math.random() * 9 * size)}`
-}
+export const newAccountNumber = () => String(10000000 + Math.floor(Math.random() * 90000000))
 
 /** The member's account ID, creating one if they don't have it yet */
-export async function ensureAccountId(userId: string): Promise<string> {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { name: true, username: true } })
+export async function ensureAccountNumber(userId: string): Promise<string> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { accountNumber: true } })
   if (!user) return ''
-  if (user.username) return user.username
-  for (let attempt = 0; attempt < 20; attempt++) {
-    const username = candidateAccountId(user.name, attempt)
+  if (user.accountNumber) return user.accountNumber
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const accountNumber = newAccountNumber()
     try {
-      await prisma.user.update({ where: { id: userId }, data: { username } })
-      return username
+      const { count } = await prisma.user.updateMany({ where: { id: userId, accountNumber: null }, data: { accountNumber } })
+      if (count) return accountNumber
+      // Given one meanwhile
+      return (await prisma.user.findUnique({ where: { id: userId }, select: { accountNumber: true } }))?.accountNumber || ''
     } catch {
       // Taken: try another number
     }
@@ -32,8 +28,14 @@ export async function ensureAccountId(userId: string): Promise<string> {
   return ''
 }
 
-/** "@chad4821", "chad4821" or a bio link ".../u/chad4821" -> "chad4821" */
-export function normalizeAccountId(input: string): string {
+/** "4821 3907", "#48213907" or "48-21-39-07" -> "48213907"; '' if it isn't an account ID */
+export function normalizeAccountNumber(input: string): string {
+  const digits = input.trim().replace(/[\s#-]/g, '')
+  return /^\d{8}$/.test(digits) ? digits : ''
+}
+
+/** "@chad", "chad" or a bio link ".../u/chad" -> "chad" */
+export function normalizeUsername(input: string): string {
   const value = input.trim().toLowerCase()
   const fromLink = value.match(/\/u\/([a-z0-9_-]+)/)
   return (fromLink ? fromLink[1] : value.replace(/^@/, '')).replace(/[^a-z0-9_-]/g, '')
@@ -41,10 +43,17 @@ export function normalizeAccountId(input: string): string {
 
 export const isEmail = (value: string) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value.trim())
 
-/** A member (not staff) by exact account ID or email */
+/** A member (not staff) by account ID, email, or bio-link username */
 export async function findMember(query: string) {
-  const where = isEmail(query) ? { email: query.trim().toLowerCase() } : { username: normalizeAccountId(query) }
+  const accountNumber = normalizeAccountNumber(query)
+  const where = isEmail(query)
+    ? { email: query.trim().toLowerCase() }
+    : accountNumber
+      ? { accountNumber }
+      : { username: normalizeUsername(query) }
   if (!Object.values(where)[0]) return null
-  const user = await prisma.user.findFirst({ where: { ...where, role: 'INVESTOR' }, select: { id: true, name: true, username: true } })
-  return user
+  return prisma.user.findFirst({
+    where: { ...where, role: 'INVESTOR' },
+    select: { id: true, name: true, username: true, accountNumber: true },
+  })
 }

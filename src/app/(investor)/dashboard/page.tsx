@@ -12,7 +12,7 @@ import AccountRatingCard from '@/components/investor/AccountRatingCard'
 import UrgentNotificationCenter from '@/components/investor/UrgentNotificationCenter'
 import SpouseRequestBanner from '@/components/investor/SpouseRequestBanner'
 import MyAccountId from '@/components/investor/MyAccountId'
-import { ensureAccountId } from '@/lib/accountId'
+import { ensureAccountNumber } from '@/lib/accountId'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
@@ -104,7 +104,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { identityVerified: true, username: true },
+      select: { identityVerified: true, accountNumber: true },
     }),
     prisma.investment.findMany({
       where: { userId },
@@ -213,7 +213,7 @@ export default async function DashboardPage() {
   )
 
   const unreadCount = notifications.filter((n) => !n.read).length
-  const accountId = userRecord?.username || (await ensureAccountId(userId))
+  const accountId = userRecord?.accountNumber || (await ensureAccountNumber(userId))
 
   // My spouse's withdrawal requests that are waiting for my approval
   const pendingSpousalApprovals = allPendingWithdrawals.filter((w) => {

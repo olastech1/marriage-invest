@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
-import { escapeHtml } from '@/lib/utils'
+import { escapeHtml, formatAccountNumber } from '@/lib/utils'
 import { resolveSpouseId } from '@/lib/chat'
-import { findMember, isEmail, normalizeAccountId } from '@/lib/accountId'
+import { findMember, isEmail } from '@/lib/accountId'
 
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
-// POST /api/chat/start { query }   (an account ID like chad4821, or an email)
+// POST /api/chat/start { query }   (an 8-digit account ID, or an email)
 // Finds that one member so you can chat, add them or link as spouses. An email
 // that isn't a member gets an invitation to join. Never lists or searches
 // other members.
@@ -36,15 +36,25 @@ export async function POST(req: NextRequest) {
     ])
     return NextResponse.json({
       success: true,
-      contact: { id: member.id, name: member.name, username: member.username, isSpouse: spouseId === member.id, added: !!saved },
+      contact: {
+        id: member.id,
+        name: member.name,
+        username: member.username,
+        accountNumber: member.accountNumber,
+        isSpouse: spouseId === member.id,
+        added: !!saved,
+      },
     })
   }
 
   if (!isEmail(query)) {
-    return NextResponse.json(
-      { success: false, error: `No member has the account ID "${normalizeAccountId(query)}". Check it and try again.` },
-      { status: 404 },
-    )
+    const digits = query.replace(/[\s#-]/g, '')
+    const error = /^\d+$/.test(digits)
+      ? digits.length === 8
+        ? `No member has the account ID ${formatAccountNumber(digits)}. Check it and try again.`
+        : 'Account IDs have 8 digits. Check it and try again.'
+      : 'Enter an 8-digit account ID or an email address.'
+    return NextResponse.json({ success: false, error }, { status: 404 })
   }
 
   const email = query.toLowerCase()

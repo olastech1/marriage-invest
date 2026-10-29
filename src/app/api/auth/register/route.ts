@@ -15,7 +15,7 @@ import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { buildThreadId } from '@/lib/chat'
-import { ensureAccountId } from '@/lib/accountId'
+import { ensureAccountNumber } from '@/lib/accountId'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       select: { id: true, name: true, email: true },
     })
     // Their account ID, so other members can find them
-    await ensureAccountId(user.id).catch(() => '')
+    await ensureAccountNumber(user.id).catch(() => '')
 
     // Messages sent as a visitor with this email move into the new account
     const guestId = `guest_${normalizedEmail.replace(/[^a-z0-9]/g, '_')}`

@@ -1,7 +1,7 @@
 /**
- * Gives every account without one an account ID (username), run on every build.
- * Only empty usernames are filled in; nothing else is changed. Same format as
- * src/lib/accountId.ts: first name + 4 digits, e.g. chad4821.
+ * Gives every account without one its account ID (a permanent 8-digit number),
+ * run on every build. Only empty account IDs are filled in; nothing else is
+ * changed. Same format as src/lib/accountId.ts.
  */
 
 import { PrismaClient } from '@prisma/client'
@@ -9,20 +9,16 @@ import { PrismaClient } from '@prisma/client'
 const url = process.env.DATABASE_URL
 if (!url) process.exit(0)
 
-const candidate = (name, attempt) => {
-  const base = (name.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 12) || 'member'
-  const size = attempt < 15 ? 1000 : 100000
-  return `${base}${size + Math.floor(Math.random() * 9 * size)}`
-}
+const newAccountNumber = () => String(10000000 + Math.floor(Math.random() * 90000000))
 
 const prisma = new PrismaClient({ datasourceUrl: url })
 try {
-  const users = await prisma.user.findMany({ where: { username: null }, select: { id: true, name: true } })
+  const users = await prisma.user.findMany({ where: { accountNumber: null }, select: { id: true } })
   let assigned = 0
   for (const user of users) {
-    for (let attempt = 0; attempt < 20; attempt++) {
+    for (let attempt = 0; attempt < 10; attempt++) {
       try {
-        const { count } = await prisma.user.updateMany({ where: { id: user.id, username: null }, data: { username: candidate(user.name, attempt) } })
+        const { count } = await prisma.user.updateMany({ where: { id: user.id, accountNumber: null }, data: { accountNumber: newAccountNumber() } })
         assigned += count
         break
       } catch {

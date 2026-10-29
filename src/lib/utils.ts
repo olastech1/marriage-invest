@@ -198,3 +198,8 @@ export function formatAnnualRate(rate: number | string | { toString(): string })
   if (!Number.isFinite(value)) return '—'
   return `${(value * 100).toFixed(2).replace(/\.?0+$/, '')}%`
 }
+
+/** Account ID 48213907 -> "4821 3907" (easier to read out) */
+export function formatAccountNumber(value?: string | null): string {
+  return value ? `${value.slice(0, 4)} ${value.slice(4)}` : ''
+}

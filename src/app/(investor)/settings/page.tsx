@@ -259,7 +259,7 @@ export default function InvestorSettingsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Account ID / username (your bio link)
+                Username (your bio link)
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-mono">

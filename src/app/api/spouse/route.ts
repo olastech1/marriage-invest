@@ -89,7 +89,7 @@ export async function GET() {
   const me = session?.user?.id
   if (!me) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
   const spouseId = await resolveSpouseId(me)
-  const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, username: true } }) : null
+  const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, accountNumber: true } }) : null
   const sent = spouseId
     ? []
     : await prisma.chatMessage.findMany({ where: { type: 'spouse_request', senderId: me }, orderBy: { createdAt: 'desc' } })

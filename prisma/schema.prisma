@@ -112,6 +112,8 @@ model User {
   identityVerified   Boolean   @default(false)
   identityVerifiedAt DateTime?
   username           String?   @unique
+  /// Permanent 8-digit account ID members find each other by (names repeat)
+  accountNumber      String?   @unique
   bio                String?
   avatarUrl          String?
   socials            Json?

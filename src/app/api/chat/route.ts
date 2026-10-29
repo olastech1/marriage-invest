@@ -69,10 +69,12 @@ function initials(name?: string | null) {
 
 type Conversation = {
   threadId: string
-  lastMessage: { text: string; createdAt: Date | string }
+  /** createdAt is null for a placeholder (no message yet) */
+  lastMessage: { text: string; createdAt: Date | string | null; fromMe: boolean }
   otherUserId: string
   otherUserName: string
   otherUsername: string | null
+  otherAccountNumber: string | null
   kind: 'spouse' | 'member' | 'visitor'
   isSpouse: boolean
   guestEmail: string | null
@@ -80,14 +82,33 @@ type Conversation = {
   updatedAt: Date | string
 }
 
-/** Everyone I have a conversation with (no member directory). Spouse first, then most recent. */
+/** Everyone I have a conversation with or added (no member directory). Spouse first, then most recent. */
 async function buildConversations(currentUserId: string, spouseId: string): Promise<Conversation[]> {
   const chatDb = await getChatDb()
-  const myMessages = await chatDb.chatMessage.findMany({
-    where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
-    orderBy: { createdAt: 'desc' },
-    take: 1000,
-  })
+  const [myMessages, saved] = await Promise.all([
+    chatDb.chatMessage.findMany({
+      where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
+      orderBy: { createdAt: 'desc' },
+      take: 1000,
+    }),
+    prisma.contact.findMany({ where: { ownerId: currentUserId } }).catch(() => []),
+  ])
+
+  // Look up every member in the list at once
+  const otherIds = new Set<string>(saved.map((c) => c.contactId))
+  for (const msg of myMessages) {
+    const otherId = otherParticipant(msg.threadId, currentUserId)
+    if (otherId && !otherId.startsWith('guest_')) otherIds.add(otherId)
+  }
+  if (spouseId) otherIds.add(spouseId)
+  const members = new Map<string, { name: string; username: string | null; accountNumber: string | null }>()
+  for (const u of await prisma.user.findMany({
+    where: { id: { in: [...otherIds] } },
+    select: { id: true, name: true, username: true, accountNumber: true },
+  })) {
+    members.set(u.id.toLowerCase(), u)
+  }
+  const member = async (id: string) => members.get(id.toLowerCase()) || (await lookupUser(id))
 
   const threads = new Map<string, Conversation>()
   for (const msg of myMessages) {
@@ -96,17 +117,18 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     let convo = threads.get(msg.threadId)
     if (!convo) {
       const isVisitor = otherId.startsWith('guest_')
-      const member = isVisitor ? null : await lookupUser(otherId)
+      const other = isVisitor ? null : await member(otherId)
       convo = {
         threadId: msg.threadId,
-        lastMessage: { text: msg.text, createdAt: msg.createdAt },
+        lastMessage: { text: msg.text, createdAt: msg.createdAt, fromMe: msg.senderId === currentUserId },
         otherUserId: otherId,
         otherUserName:
-          member?.name ||
+          other?.name ||
           (msg.senderId === otherId ? msg.senderName : msg.recipientName) ||
           DEMO_NAMES[otherId] ||
           'Member',
-        otherUsername: member?.username || null,
+        otherUsername: other?.username || null,
+        otherAccountNumber: other?.accountNumber || null,
         kind: otherId === spouseId ? 'spouse' : isVisitor ? 'visitor' : 'member',
         isSpouse: otherId === spouseId,
         guestEmail: null,
@@ -122,45 +144,27 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     if (!msg.read && msg.recipientId === currentUserId) convo.unreadCount++
   }
 
-  // People I added, before we've chatted
-  const saved = await prisma.contact.findMany({ where: { ownerId: currentUserId } }).catch(() => [])
-  for (const c of saved) {
-    const threadId = buildThreadId(currentUserId, c.contactId)
+  // People I added and my spouse, before the first message
+  const placeholders = saved.map((c) => ({ id: c.contactId, text: 'Added to your chats. Say hello.', at: c.createdAt }))
+  if (spouseId) placeholders.unshift({ id: spouseId, text: 'Say hello to your spouse.', at: new Date() })
+  for (const p of placeholders) {
+    const threadId = buildThreadId(currentUserId, p.id)
     if (threads.has(threadId)) continue
-    const member = await lookupUser(c.contactId)
-    if (!member) continue
+    const other = await member(p.id)
+    if (!other && p.id !== spouseId) continue
     threads.set(threadId, {
       threadId,
-      lastMessage: { text: 'Added to your chats. Say hello.', createdAt: c.createdAt },
-      otherUserId: c.contactId,
-      otherUserName: member.name,
-      otherUsername: member.username || null,
-      kind: c.contactId === spouseId ? 'spouse' : 'member',
-      isSpouse: c.contactId === spouseId,
+      lastMessage: { text: p.text, createdAt: null, fromMe: false },
+      otherUserId: p.id,
+      otherUserName: other?.name || DEMO_NAMES[p.id] || 'Your spouse',
+      otherUsername: other?.username || null,
+      otherAccountNumber: other?.accountNumber || null,
+      kind: p.id === spouseId ? 'spouse' : 'member',
+      isSpouse: p.id === spouseId,
       guestEmail: null,
       unreadCount: 0,
-      updatedAt: c.createdAt,
+      updatedAt: p.at,
     })
-  }
-
-  // Always show the spouse, even before the first message
-  if (spouseId) {
-    const spouseThreadId = buildThreadId(currentUserId, spouseId)
-    if (!threads.has(spouseThreadId)) {
-      const spouse = await lookupUser(spouseId)
-      threads.set(spouseThreadId, {
-        threadId: spouseThreadId,
-        lastMessage: { text: 'Say hello to your spouse.', createdAt: new Date() },
-        otherUserId: spouseId,
-        otherUserName: spouse?.name || DEMO_NAMES[spouseId] || 'Your spouse',
-        otherUsername: spouse?.username || null,
-        kind: 'spouse',
-        isSpouse: true,
-        guestEmail: null,
-        unreadCount: 0,
-        updatedAt: new Date(),
-      })
-    }
   }
 
   return [...threads.values()].sort((a, b) =>
@@ -198,6 +202,7 @@ export async function GET(req: NextRequest) {
         id: c.otherUserId,
         name: c.otherUserName,
         username: c.otherUsername || undefined,
+        accountNumber: c.otherAccountNumber || undefined,
         role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
         bio: c.lastMessage.text.slice(0, 80),
         avatar: initials(c.otherUserName),

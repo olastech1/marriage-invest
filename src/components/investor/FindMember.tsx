@@ -3,8 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, Search, UserPlus, Check } from 'lucide-react'
+import { formatAccountNumber } from '@/lib/utils'
 
-export type FoundMember = { id: string; name: string; username: string | null; isSpouse: boolean; added: boolean }
+export type FoundMember = {
+  id: string
+  name: string
+  username: string | null
+  accountNumber: string | null
+  isSpouse: boolean
+  added: boolean
+}
 
 const initials = (name: string) => name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
@@ -74,7 +82,7 @@ export default function FindMember({
 
   const linkSpouse = async () => {
     if (!member) return
-    if (!window.confirm(`Ask ${member.name} (${member.username}) to link your accounts as spouses? You'll share a joint vault and approve each other's joint withdrawals.`)) return
+    if (!window.confirm(`Ask ${member.name} (ID ${formatAccountNumber(member.accountNumber)}) to link your accounts as spouses? You'll share a joint vault and approve each other's joint withdrawals.`)) return
     setBusy('spouse')
     try {
       const data = await post('/api/spouse', { action: 'request', userId: member.id })
@@ -111,7 +119,7 @@ export default function FindMember({
             required
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Account ID (e.g. chad4821) or email"
+            placeholder="Account ID (8 digits) or email"
             autoCapitalize="none"
             autoCorrect="off"
             className="w-full pl-9 pr-3 py-2.5 text-base sm:text-sm rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
@@ -134,7 +142,7 @@ export default function FindMember({
             </div>
             <div className="min-w-0">
               <p className="text-sm font-bold text-[#0F1C3F] truncate">{member.name}</p>
-              <p className="text-xs text-gray-500 font-mono">ID: {member.username}</p>
+              <p className="text-xs text-gray-500 font-mono">ID: {formatAccountNumber(member.accountNumber)}</p>
             </div>
           </div>
           <div className={`grid gap-2 ${hasSpouse || member.isSpouse ? 'grid-cols-2' : 'grid-cols-3'}`}>
