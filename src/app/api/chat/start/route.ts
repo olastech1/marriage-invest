@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml, formatAccountNumber } from '@/lib/utils'
-import { resolveSpouseId } from '@/lib/chat'
+import { isPartner } from '@/lib/partners'
 import { findMember, isEmail } from '@/lib/accountId'
 import { siteUrl } from '@/lib/site'
 
@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "That's your own account." }, { status: 400 })
   }
   if (member) {
-    const [spouseId, saved] = await Promise.all([
-      resolveSpouseId(me),
+    const [linked, saved] = await Promise.all([
+      isPartner(me, member.id),
       prisma.contact.findUnique({ where: { ownerId_contactId: { ownerId: me, contactId: member.id } } }).catch(() => null),
     ])
     return NextResponse.json({
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
         username: member.username,
         accountNumber: member.accountNumber,
         avatarUrl: member.avatarUrl,
-        isSpouse: spouseId === member.id,
+        isSpouse: linked,
         added: !!saved,
       },
     })

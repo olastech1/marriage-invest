@@ -24,6 +24,8 @@ export default async function AdminInvestorsPage({
   let loadError = false
   let investors: any[] = []
   let allDocuments: any[] = []
+  // Members linked with at least one partner
+  const partnered = new Set<string>()
   try {
     const [invs, docs] = await Promise.all([
       prisma.user.findMany({
@@ -51,6 +53,13 @@ export default async function AdminInvestorsPage({
     ])
     investors = invs
     allDocuments = docs
+    const links = await prisma.partnership
+      .findMany({ where: { OR: [{ userAId: { in: invs.map((i) => i.id) } }, { userBId: { in: invs.map((i) => i.id) } }] } })
+      .catch(() => [])
+    for (const l of links) {
+      partnered.add(l.userAId)
+      partnered.add(l.userBId)
+    }
   } catch (error) {
     console.error('[admin/investors]', error)
     loadError = true
@@ -124,7 +133,7 @@ export default async function AdminInvestorsPage({
                   acknowledgedDocIds: docIds,
                   allDocuments,
                   isIdentityVerified: Boolean(inv.identityVerified),
-                  hasMarriageCovenant: Boolean(inv.spouseId) || realTransactions.some((t: any) => t.type === 'FEE'),
+                  hasMarriageCovenant: Boolean(inv.spouseId) || partnered.has(inv.id) || realTransactions.some((t: any) => t.type === 'FEE'),
                   realDepositedAmount: realDeposited,
                   realInvestedAmount: totalFunded,
                 })

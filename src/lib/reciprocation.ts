@@ -1,8 +1,9 @@
 /**
- * Spousal deposit reciprocation, derived from the couple's chat thread.
+ * Deposit reciprocation between partners, derived from each pair's chat thread.
  *
  * Every paid vault deposit posts exactly one `deposit_alert` message into the
- * couple thread, so that thread is the single source of truth both spouses see.
+ * pair's thread, so that thread is the single source of truth both partners see.
+ * A member with several partners has a separate vault and balance with each.
  * Each regular deposit is reciprocated on its own:
  *   - a reciprocation names the deposit it pays for (`forDepositId`)
  *   - older reciprocations without one are applied to the oldest unmatched
@@ -10,7 +11,8 @@
  */
 
 import { prisma } from '@/lib/db'
-import { buildThreadId, getChatDb, resolveSpouseId } from '@/lib/chat'
+import { buildThreadId, getChatDb } from '@/lib/chat'
+import { getPartnerIds, isPartner } from '@/lib/partners'
 
 const MATCH_WINDOW_MS = 48 * 3600 * 1000
 
@@ -32,6 +34,8 @@ function noteFromText(text: string): string {
 /** One deposit waiting to be reciprocated */
 export interface PendingDeposit {
   messageId: string
+  /** The partner whose vault with me this deposit is in */
+  partnerId: string
   depositorName: string
   amount: number
   depositedAt: string
@@ -52,8 +56,11 @@ export interface PendingReciprocation {
 }
 
 export interface ReciprocationStatus {
+  /** The partner this status is for ('' when it adds up several partners) */
   spouseId: string
   spouseName: string
+  /** Every partner it covers */
+  partnerIds: string[]
   /** Sum of the spouse's deposits I still have to reciprocate */
   owedByMe: number
   /** Sum of my deposits my spouse still has to reciprocate */
@@ -121,10 +128,11 @@ function matchDeposits(rows: DepositMessage[]): Map<string, boolean> {
   return matched
 }
 
-function toPending(row: DepositMessage): PendingDeposit {
+function toPending(row: DepositMessage, partnerId: string): PendingDeposit {
   const createdAt = new Date(row.msg.createdAt)
   return {
     messageId: row.msg.id,
+    partnerId,
     depositorName: row.msg.senderName,
     amount: Number(row.deposit.amount),
     depositedAt: createdAt.toISOString(),
@@ -135,12 +143,30 @@ function toPending(row: DepositMessage): PendingDeposit {
 
 const round = (n: number) => Math.round(n * 100) / 100
 
-export async function getReciprocationStatus(userId: string): Promise<ReciprocationStatus> {
-  const spouseId = await resolveSpouseId(userId)
-  const spouseName = await getSpouseName(spouseId)
+/** What I owe one partner and what they owe me */
+async function pairStatus(userId: string, partnerId: string) {
+  const rows = await loadCoupleDeposits(userId, partnerId)
+  const matched = matchDeposits(rows)
+  const unmatched = rows.filter(({ msg, deposit }) => !deposit.isReciprocalMatch && !matched.get(msg.id))
+  return {
+    rows,
+    pendingDeposits: unmatched.filter(({ msg }) => msg.senderId === partnerId).map((r) => toPending(r, partnerId)),
+    spousePendingDeposits: unmatched.filter(({ msg }) => msg.senderId === userId).map((r) => toPending(r, partnerId)),
+  }
+}
+
+/**
+ * Reciprocation with one partner, or (no partner given) added up across all of
+ * them: e.g. the dashboard lists every deposit I still have to reciprocate.
+ */
+export async function getReciprocationStatus(userId: string, partnerId?: string): Promise<ReciprocationStatus> {
+  const partnerIds = partnerId ? ((await isPartner(userId, partnerId)) ? [partnerId] : []) : await getPartnerIds(userId)
+  const single = partnerIds.length === 1 ? partnerIds[0] : ''
+  const spouseName = single ? await getSpouseName(single) : ''
   const empty: ReciprocationStatus = {
-    spouseId,
+    spouseId: single,
     spouseName,
+    partnerIds,
     owedByMe: 0,
     owedBySpouse: 0,
     pendingDeposits: [],
@@ -148,18 +174,19 @@ export async function getReciprocationStatus(userId: string): Promise<Reciprocat
     pending: null,
     history: [],
   }
-  if (!spouseId) return empty
+  if (!partnerIds.length) return empty
 
-  const rows = await loadCoupleDeposits(userId, spouseId)
-  const matched = matchDeposits(rows)
-  const unmatched = rows.filter(({ msg, deposit }) => !deposit.isReciprocalMatch && !matched.get(msg.id))
-  const pendingDeposits = unmatched.filter(({ msg }) => msg.senderId === spouseId).map(toPending)
-  const spousePendingDeposits = unmatched.filter(({ msg }) => msg.senderId === userId).map(toPending)
+  const pairs = await Promise.all(partnerIds.map((id) => pairStatus(userId, id)))
+  const byDate = (a: PendingDeposit, b: PendingDeposit) => a.depositedAt.localeCompare(b.depositedAt)
+  const pendingDeposits = pairs.flatMap((p) => p.pendingDeposits).sort(byDate)
+  const spousePendingDeposits = pairs.flatMap((p) => p.spousePendingDeposits).sort(byDate)
+  const rows = pairs.flatMap((p) => p.rows).sort((a, b) => new Date(a.msg.createdAt).getTime() - new Date(b.msg.createdAt).getTime())
   const latest = pendingDeposits[pendingDeposits.length - 1]
 
   return {
-    spouseId,
+    spouseId: single,
     spouseName,
+    partnerIds,
     owedByMe: round(pendingDeposits.reduce((sum, d) => sum + d.amount, 0)),
     owedBySpouse: round(spousePendingDeposits.reduce((sum, d) => sum + d.amount, 0)),
     pendingDeposits,
@@ -205,9 +232,9 @@ export interface CoupleDeposit {
   createdAt: string
 }
 
-/** Every deposit in the couple thread, newest first, each with its own status */
-export async function getCoupleDeposits(userId: string): Promise<CoupleDeposit[]> {
-  const spouseId = await resolveSpouseId(userId)
+/** Every deposit in my vault with this partner, newest first, each with its own status */
+export async function getCoupleDeposits(userId: string, partnerId: string): Promise<CoupleDeposit[]> {
+  const spouseId = (await isPartner(userId, partnerId)) ? partnerId : ''
   if (!spouseId) return []
   const spouseName = await getSpouseName(spouseId)
   const rows = await loadCoupleDeposits(userId, spouseId)
@@ -243,7 +270,7 @@ export async function getCoupleDeposits(userId: string): Promise<CoupleDeposit[]
     .reverse()
 }
 
-/** Is this deposit one of the spouse's deposits that I still have to reciprocate? */
+/** Is this deposit one of my partners' deposits that I still have to reciprocate? */
 export async function findPendingDeposit(userId: string, messageId?: string | null): Promise<PendingDeposit | null> {
   const { pendingDeposits } = await getReciprocationStatus(userId)
   if (messageId) return pendingDeposits.find((d) => d.messageId === messageId) || null

@@ -1,11 +1,13 @@
 /**
- * Records a PAID joint-vault deposit (or a reciprocation of the spouse's
- * deposit): a transaction, one card in the couple chat, and a notification
- * asking the spouse to reciprocate. Only called after Stripe confirms payment.
+ * Records a PAID joint-vault deposit (or a reciprocation of a partner's
+ * deposit) into the vault with one partner: a transaction, one card in that
+ * pair's chat, and a notification asking the partner to reciprocate. Only
+ * called after Stripe confirms payment.
  */
 
 import { prisma } from '@/lib/db'
-import { createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { buildThreadId, createChatMessage, otherParticipant } from '@/lib/chat'
+import { getPartnerIds, isPartner } from '@/lib/partners'
 import { getReciprocationStatus, getSpouseName } from '@/lib/reciprocation'
 import { bonusFor, getSettings } from '@/lib/settings'
 import { emailMember } from '@/lib/activity'
@@ -23,6 +25,8 @@ export interface VaultDepositInput {
   forDepositId?: string
   /** For a share of an approved proposal: the proposal (chat message id). No reciprocation is owed. */
   proposalId?: string
+  /** The partner whose joint vault this goes into (a reciprocation or plan share names its own) */
+  partnerId?: string
 }
 
 export async function recordVaultDeposit({
@@ -35,11 +39,17 @@ export async function recordVaultDeposit({
   isReciprocalMatch = false,
   forDepositId,
   proposalId,
+  partnerId,
 }: VaultDepositInput) {
-  const spouseId = await resolveSpouseId(userId)
+  const proposal = proposalId ? await prisma.chatMessage.findUnique({ where: { id: proposalId } }) : null
+  // The deposit this reciprocation pays for, to name it in the chat
+  const target = forDepositId ? await prisma.chatMessage.findUnique({ where: { id: forDepositId } }) : null
+
+  // Which partner's vault: the one whose deposit is reciprocated, whose plan is paid, or the one chosen
+  const chosen = target?.senderId || (proposal ? otherParticipant(proposal.threadId, userId) : '') || partnerId || ''
+  const spouseId = (await isPartner(userId, chosen)) ? chosen : chosen ? '' : (await getPartnerIds(userId))[0] || ''
   const spouseName = spouseId ? await getSpouseName(spouseId) : 'your partner'
 
-  const proposal = proposalId ? await prisma.chatMessage.findUnique({ where: { id: proposalId } }) : null
   const planName = String((proposal?.proposalData as Record<string, unknown> | null)?.goalName || 'your plan')
 
   // Promotional match only when an admin has turned it on
@@ -70,16 +80,15 @@ export async function recordVaultDeposit({
     },
   })
 
-  // The deposit this reciprocation pays for, to name it in the chat
-  const target = forDepositId ? await prisma.chatMessage.findUnique({ where: { id: forDepositId } }) : null
   const targetDate = target ? new Date(target.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''
 
   const message = await createChatMessage({
     data: {
       id: `msg-dep-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      threadId: 'spouse',
+      threadId: buildThreadId(userId, spouseId || userId),
       senderId: userId,
       senderName: userName,
+      recipientId: spouseId || undefined,
       text: proposal
         ? `Paid my $${amount.toLocaleString()} share for "${planName}".`
         : isReciprocalMatch
@@ -110,7 +119,7 @@ export async function recordVaultDeposit({
       data: {
         userId: spouseId,
         title: `${userName} deposited $${amount.toLocaleString()}`,
-        message: `${userName} added $${amount.toLocaleString()} to your joint vault${note ? `: "${note}"` : '.'} Reciprocate from your couple chat.`,
+        message: `${userName} added $${amount.toLocaleString()} to your joint vault${note ? `: "${note}"` : '.'} Reciprocate from your chat with ${userName}.`,
         type: 'ALERT',
         read: false,
         // Pays this deposit only
@@ -133,10 +142,10 @@ export async function recordVaultDeposit({
       data: { attended: true, read: true, attendedAt: new Date() },
     })
   }
-  // Nothing left to reciprocate: close any remaining prompts
-  if (isReciprocalMatch && (await getReciprocationStatus(userId)).owedByMe === 0) {
+  // Nothing left to reciprocate to this partner: close their remaining prompts
+  if (isReciprocalMatch && spouseId && (await getReciprocationStatus(userId, spouseId)).owedByMe === 0) {
     await prisma.notification.updateMany({
-      where: { userId, category: 'PARTNER_DEPOSIT', attended: false },
+      where: { userId, category: 'PARTNER_DEPOSIT', attended: false, partnerName: target?.senderName || spouseName },
       data: { attended: true, read: true, attendedAt: new Date() },
     })
   }
@@ -149,7 +158,7 @@ export async function recordVaultDeposit({
       heading: `${userName} paid their share`,
       paragraphs: [`${userName} paid ${usd} toward "${planName}". If you haven't paid your share yet, you can do it from your chat.`],
       ctaLabel: 'Open chat',
-      ctaPath: '/chat?thread=spouse',
+      ctaPath: `/chat?recipientId=${encodeURIComponent(userId)}`,
     })
   } else if (isReciprocalMatch) {
     await emailMember(spouseId, {
@@ -157,7 +166,7 @@ export async function recordVaultDeposit({
       heading: `${userName} reciprocated ${usd}`,
       paragraphs: [target ? `${userName} reciprocated your ${usd} deposit from ${targetDate}.` : `${userName} reciprocated with ${usd}.`],
       ctaLabel: 'View your joint vault',
-      ctaPath: '/save',
+      ctaPath: `/save?partner=${encodeURIComponent(userId)}`,
     })
   } else {
     await emailMember(spouseId, {
@@ -179,8 +188,8 @@ export async function recordVaultDeposit({
       `Reference: ${reference}`,
     ],
     ctaLabel: 'View your joint vault',
-    ctaPath: '/save',
+    ctaPath: spouseId ? `/save?partner=${encodeURIComponent(spouseId)}` : '/save',
   })
 
-  return { transaction, baseAmount: amount, bonusAmount, totalAdded }
+  return { transaction, baseAmount: amount, bonusAmount, totalAdded, partnerId: spouseId }
 }

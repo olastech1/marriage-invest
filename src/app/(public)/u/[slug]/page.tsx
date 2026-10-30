@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import {
   ShieldCheck,
@@ -17,6 +18,8 @@ import {
   X,
   Globe,
   UserX,
+  Pencil,
+  Eye,
 } from 'lucide-react'
 
 interface PublicProfile {
@@ -62,6 +65,10 @@ export default function UserPublicProfilePage() {
   const [msgError, setMsgError] = useState<string | null>(null)
 
   const [copiedLink, setCopiedLink] = useState(false)
+
+  // Who is looking: the owner, another signed-in member, or a visitor without an account
+  const { data: session, status: sessionStatus } = useSession()
+  const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
 
   useEffect(() => {
     if (!slug) return
@@ -156,6 +163,10 @@ export default function UserPublicProfilePage() {
 
   const primaryName = profile.name
   const firstName = primaryName.split(' ')[0]
+  // Who is looking: the owner (unless previewing as a visitor), another signed-in member, or a visitor
+  const isOwner = !!session?.user?.id && session.user.id === profile.userId
+  const viewer: 'loading' | 'owner' | 'member' | 'visitor' =
+    sessionStatus === 'loading' ? 'loading' : isOwner && !previewAsVisitor ? 'owner' : session?.user?.id && !isOwner ? 'member' : 'visitor'
   const email = profile.contact.email
   const phone = profile.contact.phone
   const whatsappDigits = (profile.contact.whatsapp || '').replace(/[^0-9]/g, '')
@@ -202,6 +213,18 @@ export default function UserPublicProfilePage() {
           </button>
         </div>
 
+        {/* Owner: say whose view this is */}
+        {isOwner && (
+          <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-[#C9A84C]/15 border border-[#C9A84C]/40 text-xs text-[#f3e2b3]">
+            <span>{previewAsVisitor ? "You're seeing your profile as visitors do." : 'This is your public profile. Only what you chose to share is shown.'}</span>
+            {previewAsVisitor && (
+              <button type="button" onClick={() => setPreviewAsVisitor(false)} className="font-bold text-white underline flex-shrink-0 cursor-pointer">
+                Back
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Profile card */}
         <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-5">
           {profile.identityVerified && (
@@ -238,8 +261,54 @@ export default function UserPublicProfilePage() {
             <p className="text-[11px] text-gray-400 mt-3">Member since {profile.memberSince}</p>
           </div>
 
-          {/* Messaging */}
-          {profile.publicChatEnabled && (
+          {/* Owner: this is what visitors see; edit or share it */}
+          {viewer === 'owner' && (
+            <div className="space-y-2 pt-1">
+              <div className="grid grid-cols-2 gap-2">
+                <Link
+                  href="/settings"
+                  className="py-3.5 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] text-[#0F1C3F] font-black text-sm shadow-xl shadow-[#C9A84C]/20 flex items-center justify-center gap-2"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit profile
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="py-3.5 rounded-2xl bg-white/10 border border-white/20 text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+                  {copiedLink ? 'Link copied' : 'Share link'}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewAsVisitor(true)}
+                className="w-full py-2 text-xs font-semibold text-gray-300 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Eye className="w-3.5 h-3.5" /> See it as a visitor
+              </button>
+            </div>
+          )}
+
+          {/* Signed-in member: chat in the app */}
+          {viewer === 'member' && profile.publicChatEnabled && (
+            <div className="space-y-2 pt-1">
+              <Link
+                href={`/chat?recipientId=${encodeURIComponent(profile.userId)}&name=${encodeURIComponent(primaryName)}`}
+                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] hover:from-[#d4b460] hover:to-[#d4b460] text-[#0F1C3F] font-black text-sm sm:text-base shadow-xl shadow-[#C9A84C]/20 transition-all flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
+                <span>Message {firstName}</span>
+              </Link>
+              <p className="text-[11px] text-gray-400">
+                Signed in as {session?.user?.name}. Opens your chat with {firstName}.
+              </p>
+            </div>
+          )}
+
+          {/* Visitor without an account (or signed out): leave a message by email */}
+          {viewer === 'visitor' && profile.publicChatEnabled && (
             <div className="space-y-2 pt-1">
               <button
                 type="button"
@@ -253,6 +322,19 @@ export default function UserPublicProfilePage() {
                 <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
                 <span>Message {firstName}</span>
               </button>
+              {!previewAsVisitor && (
+                <p className="text-[11px] text-gray-400">
+                  Have an account?{' '}
+                  <Link href={`/login?callbackUrl=${encodeURIComponent(`/u/${profile.username}`)}`} className="font-bold text-[#C9A84C] hover:underline">
+                    Sign in
+                  </Link>{' '}
+                  to chat in the app, or{' '}
+                  <Link href="/register" className="font-bold text-[#C9A84C] hover:underline">
+                    create a free account
+                  </Link>
+                  .
+                </p>
+              )}
             </div>
           )}
         </div>

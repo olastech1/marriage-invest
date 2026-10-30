@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { resolveSpouseId } from '@/lib/chat'
+import { getPartnerIds, investmentPartnerId, withdrawalApproverId } from '@/lib/partners'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { getReciprocationStatus, getSpouseName } from '@/lib/reciprocation'
 import { z } from 'zod'
@@ -24,8 +24,8 @@ export async function GET() {
     if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const userName = session?.user?.name || 'Member'
 
-    const reciprocationSpouse = resolveSpouseId(userId)
-    const [userWithdrawals, allPendingWithdrawals, eligibleInvestments, reciprocation] = await Promise.all([
+    const partnerIds = await getPartnerIds(userId)
+    const [userWithdrawals, partnersPendingWithdrawals, investments] = await Promise.all([
       prisma.withdrawalRequest.findMany({
         where: { userId },
         include: {
@@ -38,13 +38,12 @@ export async function GET() {
         },
         orderBy: { createdAt: 'desc' },
       }),
-      // Only the spouse's own pending requests can need my approval
-      reciprocationSpouse.then((spouseId) =>
-        spouseId
+      // Only my partners' pending requests can need my approval
+      partnerIds.length
           ? prisma.withdrawalRequest.findMany({
         where: {
           status: 'PENDING',
-          userId: spouseId,
+          userId: { in: partnerIds },
         },
         include: {
           investment: {
@@ -64,7 +63,6 @@ export async function GET() {
         orderBy: { createdAt: 'desc' },
       })
           : [],
-      ),
       prisma.investment.findMany({
         where: {
           userId,
@@ -72,6 +70,8 @@ export async function GET() {
         },
         select: {
           id: true,
+          userId: true,
+          partnerId: true,
           referenceNumber: true,
           amount: true,
           status: true,
@@ -83,8 +83,26 @@ export async function GET() {
           },
         },
       }),
-      getReciprocationStatus(userId),
     ])
+
+    // Each investment: personal, or shared with one partner who approves its withdrawals.
+    // A shared one is locked while I still owe that partner a reciprocation.
+    const eligibleInvestments = await Promise.all(
+      investments.map(async ({ userId: _owner, partnerId: _stored, ...inv }) => {
+        const partnerId = await investmentPartnerId({ userId: _owner, partnerId: _stored })
+        if (!partnerId) return { ...inv, partnerId: null, partnerName: null, lockedBy: null }
+        const [partnerName, rec] = await Promise.all([getSpouseName(partnerId), getReciprocationStatus(userId, partnerId)])
+        const owed = rec.pendingDeposits[0]
+        return {
+          ...inv,
+          partnerId,
+          partnerName,
+          lockedBy: owed ? { messageId: owed.messageId, depositorName: owed.depositorName, amount: owed.amount } : null,
+        }
+      }),
+    )
+    const approvals = await Promise.all(partnersPendingWithdrawals.map(async (w) => ((await withdrawalApproverId(w)) === userId ? w : null)))
+    const allPendingWithdrawals = approvals.filter((w): w is NonNullable<typeof w> => !!w)
 
     // Parse adminNote metadata on user's own withdrawals
     const withdrawals = userWithdrawals.map((w) => {
@@ -134,16 +152,10 @@ export async function GET() {
       })
       .filter((w) => w.requiresPartnerApproval && w.partnerApprovalStatus === 'AWAITING_PARTNER')
 
-    const hasPendingReciprocation = !!reciprocation.pending
-    const pendingReciprocation = reciprocation.pending
-
     return NextResponse.json({
       withdrawals,
       eligibleInvestments,
       pendingPartnerApprovals,
-      partnerName: reciprocation.spouseName || 'your partner',
-      hasPendingReciprocation,
-      pendingReciprocation,
     })
   } catch (error) {
     console.error('[GET /api/withdrawals]', error)
@@ -186,11 +198,10 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const isSolo = investment.referenceNumber?.startsWith('SOLO-')
-
-    // Enforce compulsory reciprocation lock on joint withdrawals
-    if (!isSolo) {
-      const { pending } = await getReciprocationStatus(userId)
+    // Shared with a partner: they approve it, and it stays locked while I owe them a reciprocation
+    const spouseId = await investmentPartnerId(investment)
+    if (spouseId) {
+      const { pending } = await getReciprocationStatus(userId, spouseId)
       if (pending) {
         return NextResponse.json(
           {
@@ -206,13 +217,14 @@ export async function POST(req: NextRequest) {
     const penalty = amount * 0.01
     const netAmount = Math.max(0, amount - fee - penalty)
 
-    const spouseId = await resolveSpouseId(userId)
     const partnerName = spouseId ? await getSpouseName(spouseId) : (customPartnerName || 'your partner')
-    // Without a linked spouse there is nobody to approve, so it goes straight to review
-    const needsPartner = !isSolo && !!spouseId
+    // A personal investment has nobody to approve it, so it goes straight to review
+    const needsPartner = !!spouseId
+    const isSolo = !needsPartner
 
     const partnerMetadata = {
       requiresPartnerApproval: needsPartner,
+      partnerId: spouseId || null,
       partnerApprovalStatus: needsPartner ? 'AWAITING_PARTNER' : 'NOT_REQUIRED',
       requestedByName: userName,
       partnerName,
@@ -252,7 +264,7 @@ export async function POST(req: NextRequest) {
           link: '/withdrawals',
         },
       }).catch(console.error)
-      await postToCoupleChat(userId, userName, {
+      await postToCoupleChat(userId, userName, spouseId, {
         type: 'withdrawal',
         text: `Requested a withdrawal of ${usd} from ${fund}. ${partnerName}, please approve or decline it.`,
         depositData: { amount, withdrawalId: withdrawal.id, status: 'AWAITING_PARTNER', vaultTitle: fund },
@@ -262,7 +274,7 @@ export async function POST(req: NextRequest) {
         heading: 'Withdrawal waiting for your approval',
         paragraphs: [
           `${userName} requested a withdrawal of ${usd} from ${fund}.`,
-          'Joint withdrawals need both of you. Approve or decline it from your withdrawals page.',
+          'Withdrawals from what you share need both of you. Approve or decline it from your withdrawals page.',
         ],
         ctaLabel: 'Review withdrawal',
         ctaPath: '/withdrawals',
@@ -303,7 +315,7 @@ export async function POST(req: NextRequest) {
         partnerApprovalRequired: needsPartner,
         partnerName,
         message: isSolo
-          ? 'Solo withdrawal submitted for review.'
+          ? 'Personal withdrawal submitted for review.'
           : needsPartner
             ? `Withdrawal submitted. ${partnerName} needs to approve it before it is processed.`
             : 'Withdrawal submitted for review.',

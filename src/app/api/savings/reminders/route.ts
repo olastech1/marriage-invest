@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendDepositReminderEmail } from '@/lib/email'
-import { createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { buildThreadId, createChatMessage } from '@/lib/chat'
+import { getPartnerIds } from '@/lib/partners'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,12 +39,17 @@ export async function POST(req: NextRequest) {
 
     const { action = 'send_now', amount = 0, vaultName = 'your joint vault', note = '' } = body
 
-    // 1. SEND A REMINDER TO MY SPOUSE NOW (in-app, couple chat, and email when configured)
+    // 1. ASK ONE PARTNER FOR MONEY NOW (in-app, our chat, and email)
     if (action === 'send_now') {
-      const spouseId = await resolveSpouseId(userId)
+      const partnerIds = await getPartnerIds(userId)
+      const chosen = String(body.partnerId || '')
+      const spouseId = chosen ? (partnerIds.includes(chosen) ? chosen : '') : partnerIds.length === 1 ? partnerIds[0] : ''
       const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId } }) : null
       if (!spouse) {
-        return NextResponse.json({ success: false, error: 'Connect with your partner first.' }, { status: 400 })
+        return NextResponse.json(
+          { success: false, error: partnerIds.length ? 'Choose which partner to ask.' : 'Connect with your partner first.' },
+          { status: 400 },
+        )
       }
       const numAmount = Math.round(Number(amount) * 100) / 100
       if (!(numAmount > 0)) {
@@ -56,6 +62,7 @@ export async function POST(req: NextRequest) {
         to: spouse.email,
         recipientName: spouse.name,
         senderName: userName,
+        senderId: userId,
         amount: numAmount,
         vaultName,
         note: cleanNote || `Please add $${numAmount.toLocaleString()} to our joint vault.`,
@@ -70,7 +77,7 @@ export async function POST(req: NextRequest) {
             title: `${userName} requested $${numAmount.toLocaleString()}`,
             message: `${userName} asked you to add $${numAmount.toLocaleString()} to your joint vault${cleanNote ? ` for "${cleanNote}"` : ''}. Pay from your chat.`,
             type: 'ALERT',
-            link: `/save?amount=${numAmount}`,
+            link: `/save?amount=${numAmount}&partner=${encodeURIComponent(userId)}`,
             category: 'PARTNER_CHANGE',
             requiresAction: true,
             amount: numAmount,
@@ -86,7 +93,7 @@ export async function POST(req: NextRequest) {
       const posted = await createChatMessage({
         data: {
           id: `sys-remind-${Date.now()}`,
-          threadId: 'spouse',
+          threadId: buildThreadId(userId, spouse.id),
           senderId: 'system_reminder',
           senderName: 'Money request',
           text: `${userName} requested $${numAmount.toLocaleString()} from ${spouse.name}${cleanNote ? ` for "${cleanNote}"` : ''}.`,
@@ -96,7 +103,6 @@ export async function POST(req: NextRequest) {
           type: 'system_reminder',
           proposalData: { amount: numAmount, fromUserId: userId, toUserId: spouse.id },
         },
-        spouseOf: userId,
       })
         .then(() => true)
         .catch(() => false)

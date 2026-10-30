@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Heart, MessageSquare, Search, UserPlus, Check } from 'lucide-react'
+import { MessageSquare, Search, UserPlus, Check } from 'lucide-react'
+import LinkPartnerButton from '@/components/investor/LinkPartnerButton'
 import { formatAccountNumber } from '@/lib/utils'
 import UserAvatar from '@/components/investor/UserAvatar'
 
@@ -21,11 +22,9 @@ export type FoundMember = {
  * An email that isn't a member gets an invitation to join.
  */
 export default function FindMember({
-  hasSpouse,
   onChat,
   onChange,
 }: {
-  hasSpouse: boolean
   /** Open the chat in place (the chat page); otherwise go to /chat */
   onChat?: (member: FoundMember) => void
   /** Something changed (added, spouse request sent): refresh lists */
@@ -80,29 +79,6 @@ export default function FindMember({
     }
   }
 
-  const linkSpouse = async () => {
-    if (!member) return
-    if (!window.confirm(`Ask ${member.name} (ID ${formatAccountNumber(member.accountNumber)}) to link your accounts as partners? You'll share a joint vault and approve each other's joint withdrawals.`)) return
-    setBusy('spouse')
-    try {
-      const data = await post('/api/spouse', { action: 'request', userId: member.id })
-      setNote({
-        ok: !!data.success,
-        text: !data.success
-          ? data.error || 'Something went wrong.'
-          : data.linked
-            ? `You are now linked with ${member.name} as partners.`
-            : `Partner request sent to ${member.name}. They accept it on their dashboard or in your chat.`,
-      })
-      if (data.linked) setMember({ ...member, isSpouse: true })
-      onChange?.()
-    } catch {
-      setNote({ ok: false, text: 'Something went wrong.' })
-    } finally {
-      setBusy('')
-    }
-  }
-
   const chat = () => {
     if (!member) return
     if (onChat) onChat(member)
@@ -143,7 +119,7 @@ export default function FindMember({
               <p className="text-xs text-gray-500 font-mono">ID: {formatAccountNumber(member.accountNumber)}</p>
             </div>
           </div>
-          <div className={`grid gap-2 ${hasSpouse || member.isSpouse ? 'grid-cols-2' : 'grid-cols-3'}`}>
+          <div className={`grid gap-2 ${member.isSpouse ? 'grid-cols-2' : 'grid-cols-3'}`}>
             <button
               type="button"
               onClick={chat}
@@ -160,18 +136,21 @@ export default function FindMember({
               {member.added ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <UserPlus className="w-3.5 h-3.5" />}
               {member.added ? 'Added' : 'Add'}
             </button>
-            {!hasSpouse && !member.isSpouse && (
-              <button
-                type="button"
-                onClick={linkSpouse}
-                disabled={!!busy}
-                className="py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60"
-              >
-                <Heart className="w-3.5 h-3.5" /> Link as partner
-              </button>
+            {!member.isSpouse && (
+              <LinkPartnerButton
+                userId={member.id}
+                name={member.name}
+                className="w-full h-full py-2 text-xs"
+                label="Link"
+                onDone={(r) => {
+                  setNote({ ok: r.ok, text: r.text })
+                  if (r.linked) setMember({ ...member, isSpouse: true })
+                  onChange?.()
+                }}
+              />
             )}
           </div>
-          {member.isSpouse && <p className="text-[11px] font-semibold text-emerald-700">This is your partner.</p>}
+          {member.isSpouse && <p className="text-[11px] font-semibold text-emerald-700">You are already linked with {member.name}.</p>}
         </div>
       )}
 

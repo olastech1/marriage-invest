@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { resolveSpouseId } from '@/lib/chat'
+import { withdrawalApproverId } from '@/lib/partners'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
 
 type Params = { params: Promise<{ id: string }> }
@@ -36,11 +36,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
       },
     })
 
-    // Visible to the requester, their spouse, or an admin
-    const requesterSpouse = await resolveSpouseId(withdrawal?.userId || '')
+    // Visible to the requester, the partner who approves it, or an admin
+    const approverId = withdrawal ? await withdrawalApproverId(withdrawal) : ''
     if (
       !withdrawal ||
-      (withdrawal.userId !== userId && requesterSpouse !== userId && session?.user?.role !== 'ADMIN')
+      (withdrawal.userId !== userId && approverId !== userId && session?.user?.role !== 'ADMIN')
     ) {
       return NextResponse.json({ error: 'Withdrawal request not found' }, { status: 404 })
     }
@@ -87,9 +87,9 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Withdrawal request not found' }, { status: 404 })
     }
 
-    // Only the requester's spouse can approve or decline (never the requester)
-    if (withdrawal.userId === userId || (await resolveSpouseId(withdrawal.userId)) !== userId) {
-      return NextResponse.json({ error: 'Only your partner can approve this withdrawal.' }, { status: 403 })
+    // Only the partner it is shared with can approve or decline (never the requester)
+    if (withdrawal.userId === userId || (await withdrawalApproverId(withdrawal)) !== userId) {
+      return NextResponse.json({ error: 'Only the partner this investment is shared with can approve this withdrawal.' }, { status: 403 })
     }
 
     let currentMetadata: any = {}
@@ -141,7 +141,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           link: '/withdrawals',
         },
       }).catch(console.error)
-      await postToCoupleChat(userId, partnerName, {
+      await postToCoupleChat(userId, partnerName, withdrawal.userId, {
         type: 'withdrawal',
         text: `Approved the withdrawal of ${usd} from ${fund}.${partnerNote ? ` Note: "${String(partnerNote).slice(0, 300)}"` : ''}`,
         depositData: { ...card, status: 'PARTNER_APPROVED' },
@@ -191,7 +191,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
           link: '/withdrawals',
         },
       }).catch(console.error)
-      await postToCoupleChat(userId, partnerName, {
+      await postToCoupleChat(userId, partnerName, withdrawal.userId, {
         type: 'withdrawal',
         text: `Declined the withdrawal of ${usd} from ${fund}. The money stays invested.${partnerNote ? ` Note: "${String(partnerNote).slice(0, 300)}"` : ''}`,
         depositData: { ...card, status: 'PARTNER_REJECTED' },

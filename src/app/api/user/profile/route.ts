@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { resolveSpouseId } from '@/lib/chat'
+import { getPartnerIds } from '@/lib/partners'
 import { ensureAccountNumber } from '@/lib/accountId'
 
 export const dynamic = 'force-dynamic'
@@ -60,13 +60,13 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Account not found.' }, { status: 404 })
     if (!user.accountNumber) user.accountNumber = (await ensureAccountNumber(user.id)) || null
 
-    const spouseId = await resolveSpouseId(currentUserId)
-    const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId } }) : null
+    const partnerIds = await getPartnerIds(currentUserId)
+    const partners = partnerIds.length ? await prisma.user.findMany({ where: { id: { in: partnerIds } } }) : []
 
     return NextResponse.json({
       success: true,
       user: present(user),
-      spouse: spouse ? present(spouse) : null,
+      partners: partners.map(present),
     })
   } catch (error: any) {
     console.error('[GET /api/user/profile]', error)

@@ -2,14 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import crypto from 'crypto'
-import { resolveSpouseId } from '@/lib/chat'
+import { withdrawalApproverId } from '@/lib/partners'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
 
 type Params = { params: Promise<{ id: string }> }
 
 /** Tell the member (and their spouse) about the decision: bell, couple chat and email */
 async function announceDecision(
-  withdrawal: { id: string; userId: string; amount: unknown; netAmount: unknown; user: { name: string | null }; investment: { opportunity: { title: string } | null } | null },
+  withdrawal: {
+    id: string
+    userId: string
+    adminNote: string | null
+    amount: unknown
+    netAmount: unknown
+    user: { name: string | null }
+    investment: { opportunity: { title: string } | null } | null
+  },
   decision: 'approved' | 'rejected',
   adminNote?: string,
 ) {
@@ -20,7 +28,8 @@ async function announceDecision(
     decision === 'approved'
       ? `Withdrawal of ${usd} from ${fund} approved. $${Number(withdrawal.netAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} is on its way to ${name}'s bank account.`
       : `Withdrawal of ${usd} from ${fund} was not approved.${adminNote?.trim() ? ` Reason: ${adminNote.trim().replace(/[.!?]*$/, '.')}` : ''} The money stays invested.`
-  const spouseId = await resolveSpouseId(withdrawal.userId)
+  // The partner who approved it (shared investments); personal ones have none
+  const spouseId = await withdrawalApproverId(withdrawal)
 
   for (const id of [withdrawal.userId, spouseId].filter(Boolean)) {
     await prisma.notification.create({
@@ -43,6 +52,7 @@ async function announceDecision(
   await postToCoupleChat(
     withdrawal.userId,
     name,
+    spouseId,
     {
       type: 'withdrawal',
       text,

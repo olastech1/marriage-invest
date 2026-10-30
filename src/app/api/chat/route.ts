@@ -12,6 +12,7 @@ import {
   resolveSpouseId,
 } from '@/lib/chat'
 import { getReciprocationStatus } from '@/lib/reciprocation'
+import { RELATIONS, getPartnerLinks, type PartnerLink } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
@@ -78,14 +79,22 @@ type Conversation = {
   otherAccountNumber: string | null
   otherAvatarUrl: string | null
   kind: 'spouse' | 'member' | 'visitor'
+  /** A linked partner (any relationship) */
   isSpouse: boolean
+  /** What they are to me, e.g. "Spouse", "Friend" (partners only) */
+  relationLabel: string | null
   guestEmail: string | null
   unreadCount: number
   updatedAt: Date | string
 }
 
 /** Everyone I have a conversation with or added (no member directory). Newest message first. */
-async function buildConversations(currentUserId: string, spouseId: string): Promise<Conversation[]> {
+async function buildConversations(currentUserId: string, partnerLinks: PartnerLink[]): Promise<Conversation[]> {
+  const partnerOf = new Map(partnerLinks.map((l) => [l.id.toLowerCase(), l]))
+  const relationOf = (id: string) => {
+    const link = partnerOf.get(id.toLowerCase())
+    return link ? RELATIONS[link.relation] : null
+  }
   const chatDb = await getChatDb()
   const [myMessages, saved] = await Promise.all([
     chatDb.chatMessage.findMany({
@@ -102,7 +111,7 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     const otherId = otherParticipant(msg.threadId, currentUserId)
     if (otherId && !otherId.startsWith('guest_')) otherIds.add(otherId)
   }
-  if (spouseId) otherIds.add(spouseId)
+  for (const l of partnerLinks) otherIds.add(l.id)
   const members = new Map<string, { name: string; username: string | null; accountNumber: string | null; avatarUrl: string | null }>()
   for (const u of await prisma.user.findMany({
     where: { id: { in: [...otherIds] } },
@@ -132,8 +141,9 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
         otherUsername: other?.username || null,
         otherAccountNumber: other?.accountNumber || null,
         otherAvatarUrl: other?.avatarUrl || null,
-        kind: otherId === spouseId ? 'spouse' : isVisitor ? 'visitor' : 'member',
-        isSpouse: otherId === spouseId,
+        kind: relationOf(otherId) ? 'spouse' : isVisitor ? 'visitor' : 'member',
+        isSpouse: !!relationOf(otherId),
+        relationLabel: relationOf(otherId),
         guestEmail: null,
         unreadCount: 0,
         updatedAt: msg.createdAt,
@@ -147,14 +157,14 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     if (!msg.read && msg.recipientId === currentUserId) convo.unreadCount++
   }
 
-  // People I added and my spouse, before the first message
+  // People I added and my partners, before the first message
   const placeholders = saved.map((c) => ({ id: c.contactId, text: 'Added to your chats. Say hello.', at: c.createdAt }))
-  if (spouseId) placeholders.unshift({ id: spouseId, text: 'Say hello to your partner.', at: new Date() })
+  for (const l of partnerLinks) placeholders.unshift({ id: l.id, text: 'Say hello to your partner.', at: l.since })
   for (const p of placeholders) {
     const threadId = buildThreadId(currentUserId, p.id)
     if (threads.has(threadId)) continue
     const other = await member(p.id)
-    if (!other && p.id !== spouseId) continue
+    if (!other && !relationOf(p.id)) continue
     threads.set(threadId, {
       threadId,
       lastMessage: { text: p.text, createdAt: null, fromMe: false },
@@ -163,15 +173,16 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
       otherUsername: other?.username || null,
       otherAccountNumber: other?.accountNumber || null,
       otherAvatarUrl: other?.avatarUrl || null,
-      kind: p.id === spouseId ? 'spouse' : 'member',
-      isSpouse: p.id === spouseId,
+      kind: relationOf(p.id) ? 'spouse' : 'member',
+      isSpouse: !!relationOf(p.id),
+      relationLabel: relationOf(p.id),
       guestEmail: null,
       unreadCount: 0,
       updatedAt: p.at,
     })
   }
 
-  // Newest message first; people with no messages yet go last (spouse first among them)
+  // Newest message first; people with no messages yet go last (partners first among them)
   const lastAt = (c: Conversation) => (c.lastMessage.createdAt ? new Date(c.lastMessage.createdAt).getTime() : 0)
   return [...threads.values()].sort((a, b) => {
     if (lastAt(a) !== lastAt(b)) return lastAt(b) - lastAt(a)
@@ -203,11 +214,14 @@ export async function GET(req: NextRequest) {
     const currentUserId = currentUser.id
     const chatDb = await getChatDb()
 
+    // Every partner, and the one chatted with most recently (the chat bubble, old "couple chat" links)
+    const partnerLinks = await getPartnerLinks(currentUserId)
+    const partnerIds = partnerLinks.map((l) => l.id)
     const spouseId = await resolveSpouseId(currentUserId)
 
     // ── 1. MY CONTACTS (people I already talk to; not a member directory) ──
     if (listUsers) {
-      const conversations = await buildConversations(currentUserId, spouseId)
+      const conversations = await buildConversations(currentUserId, partnerLinks)
       const contacts = conversations.map((c) => ({
         id: c.otherUserId,
         name: c.otherUserName,
@@ -225,12 +239,13 @@ export async function GET(req: NextRequest) {
 
     // ── 2. CONVERSATION LIST ──
     if (listConversations) {
-      const conversations = await buildConversations(currentUserId, spouseId)
+      const conversations = await buildConversations(currentUserId, partnerLinks)
       return NextResponse.json({
         success: true,
         conversations,
         currentUserId,
         spouseId,
+        partnerIds,
       })
     }
 
@@ -280,9 +295,11 @@ export async function GET(req: NextRequest) {
       messages,
       currentUser,
       spouseId,
+      partnerIds,
+      // Deposits to reciprocate between me and this partner only
       reciprocation:
-        recipientId === spouseId
-          ? await getReciprocationStatus(currentUserId).then((r) => ({
+        partnerIds.includes(recipientId)
+          ? await getReciprocationStatus(currentUserId, recipientId).then((r) => ({
               owedByMe: r.owedByMe,
               owedBySpouse: r.owedBySpouse,
               pendingMessageId: r.pending?.messageId || null,
@@ -306,7 +323,7 @@ export async function GET(req: NextRequest) {
 
 // ---------------------------------------------------------------------------
 // POST /api/chat
-// Send a message to another member (defaults to your spouse)
+// Send a message to another member (defaults to the partner chatted with most recently)
 // ---------------------------------------------------------------------------
 export async function POST(req: Request) {
   try {
@@ -495,7 +512,7 @@ export async function PATCH(req: Request) {
           ? [`${currentUser.name} approved your $${amount.toLocaleString()} plan for "${plan}".`, `Pay your $${share.toLocaleString()} share from your chat.`]
           : [`${currentUser.name} declined your $${amount.toLocaleString()} plan for "${plan}".`],
         ctaLabel: 'Open chat',
-        ctaPath: '/chat?thread=spouse',
+        ctaPath: `/chat?recipientId=${encodeURIComponent(currentUser.id)}`,
       })
       return NextResponse.json({ success: true, message: updated })
     }
@@ -509,7 +526,10 @@ export async function PATCH(req: Request) {
       }
       const users = new Set(reactions[reaction] || [])
       if (users.has(currentUser.id)) users.delete(currentUser.id)
-      else users.add(currentUser.id)
+      // You react to messages sent to you, not your own (you can still remove an old one)
+      else if (existing.senderId === currentUser.id) {
+        return NextResponse.json({ success: false, error: 'You can react to messages sent to you.' }, { status: 403 })
+      } else users.add(currentUser.id)
       if (users.size) reactions[reaction] = [...users]
       else delete reactions[reaction]
 

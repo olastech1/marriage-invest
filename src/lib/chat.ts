@@ -4,12 +4,7 @@
  */
 
 import { prisma } from '@/lib/db'
-
-// Demo couple used by the seeded test accounts
-const DEMO_SPOUSES: Record<string, string> = {
-  usr_jane_doe: 'usr_marcus_vance',
-  usr_marcus_vance: 'usr_jane_doe',
-}
+import { cleanRelation, getPartnerIds } from '@/lib/partners'
 
 const CHAT_FIELDS = [
   'id',
@@ -69,33 +64,37 @@ export function isParticipant(threadId: string, userId: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a user's spouse: the demo pairing for the seeded test couple, or the
- * account's spouse link.
+ * The partner this member chats with most recently: the chat bubble and older
+ * "couple chat" links open this one. Members can have several partners; code
+ * acting for a pair should pass that partner explicitly instead.
  */
 export async function resolveSpouseId(userId: string): Promise<string> {
-  if (!userId) return ''
-  if (DEMO_SPOUSES[userId]) return DEMO_SPOUSES[userId]
-
-  // Only an explicit link counts (union registration or an accepted spouse
-  // request). Chatting with someone never makes them your spouse.
-  const linked = await prisma.user.findUnique({ where: { id: userId }, select: { spouseId: true } })
-  return linked?.spouseId || ''
+  const ids = await getPartnerIds(userId)
+  if (ids.length <= 1) return ids[0] || ''
+  const latest = await prisma.chatMessage.findFirst({
+    where: { threadId: { in: ids.map((id) => buildThreadId(userId, id)) } },
+    orderBy: { createdAt: 'desc' },
+    select: { threadId: true },
+  })
+  return ids.find((id) => latest && buildThreadId(userId, id) === latest.threadId) || ids[0]
 }
 
-/** Spouse requests waiting for this user's answer: the newest one from each person */
+/** Partner requests waiting for this user's answer: the newest one from each person not already a partner */
 export async function getIncomingSpouseRequests(userId: string) {
-  if (!userId || (await resolveSpouseId(userId))) return []
+  if (!userId) return []
+  const partners = new Set(await getPartnerIds(userId))
   const rows = await prisma.chatMessage.findMany({
     where: { type: 'spouse_request', proposalData: { path: ['toUserId'], equals: userId } },
     orderBy: { createdAt: 'desc' },
     select: { id: true, senderId: true, senderName: true, proposalData: true },
   })
   const seen = new Set<string>()
-  const requests: { messageId: string; fromUserId: string; fromName: string }[] = []
+  const requests: { messageId: string; fromUserId: string; fromName: string; relation: string }[] = []
   for (const row of rows) {
-    if ((row.proposalData as Record<string, string> | null)?.status !== 'pending' || seen.has(row.senderId)) continue
+    if ((row.proposalData as Record<string, string> | null)?.status !== 'pending' || seen.has(row.senderId) || partners.has(row.senderId)) continue
     seen.add(row.senderId)
-    requests.push({ messageId: row.id, fromUserId: row.senderId, fromName: row.senderName || 'Member' })
+    const relation = cleanRelation((row.proposalData as Record<string, string> | null)?.relation)
+    requests.push({ messageId: row.id, fromUserId: row.senderId, fromName: row.senderName || 'Member', relation })
   }
   return requests
 }

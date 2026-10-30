@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { UserPlus } from 'lucide-react'
 
-// Invite your spouse or anyone (by email) to invest in an opportunity
+// Invite one of your partners or anyone (by email) to invest in an opportunity
 export default function InviteToInvest({ opportunityId, minAmount, compact = false }: { opportunityId: string; minAmount: number; compact?: boolean }) {
   const [open, setOpen] = useState(false)
-  const [spouseName, setSpouseName] = useState<string | null>(null)
-  const [to, setTo] = useState<'spouse' | 'email'>('email')
+  const [partners, setPartners] = useState<{ id: string; name: string; relationLabel: string }[]>([])
+  // A partner's id, or 'email' for anyone else
+  const [to, setTo] = useState<string>('email')
   const [email, setEmail] = useState('')
   const [amount, setAmount] = useState('')
   const [note, setNote] = useState('')
@@ -16,13 +17,12 @@ export default function InviteToInvest({ opportunityId, minAmount, compact = fal
 
   useEffect(() => {
     if (!open) return
-    fetch('/api/savings/reciprocation')
+    fetch('/api/spouse')
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.partnerId) {
-          setSpouseName(data.partnerName)
-          setTo('spouse')
-        }
+        const list = Array.isArray(data?.partners) ? data.partners : []
+        setPartners(list)
+        if (list.length) setTo(list[0].id)
       })
       .catch(() => {})
   }, [open])
@@ -35,7 +35,11 @@ export default function InviteToInvest({ opportunityId, minAmount, compact = fal
       const res = await fetch(`/api/investments/${opportunityId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: to === 'spouse' ? 'spouse' : email, amount: amount ? Number(amount) : undefined, note }),
+        body: JSON.stringify({
+          ...(to === 'email' ? { to: email } : { partnerId: to }),
+          amount: amount ? Number(amount) : undefined,
+          note,
+        }),
       })
       const data = await res.json()
       setResult({ ok: !!data.success, text: data.message || data.error || 'Something went wrong.' })
@@ -67,13 +71,15 @@ export default function InviteToInvest({ opportunityId, minAmount, compact = fal
   return (
     <form onSubmit={send} className="rounded-2xl border border-gray-200 bg-white p-4 space-y-3 text-left">
       <p className="text-sm font-bold text-[#0F1C3F]">Invite someone to invest</p>
-      {spouseName && (
-        <div className="flex gap-2 text-xs">
-          <label className={`flex-1 rounded-xl border px-3 py-2 cursor-pointer ${to === 'spouse' ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-gray-200'}`}>
-            <input type="radio" name="to" className="mr-1.5" checked={to === 'spouse'} onChange={() => setTo('spouse')} />
-            {spouseName}
-          </label>
-          <label className={`flex-1 rounded-xl border px-3 py-2 cursor-pointer ${to === 'email' ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-gray-200'}`}>
+      {partners.length > 0 && (
+        <div className="flex flex-wrap gap-2 text-xs">
+          {partners.map((p) => (
+            <label key={p.id} className={`flex-1 min-w-[45%] rounded-xl border px-3 py-2 cursor-pointer ${to === p.id ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-gray-200'}`}>
+              <input type="radio" name="to" className="mr-1.5" checked={to === p.id} onChange={() => setTo(p.id)} />
+              {p.name} <span className="text-gray-400">· {p.relationLabel}</span>
+            </label>
+          ))}
+          <label className={`flex-1 min-w-[45%] rounded-xl border px-3 py-2 cursor-pointer ${to === 'email' ? 'border-[#C9A84C] bg-[#C9A84C]/10' : 'border-gray-200'}`}>
             <input type="radio" name="to" className="mr-1.5" checked={to === 'email'} onChange={() => setTo('email')} />
             Someone else
           </label>

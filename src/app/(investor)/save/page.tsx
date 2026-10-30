@@ -2,7 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { PiggyBank, Bell, AlertTriangle, CheckCircle2, CreditCard, RefreshCw } from 'lucide-react'
+import UserAvatar from '@/components/investor/UserAvatar'
 
 interface DepositItem {
   id: string
@@ -23,6 +25,8 @@ interface Reciprocation {
   owedByMe: number
   owedBySpouse: number
   pendingDeposits: { messageId: string; depositorName: string; amount: number; depositedAt: string; note: string }[]
+  /** Every partner I have a joint vault with */
+  partners: { id: string; name: string; avatarUrl: string | null; relationLabel: string }[]
 }
 
 const usd = (n: number) =>
@@ -46,21 +50,33 @@ function SavePageContent() {
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderResult, setReminderResult] = useState<{ ok: boolean; text: string } | null>(null)
 
+  // One joint vault per partner: ?partner=<id> picks which one is shown
+  const [partnerId, setPartnerId] = useState(searchParams.get('partner') || '')
+
   const load = useCallback(async () => {
-    const [dep, rec, set] = await Promise.all([
-      fetch('/api/savings/deposits').then((r) => r.json()).catch(() => null),
-      fetch('/api/savings/reciprocation').then((r) => r.json()).catch(() => null),
+    const [rec, set] = await Promise.all([
+      fetch(`/api/savings/reciprocation?partner=${encodeURIComponent(partnerId)}`).then((r) => r.json()).catch(() => null),
       fetch('/api/settings').then((r) => r.json()).catch(() => null),
     ])
-    if (dep?.success) setDeposits(dep.deposits)
     if (rec && !rec.error) setReciprocation(rec)
     if (set?.success) setSettings(set.settings)
+    const shown = rec?.partnerId || ''
+    const dep = shown ? await fetch(`/api/savings/deposits?partner=${encodeURIComponent(shown)}`).then((r) => r.json()).catch(() => null) : null
+    setDeposits(dep?.success ? dep.deposits : [])
     setLoadingDeposits(false)
-  }, [])
+  }, [partnerId])
 
   useEffect(() => {
     load()
   }, [load])
+
+  const choosePartner = (id: string) => {
+    setPartnerId(id)
+    setLoadingDeposits(true)
+    const url = new URL(window.location.href)
+    url.searchParams.set('partner', id)
+    window.history.replaceState({}, '', url.toString())
+  }
 
   const spouseName = reciprocation?.partnerName || 'your partner'
   const hasSpouse = !!reciprocation?.partnerId
@@ -83,7 +99,7 @@ function SavePageContent() {
       const res = await fetch('/api/savings/deposits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: numAmount, note }),
+        body: JSON.stringify({ amount: numAmount, note, partnerId: reciprocation?.partnerId }),
       })
       const data = await res.json()
       if (!res.ok || !data.checkoutUrl) throw new Error(data.error || 'Could not start the payment.')
@@ -102,7 +118,7 @@ function SavePageContent() {
       const res = await fetch('/api/savings/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_now', amount: parseFloat(reminderAmount) || 0, note: reminderNote }),
+        body: JSON.stringify({ action: 'send_now', amount: parseFloat(reminderAmount) || 0, note: reminderNote, partnerId: reciprocation?.partnerId }),
       })
       const data = await res.json()
       setReminderResult({ ok: !!data.success, text: data.message || data.error || 'Something went wrong.' })
@@ -119,9 +135,41 @@ function SavePageContent() {
       <div>
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Joint vault</h1>
         <p className="text-sm text-gray-500">
-          {hasSpouse ? `Shared with ${spouseName}.` : 'Connect with your partner from the chat page to save together.'}
+          {hasSpouse ? (
+            `Shared with ${spouseName} only. Each partner has a separate vault with you.`
+          ) : (
+            <>
+              Link a partner to save together.{' '}
+              <Link href="/settings#spouse" className="font-semibold text-[#0F1C3F] underline">
+                Link a partner
+              </Link>
+            </>
+          )}
         </p>
       </div>
+
+      {/* One vault per partner */}
+      {(reciprocation?.partners?.length || 0) > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {reciprocation!.partners.map((p) => {
+            const selected = p.id === reciprocation!.partnerId
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => choosePartner(p.id)}
+                className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap cursor-pointer ${
+                  selected ? 'bg-[#0F1C3F] text-white border-[#0F1C3F]' : 'bg-white text-[#0F1C3F] border-gray-200 hover:border-[#C9A84C]'
+                }`}
+              >
+                <UserAvatar name={p.name} src={p.avatarUrl} className="w-6 h-6 text-[9px]" />
+                <span>{p.name.split(' ')[0]}</span>
+                <span className={`font-medium ${selected ? 'text-white/60' : 'text-gray-400'}`}>{p.relationLabel}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {searchParams.get('checkout_canceled') === 'true' && (
         <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-900">

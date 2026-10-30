@@ -68,6 +68,11 @@ interface ActiveInvestment {
   amount: number
   opportunity: { title: string; termMonths: number }
   status: string
+  /** The partner it is shared with (they approve withdrawals); none = personal */
+  partnerId: string | null
+  partnerName: string | null
+  /** A deposit from that partner still to reciprocate: withdrawals wait until it's done */
+  lockedBy: { messageId: string; depositorName: string; amount: number } | null
 }
 
 // Confirmation step: shows the fees the server will deduct before the request is sent
@@ -89,7 +94,7 @@ function ConfirmWithdrawalPanel({
 
   const USD = (n: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
 
-  const isSolo = selectedInvestment?.referenceNumber?.startsWith('SOLO-')
+  const isSolo = !selectedInvestment?.partnerId
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
@@ -149,7 +154,6 @@ export default function WithdrawalsPage() {
   const [withdrawals, setWithdrawals] = useState<WithdrawalItem[]>([])
   const [eligibleInvestments, setEligibleInvestments] = useState<ActiveInvestment[]>([])
   const [pendingPartnerApprovals, setPendingPartnerApprovals] = useState<PendingPartnerApproval[]>([])
-  const [partnerName, setPartnerName] = useState('your partner')
   const [selectedInvestmentId, setSelectedInvestmentId] = useState('')
   const [amount, setAmount] = useState('1000')
   const [bankName, setBankName] = useState('')
@@ -162,8 +166,6 @@ export default function WithdrawalsPage() {
   const [success, setSuccess] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [showConfirm, setShowConfirm] = useState(false)
-  const [hasPendingReciprocation, setHasPendingReciprocation] = useState(false)
-  const [pendingReciprocation, setPendingReciprocation] = useState<any>(null)
 
   const feePercent = 0.02
   const penaltyPercent = 0.01
@@ -172,7 +174,11 @@ export default function WithdrawalsPage() {
   const penaltyAmount = numAmount * penaltyPercent
   const netAmount = Math.max(0, numAmount - feeAmount - penaltyAmount)
   const selectedInvestment = eligibleInvestments.find((i) => i.id === selectedInvestmentId)
-  const isSolo = selectedInvestment?.referenceNumber?.startsWith('SOLO-')
+  const isSolo = !selectedInvestment?.partnerId
+  // Each investment has its own partner (or none) and its own reciprocation lock
+  const partnerName = selectedInvestment?.partnerName || 'your partner'
+  const pendingReciprocation = selectedInvestment?.lockedBy || null
+  const hasPendingReciprocation = !isSolo && !!pendingReciprocation
 
   const loadData = () => {
     fetch('/api/withdrawals')
@@ -187,15 +193,6 @@ export default function WithdrawalsPage() {
         }
         if (data.pendingPartnerApprovals) {
           setPendingPartnerApprovals(data.pendingPartnerApprovals)
-        }
-        if (data.partnerName) {
-          setPartnerName(data.partnerName)
-        }
-        if (typeof data.hasPendingReciprocation === 'boolean') {
-          setHasPendingReciprocation(data.hasPendingReciprocation)
-        }
-        if (data.pendingReciprocation) {
-          setPendingReciprocation(data.pendingReciprocation)
         }
       })
       .catch((err) => console.error(err))
@@ -282,7 +279,8 @@ export default function WithdrawalsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to approve withdrawal')
       setSuccess(true)
-      setSuccessMessage(`You approved ${partnerName}'s withdrawal. It will now be processed.`)
+      const requester = pendingPartnerApprovals.find((w) => w.id === withdrawalId)?.requesterName || 'your partner'
+      setSuccessMessage(`You approved ${requester}'s withdrawal. It will now be processed.`)
       loadData()
     } catch (err: any) {
       setError(err.message)
@@ -304,7 +302,7 @@ export default function WithdrawalsPage() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to decline withdrawal')
       setSuccess(true)
-      setSuccessMessage(`Withdrawal declined. The funds stay in your joint savings.`)
+      setSuccessMessage(`Withdrawal declined. The money stays invested.`)
       loadData()
     } catch (err: any) {
       setError(err.message)
@@ -343,7 +341,7 @@ export default function WithdrawalsPage() {
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#0F1C3F]">Withdrawals &amp; Partner Approvals</h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-            Withdrawals from joint savings need your partner&apos;s approval before they are processed.
+            Withdrawals from an investment you share need that partner&apos;s approval before they are processed.
           </p>
         </div>
       </div>
@@ -362,14 +360,15 @@ export default function WithdrawalsPage() {
                 </span>
               </div>
               <h3 className="text-lg sm:text-xl font-black">
-                Joint withdrawals are locked until you reciprocate
+                Withdrawals from this investment wait until you reciprocate
               </h3>
               <p className="text-xs text-red-100 leading-relaxed max-w-xl">
-                {pendingReciprocation?.depositorName || partnerName} made a deposit into your joint savings. Reciprocate ${Number(pendingReciprocation?.amount || 0).toLocaleString()} to unlock joint withdrawals.
+                {pendingReciprocation?.depositorName || partnerName} made a deposit into your joint vault. Reciprocate ${Number(pendingReciprocation?.amount || 0).toLocaleString()} to unlock withdrawals from what you share.
               </p>
             </div>
           </div>
           <form method="post" action="/pay/match" className="flex-shrink-0">
+            <input type="hidden" name="deposit" value={pendingReciprocation?.messageId || ''} />
             <button
               type="submit"
               className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-white text-[#0F1C3F] font-black text-xs sm:text-sm shadow-lg hover:bg-slate-100 transition-all transform hover:scale-105 cursor-pointer"
@@ -468,7 +467,7 @@ export default function WithdrawalsPage() {
           <h4 className="text-sm font-bold text-amber-900">Fees and approval</h4>
           <p className="text-xs text-amber-800 mt-0.5 leading-relaxed">
             Each withdrawal has a <strong>2% fee</strong> plus a <strong>1% early withdrawal penalty</strong>, deducted from the amount.
-            For joint savings, {partnerName} is asked to approve the request before it is processed.
+            An investment shared with a partner needs their approval before it is processed; a personal one goes straight to review.
           </p>
         </div>
       </div>
@@ -479,10 +478,10 @@ export default function WithdrawalsPage() {
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-900">Request a Withdrawal</h2>
             {isSolo ? (
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Solo Account</span>
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">Personal</span>
             ) : (
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#C9A84C]/20 text-[#0F1C3F] border border-[#C9A84C]/40">
-                Joint · needs partner approval
+                Shared with {partnerName} · needs their approval
               </span>
             )}
           </div>

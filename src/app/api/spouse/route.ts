@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildThreadId, createChatMessage, getIncomingSpouseRequests, resolveSpouseId } from '@/lib/chat'
+import { buildThreadId, createChatMessage, getIncomingSpouseRequests } from '@/lib/chat'
+import { RELATIONS, cleanRelation, getPartners, isPartner, linkPartners } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { emailMember } from '@/lib/activity'
 import { escapeHtml } from '@/lib/utils'
@@ -24,7 +25,10 @@ async function closeRequests(threadId: string, status: 'accepted' | 'declined', 
   }
 }
 
-/** Link two members as spouses from a request sent to `me` */
+/** "spouse" -> "spouses", "business" -> "business partners" (for sentences) */
+const asPlural = (relation: string) => (relation === 'business' ? 'business partners' : relation === 'family' ? 'family' : `${relation}s`)
+
+/** Link two members as partners from a request sent to `me` (any number of partners each) */
 async function acceptRequest(me: string, myName: string, messageId: string) {
   const request = await prisma.chatMessage.findUnique({ where: { id: messageId } })
   const data = (request?.proposalData || {}) as Record<string, string>
@@ -32,14 +36,9 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
     return NextResponse.json({ success: false, error: 'Request not found.' }, { status: 404 })
   }
   const requesterId = data.fromUserId
-  if (await resolveSpouseId(requesterId)) {
-    return NextResponse.json({ success: false, error: 'They are already linked to a partner.' }, { status: 400 })
-  }
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: me }, data: { spouseId: requesterId } }),
-    prisma.user.update({ where: { id: requesterId }, data: { spouseId: me } }),
-    prisma.chatMessage.update({ where: { id: request.id }, data: { proposalData: { ...data, status: 'accepted' } } }),
-  ])
+  const relation = cleanRelation(data.relation)
+  await linkPartners(me, requesterId, relation)
+  await prisma.chatMessage.update({ where: { id: request.id }, data: { proposalData: { ...data, status: 'accepted' } } })
   await closeRequests(request.threadId, 'accepted')
   await createChatMessage({
     data: {
@@ -48,14 +47,14 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
       senderName: myName,
       recipientId: requesterId,
       recipientName: request.senderName,
-      text: `${myName} accepted. You are now linked as partners.`,
+      text: `${myName} accepted. You are now linked as ${asPlural(relation)}, with your own joint vault.`,
       timestamp: timestamp(),
       type: 'text',
     },
   })
-  // Close my "wants to link" prompts, and tell the requester
+  // Close my "wants to link" prompt from them, and tell the requester
   await prisma.notification.updateMany({
-    where: { userId: me, category: 'SPOUSE_REQUEST', attended: false },
+    where: { userId: me, category: 'SPOUSE_REQUEST', attended: false, metadata: { path: ['fromUserId'], equals: requesterId } },
     data: { attended: true, read: true, attendedAt: new Date() },
   })
   const requester = await prisma.user.findUnique({ where: { id: requesterId }, select: { email: true, name: true } })
@@ -64,7 +63,7 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
       data: {
         userId: requesterId,
         title: `${myName} accepted — you're linked as partners`,
-        message: 'Your joint vault, reciprocation and withdrawal approvals are now shared.',
+        message: 'You now have a joint vault together, with reciprocation and withdrawal approvals.',
         type: 'SUCCESS',
         link: `/chat?recipientId=${encodeURIComponent(me)}&name=${encodeURIComponent(myName)}`,
       },
@@ -83,38 +82,38 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/spouse  my spouse, requests waiting for my answer, and requests I sent
+// GET /api/spouse  my partners, requests waiting for my answer, and requests I sent
 // ---------------------------------------------------------------------------
 export async function GET() {
   const session = await auth()
   const me = session?.user?.id
   if (!me) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
-  const spouseId = await resolveSpouseId(me)
-  const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, accountNumber: true } }) : null
-  const sent = spouseId
-    ? []
-    : await prisma.chatMessage.findMany({ where: { type: 'spouse_request', senderId: me }, orderBy: { createdAt: 'desc' } })
+  const partners = await getPartners(me)
+  const linked = new Set(partners.map((p) => p.id))
+  const sent = await prisma.chatMessage.findMany({ where: { type: 'spouse_request', senderId: me }, orderBy: { createdAt: 'desc' } })
   const outgoing = new Map<string, { toUserId: string; toName: string }>()
   for (const m of sent) {
     const data = (m.proposalData || {}) as Record<string, string>
-    if (data.status === 'pending' && data.toUserId && !outgoing.has(data.toUserId)) {
+    if (data.status === 'pending' && data.toUserId && !linked.has(data.toUserId) && !outgoing.has(data.toUserId)) {
       outgoing.set(data.toUserId, { toUserId: data.toUserId, toName: m.recipientName || 'Member' })
     }
   }
   return NextResponse.json({
     success: true,
-    spouse,
+    partners: partners.map(({ email: _email, ...p }) => p),
     requests: await getIncomingSpouseRequests(me),
     outgoing: [...outgoing.values()],
+    relations: RELATIONS,
   })
 }
 
 // ---------------------------------------------------------------------------
 // POST /api/spouse
-//   { action: 'request', userId }     ask a member (in your chat) to link as spouses
-//   { action: 'accept', messageId }   accept a request you received
-//   { action: 'decline', messageId }  decline a request you received
-// Linking needs both people; nobody becomes a spouse just by chatting.
+//   { action: 'request', userId, relation? }  ask a member to link as partners (spouse, friend…)
+//   { action: 'accept', messageId }           accept a request you received
+//   { action: 'decline', messageId }          decline a request you received
+// Linking needs both people; nobody becomes a partner just by chatting.
+// A member can link with any number of partners; each pair has its own joint vault.
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -169,15 +168,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true })
   }
 
-  if (await resolveSpouseId(me)) {
-    return NextResponse.json({ success: false, error: 'Your account is already linked to a partner.' }, { status: 400 })
-  }
-
   if (body.action === 'request') {
     const other = await prisma.user.findFirst({ where: { id: String(body.userId || ''), role: 'INVESTOR' }, select: { id: true, name: true, email: true } })
     if (!other || other.id === me) return NextResponse.json({ success: false, error: 'Member not found.' }, { status: 404 })
-    if (await resolveSpouseId(other.id)) {
-      return NextResponse.json({ success: false, error: `${other.name} is already linked to a partner.` }, { status: 400 })
+    if (await isPartner(me, other.id)) {
+      return NextResponse.json({ success: false, error: `You are already linked with ${other.name}.` }, { status: 400 })
     }
     // They already asked me: asking back means yes
     const theirRequest = (await getIncomingSpouseRequests(me)).find((r) => r.fromUserId === other.id)
@@ -186,18 +181,31 @@ export async function POST(req: NextRequest) {
     // Asking again re-sends the email/notification instead of adding a second request card
     const threadId = buildThreadId(me, other.id)
     const pendingRequests = await prisma.chatMessage.findMany({ where: { threadId, type: 'spouse_request', senderId: me } })
-    const alreadyAsked = pendingRequests.some((m) => (m.proposalData as Record<string, string> | null)?.status === 'pending')
-    if (!alreadyAsked) await createChatMessage({
+    const waiting = pendingRequests.find((m) => (m.proposalData as Record<string, string> | null)?.status === 'pending')
+    // A resend without a relationship keeps the one chosen first
+    const relation = cleanRelation(body.relation ?? (waiting?.proposalData as Record<string, string> | null)?.relation)
+    const relationLabel = RELATIONS[relation].toLowerCase()
+    // Asking again with a different relationship updates the waiting request
+    if (waiting) {
+      await prisma.chatMessage.update({
+        where: { id: waiting.id },
+        data: {
+          text: `${myName} asked to link your accounts as ${asPlural(relation)}: a joint vault, reciprocation and withdrawal approvals between you two.`,
+          proposalData: { ...((waiting.proposalData as Record<string, string>) || {}), relation },
+        },
+      })
+    }
+    if (!waiting) await createChatMessage({
       data: {
         threadId,
         senderId: me,
         senderName: myName,
         recipientId: other.id,
         recipientName: other.name,
-        text: `${myName} asked to link your accounts as partners (joint vault, reciprocation and withdrawal approvals).`,
+        text: `${myName} asked to link your accounts as ${asPlural(relation)}: a joint vault, reciprocation and withdrawal approvals between you two.`,
         timestamp: timestamp(),
         type: 'spouse_request',
-        proposalData: { status: 'pending', fromUserId: me, toUserId: other.id },
+        proposalData: { status: 'pending', fromUserId: me, toUserId: other.id, relation },
       },
     })
     const chatLink = `/chat?recipientId=${encodeURIComponent(me)}&name=${encodeURIComponent(myName)}`
@@ -209,7 +217,7 @@ export async function POST(req: NextRequest) {
       .create({
         data: {
           userId: other.id,
-          title: `${myName} wants to link as partners`,
+          title: `${myName} wants to link with you (${relationLabel})`,
           message: 'Accept or decline on your dashboard or in your chat with them.',
           type: 'INFO',
           link: chatLink,
@@ -222,9 +230,9 @@ export async function POST(req: NextRequest) {
       .catch(() => {})
     const emailed = await sendEmail({
       to: other.email,
-      subject: `${myName} wants to link your Union Verify accounts as partners`,
+      subject: `${myName} wants to link your Union Verify accounts (${relationLabel})`,
       html: `<p>Hi ${escapeHtml(other.name)},</p>
-<p>${escapeHtml(myName)} asked to link your Union Verify accounts as partners. Linked partners share a joint vault, reciprocate each other's deposits and approve each other's joint withdrawals.</p>
+<p>${escapeHtml(myName)} asked to link your Union Verify accounts as ${escapeHtml(asPlural(relation))}. You would have a joint vault together, reciprocate each other's deposits and approve each other's withdrawals from what you share. It doesn't affect your other partners.</p>
 <p><a href="${appUrl()}${chatLink}">Open the request</a> and tap <strong>Accept</strong> if you agree. If you don't know ${escapeHtml(myName)}, just ignore this email.</p>`,
     }).catch(() => false)
     return NextResponse.json({ success: true, emailed })

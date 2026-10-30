@@ -6,7 +6,8 @@
  */
 
 import { prisma } from '@/lib/db'
-import { createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { buildThreadId, createChatMessage } from '@/lib/chat'
+import { isPartner } from '@/lib/partners'
 import { sendActivityEmail } from '@/lib/email'
 
 export interface ActivityEmail {
@@ -28,20 +29,21 @@ export async function emailMember(userId: string | null | undefined, email: Acti
   })
 }
 
-/** Post a card into the couple chat between this member and their spouse (if linked). */
+/** Post a card into the chat between this member and one of their partners */
 export async function postToCoupleChat(
   userId: string,
   userName: string,
+  /** The partner the activity is shared with (nothing is posted without one) */
+  partnerId: string | null | undefined,
   card: { type: string; text: string; proposalData?: Record<string, unknown>; depositData?: Record<string, unknown> },
   /** Post as Union Verify (e.g. an admin decision) instead of as the member */
   options: { fromPlatform?: boolean } = {},
 ) {
-  const spouseId = await resolveSpouseId(userId)
+  const spouseId = partnerId && (await isPartner(userId, partnerId)) ? partnerId : ''
   if (!spouseId) return null
   return createChatMessage({
-    spouseOf: userId,
     data: {
-      threadId: 'spouse',
+      threadId: buildThreadId(userId, spouseId),
       senderId: options.fromPlatform ? 'system_union_verify' : userId,
       senderName: options.fromPlatform ? 'Union Verify' : userName,
       recipientId: options.fromPlatform ? undefined : spouseId,

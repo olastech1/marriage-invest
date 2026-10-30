@@ -12,7 +12,7 @@ import type Stripe from 'stripe'
 import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { createCheckoutSession } from '@/lib/checkout'
-import { resolveSpouseId } from '@/lib/chat'
+import { isPartner, linkPartners } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { recordVaultDeposit } from '@/lib/vaultDeposits'
@@ -138,7 +138,7 @@ interface HandlerInput {
 
 const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillResult>> = {
   async VAULT_DEPOSIT({ userId, userName, amount, payload, paymentRef }) {
-    await recordVaultDeposit({
+    const { partnerId } = await recordVaultDeposit({
       userId,
       userName,
       amount,
@@ -147,10 +147,12 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       isReciprocalMatch: !!payload.isReciprocalMatch,
       forDepositId: payload.forDepositId || undefined,
       proposalId: payload.proposalId || undefined,
+      partnerId: payload.partnerId || undefined,
     })
     return {
       purpose: 'VAULT_DEPOSIT',
-      nextUrl: '/chat?thread=spouse',
+      // Back to the chat with that partner
+      nextUrl: partnerId ? `/chat?recipientId=${encodeURIComponent(partnerId)}` : '/save',
       message: payload.isReciprocalMatch
         ? `You reciprocated with $${amount.toLocaleString()}.`
         : `Your $${amount.toLocaleString()} deposit was added to your joint vault.`,
@@ -165,6 +167,8 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     const maturityDate = new Date(now)
     maturityDate.setMonth(maturityDate.getMonth() + opportunity.termMonths)
     const referenceNumber = `INV-${Date.now().toString(36).toUpperCase()}`
+    // Paid from a partner's invitation: shared with them (they approve withdrawals); otherwise personal
+    const partnerId = payload.partnerId && (await isPartner(userId, String(payload.partnerId))) ? String(payload.partnerId) : null
 
     await prisma.$transaction(async (tx) => {
       const investment = await tx.investment.create({
@@ -176,6 +180,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
           status: 'ACTIVE',
           confirmedAt: now,
           maturityDate,
+          partnerId,
         },
       })
       await tx.transaction.create({
@@ -209,7 +214,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       })
     })
     const usd = `$${amount.toLocaleString()}`
-    await postToCoupleChat(userId, userName, {
+    await postToCoupleChat(userId, userName, partnerId, {
       type: 'investment',
       text: `Invested ${usd} in ${opportunity.title}.`,
       proposalData: { goalName: opportunity.title, amount, slug: opportunity.slug },
@@ -224,7 +229,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       ctaLabel: 'View portfolio',
       ctaPath: '/portfolio',
     })
-    await emailMember(await resolveSpouseId(userId), {
+    await emailMember(partnerId, {
       subject: `${userName} invested ${usd} in ${opportunity.title}`,
       heading: `${userName} made an investment`,
       paragraphs: [`${userName} invested ${usd} in ${opportunity.title}.`],
@@ -254,8 +259,8 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     await recordFee(userId, amount, paymentRef, `Union Verify registration ${registration.docketNumber}`)
     await linkOrInviteSpouse(userId, payload.partner1Name, payload.partner2Email)
     const registeredText = `Our union is registered with Union Verify (docket ${registration.docketNumber})${includesCertificate ? ` and our certificate ${registration.certificateNumber} is ready` : ''}.`
-    await postToCoupleChat(userId, userName, { type: 'certificate', text: registeredText })
     const partner = await prisma.user.findUnique({ where: { email: String(payload.partner2Email || '').toLowerCase() }, select: { id: true } })
+    await postToCoupleChat(userId, userName, partner?.id, { type: 'certificate', text: registeredText })
     for (const id of [userId, partner?.id]) {
       await emailMember(id, {
         subject: `Your union is registered (${registration.docketNumber})`,
@@ -286,8 +291,8 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       })
     }
     await recordFee(userId, amount, paymentRef, `Union Verify certificate for ${registration.docketNumber}`)
-    await postToCoupleChat(userId, userName, { type: 'certificate', text: `Our Union Verify certificate is ready (docket ${registration.docketNumber}).` })
     const partner = await prisma.user.findUnique({ where: { email: registration.partner2Email }, select: { id: true } })
+    await postToCoupleChat(userId, userName, partner?.id, { type: 'certificate', text: `Our Union Verify certificate is ready (docket ${registration.docketNumber}).` })
     for (const id of [userId, partner?.id]) {
       await emailMember(id, {
         subject: 'Your Union Verify certificate is ready',
@@ -337,14 +342,7 @@ async function linkOrInviteSpouse(userId: string, inviterName: string, partnerEm
   if (!email) return
   const partner = await prisma.user.findUnique({ where: { email } })
   if (partner && partner.id !== userId) {
-    const [me, existingSpouse] = await Promise.all([
-      prisma.user.findUnique({ where: { id: userId }, select: { spouseId: true } }),
-      resolveSpouseId(partner.id),
-    ])
-    if (!me?.spouseId && (!existingSpouse || existingSpouse === userId)) {
-      await prisma.user.update({ where: { id: userId }, data: { spouseId: partner.id } })
-      await prisma.user.update({ where: { id: partner.id }, data: { spouseId: userId } })
-    }
+    await linkPartners(userId, partner.id, 'spouse')
     return
   }
   const appUrl = siteUrl()

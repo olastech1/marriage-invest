@@ -1,7 +1,8 @@
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getReciprocationStatus } from '@/lib/reciprocation'
-import { getIncomingSpouseRequests, resolveSpouseId } from '@/lib/chat'
+import { getIncomingSpouseRequests } from '@/lib/chat'
+import { getPartnerIds, withdrawalApproverId } from '@/lib/partners'
 import { getSettings } from '@/lib/settings'
 import { formatAnnualRate } from '@/lib/utils'
 import { redirect } from 'next/navigation'
@@ -141,15 +142,16 @@ export default async function DashboardPage() {
     prisma.auditLog.findFirst({
       where: { userId, action: 'MARRIAGE_REGISTRATION_CREATED' },
     }),
-    // Only my spouse's pending requests can need my approval
-    resolveSpouseId(userId).then((spouseId) =>
-      spouseId
-        ? prisma.withdrawalRequest.findMany({
-            where: { status: 'PENDING', userId: spouseId },
-            select: { id: true, amount: true, adminNote: true, userId: true },
-          })
-        : [],
-    ),
+    // Only my partners' pending requests can need my approval (each names the partner who approves it)
+    getPartnerIds(userId).then(async (partnerIds) => {
+      if (!partnerIds.length) return []
+      const pending = await prisma.withdrawalRequest.findMany({
+        where: { status: 'PENDING', userId: { in: partnerIds } },
+        select: { id: true, amount: true, adminNote: true, userId: true, user: { select: { name: true } } },
+      })
+      const mine = await Promise.all(pending.map(async (w) => ((await withdrawalApproverId(w)) === userId ? w : null)))
+      return mine.filter((w): w is NonNullable<typeof w> => !!w)
+    }),
     getReciprocationStatus(userId),
     getSettings(),
     getIncomingSpouseRequests(userId),
@@ -194,7 +196,7 @@ export default async function DashboardPage() {
     (t) => t.type === 'FEE' && (t.description?.toLowerCase().includes('matrimonial') || t.reference?.startsWith('FEE-REG'))
   )
   // Couple linked: a linked partner, or a union registered on the platform
-  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant || reciprocation.spouseId)
+  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant || reciprocation.partnerIds.length)
 
   // Account rating from signed documents, verification and real deposits
   const accountRating = computeAccountRating({
@@ -229,7 +231,10 @@ export default async function DashboardPage() {
 
   // A spouse deposit I still need to reciprocate
   const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your partner'
-  const spouseName = reciprocation.spouseName || 'your partner'
+  const spouseName = reciprocation.partnerIds.length > 1 ? 'your partners' : reciprocation.spouseName || 'your partner'
+  // Deposits to reciprocate can come from several partners
+  const depositors = [...new Set(reciprocation.pendingDeposits.map((d) => d.depositorName))]
+  const requesters = [...new Set(pendingSpousalApprovals.map((w) => w.user?.name || 'Your partner'))]
 
   return (
     <div className="space-y-6">
@@ -244,7 +249,7 @@ export default async function DashboardPage() {
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <MyAccountId accountId={accountId} />
-            {!reciprocation.spouseId && spouseRequests.length === 0 && (
+            {reciprocation.partnerIds.length === 0 && spouseRequests.length === 0 && (
               <Link href="/settings#spouse" className="text-xs font-bold text-rose-700 underline">
                 Link your partner
               </Link>
@@ -286,9 +291,11 @@ export default async function DashboardPage() {
               <h3 className="text-base font-bold text-rose-950">
                 {reciprocation.pendingDeposits.length === 1
                   ? `${pendingDepositorName} made a deposit for you to reciprocate`
-                  : `${pendingDepositorName} made ${reciprocation.pendingDeposits.length} deposits for you to reciprocate`}
+                  : depositors.length > 1
+                    ? `${reciprocation.pendingDeposits.length} deposits from ${depositors.join(' and ')} to reciprocate`
+                    : `${pendingDepositorName} made ${reciprocation.pendingDeposits.length} deposits for you to reciprocate`}
               </h3>
-              <p className="text-xs text-rose-900/80">Reciprocate each one separately. Joint withdrawals stay locked until they&apos;re all reciprocated.</p>
+              <p className="text-xs text-rose-900/80">Reciprocate each one separately. Withdrawals from what you share with that partner wait until theirs are reciprocated.</p>
             </div>
           </div>
           <ul className="space-y-2">
@@ -296,6 +303,7 @@ export default async function DashboardPage() {
               <li key={d.messageId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl bg-white/80 border border-rose-200 px-4 py-3">
                 <div className="text-sm text-rose-950">
                   <span className="font-bold">${d.amount.toLocaleString()}</span>
+                  {depositors.length > 1 && <span className="font-semibold"> from {d.depositorName}</span>}
                   <span className="text-rose-800/80"> · deposited {new Date(d.depositedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                   {d.note && <span className="block text-xs text-rose-800/80">&ldquo;{d.note}&rdquo;</span>}
                 </div>
@@ -332,7 +340,7 @@ export default async function DashboardPage() {
                 {pendingSpousalApprovals.length === 1 ? 'A withdrawal request is' : `${pendingSpousalApprovals.length} withdrawal requests are`} waiting for your approval
               </h3>
               <p className="text-xs text-amber-900/80 leading-relaxed max-w-2xl">
-                {reciprocation.spouseName || 'Your partner'} asked to withdraw from your joint savings. Nothing is paid out until you approve or decline.
+                {requesters.join(' and ')} asked to withdraw from an investment you share. Nothing is paid out until you approve or decline.
               </p>
             </div>
           </div>
@@ -400,7 +408,7 @@ export default async function DashboardPage() {
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-end">
             <Link
-              href="/chat?thread=spouse"
+              href={reciprocation.partnerIds.length === 1 ? '/chat?thread=spouse' : '/chat'}
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
             >
               Open Chat <ArrowRight size={13} />

@@ -7,9 +7,11 @@ import Link from 'next/link'
 import { formatAccountNumber } from '@/lib/utils'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 import FindMember from '@/components/investor/FindMember'
+import LinkPartnerButton from '@/components/investor/LinkPartnerButton'
 import MyAccountId from '@/components/investor/MyAccountId'
 import UserAvatar from '@/components/investor/UserAvatar'
 import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
+import { TranslateLine, TranslateSettings, useChatTranslator } from '@/components/investor/ChatTranslator'
 import {
   Heart,
   Send,
@@ -50,6 +52,8 @@ export interface ChatUser {
   online?: boolean
   unreadCount?: number
   guestEmail?: string | null
+  /** What they are to me when linked as partners, e.g. "Spouse", "Friend" */
+  relationLabel?: string | null
   /** Last message in the conversation (empty before the first one) */
   lastAt?: string | Date | null
   lastFromMe?: boolean
@@ -99,6 +103,7 @@ export interface ConversationItem {
   otherUsername?: string | null
   otherAccountNumber?: string | null
   otherAvatarUrl?: string | null
+  relationLabel?: string | null
   kind?: 'spouse' | 'member' | 'visitor'
   guestEmail?: string | null
   lastMessage?: {
@@ -152,7 +157,9 @@ export default function UnifiedChatPage() {
   const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([])
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
+  // The partner chatted with most recently (for "couple chat" links) and every partner
   const [spouseId, setSpouseId] = useState<string>('')
+  const [partnerIds, setPartnerIds] = useState<string[]>([])
   // Spouse requests waiting for my answer (null until loaded)
   const [spouseRequests, setSpouseRequests] = useState<SpouseRequest[] | null>(null)
   // What I still owe my spouse, and which of their deposits to show the Match button on
@@ -185,6 +192,7 @@ export default function UnifiedChatPage() {
         const list: ConversationItem[] = data.conversations
         setConversations(list)
         setSpouseId(data.spouseId || '')
+        setPartnerIds(Array.isArray(data.partnerIds) ? data.partnerIds : [])
         setAvailableContacts(
           list.map((c) => ({
             id: c.otherUserId,
@@ -192,6 +200,7 @@ export default function UnifiedChatPage() {
             username: c.otherUsername || undefined,
             accountNumber: c.otherAccountNumber || undefined,
             avatarUrl: c.otherAvatarUrl || null,
+            relationLabel: c.relationLabel || null,
             role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
             bio: c.lastMessage?.text.slice(0, 80),
             avatar: c.otherUserName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
@@ -587,7 +596,7 @@ export default function UnifiedChatPage() {
       const res = await fetch('/api/savings/reminders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'send_now', amount, note: reminderNote }),
+        body: JSON.stringify({ action: 'send_now', amount, note: reminderNote, partnerId: activeRecipient.id }),
       })
       const data = await res.json()
       setNudgeBanner(data.success ? data.message : data.error || 'The reminder could not be sent.')
@@ -739,7 +748,12 @@ export default function UnifiedChatPage() {
     )
   })
 
-  const isChattingWithSpouse = !!spouseId && activeRecipient.id === spouseId
+  // Translate messages from other people into my language
+  const translator = useChatTranslator(messages, activeUserId)
+
+  // Partners (spouse, friend…) get the joint-vault tools in their chat
+  const isChattingWithSpouse = partnerIds.includes(activeRecipient.id)
+  const activeRelation = availableContacts.find((c) => c.id === activeRecipient.id)?.relationLabel || 'Partner'
 
   return (
     <div className="h-full flex-1 flex flex-col min-w-0 w-full overflow-hidden">
@@ -867,7 +881,7 @@ export default function UnifiedChatPage() {
             ) : (
               filteredContacts.map((contact) => {
                 const isSelected = activeRecipient.id === contact.id
-                const isSpouse = !!spouseId && contact.id === spouseId
+                const isSpouse = partnerIds.includes(contact.id)
                 const unread = !isSelected && (contact.unreadCount || 0) > 0
 
                 return (
@@ -905,7 +919,7 @@ export default function UnifiedChatPage() {
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                             isSelected ? 'bg-[#C9A84C] text-[#0F1C3F]' : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
-                            Partner
+                            {contact.relationLabel || 'Partner'}
                           </span>
                         )}
                         {contact.role === 'Visitor' && (
@@ -992,7 +1006,7 @@ export default function UnifiedChatPage() {
                     {activeRecipient.name}
                   </h3>
                   {isChattingWithSpouse && (
-                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Partner)</span>
+                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">({activeRelation})</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
@@ -1021,28 +1035,30 @@ export default function UnifiedChatPage() {
                   >
                     {copiedInvite ? 'Link copied' : 'Invite'}
                   </button>
+                  <span>·</span>
+                  <TranslateSettings translator={translator} />
                 </div>
               </div>
             </div>
 
-            {/* Member chat, no spouse yet: ask to link as spouses */}
-            {!spouseId &&
+            {/* Member chat, not linked yet: ask to link as partners (any number of partners) */}
+            {!isChattingWithSpouse &&
               activeRecipient.id &&
               !activeRecipient.id.startsWith('guest_') &&
+              activeRecipient.id !== 'usr_admin' &&
               // Not while a request is already waiting in this chat (either direction)
               !messages.some((m) => m.type === 'spouse_request' && m.proposalData?.status === 'pending') && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (window.confirm(`Ask ${activeRecipient.name} to link your accounts as partners? You'll share a joint vault and approve each other's joint withdrawals.`)) {
-                    handleSpouseAction({ action: 'request', userId: activeRecipient.id })
-                  }
+              <LinkPartnerButton
+                userId={activeRecipient.id}
+                name={activeRecipient.name}
+                className="px-2.5 py-1.5 text-[11px] flex-shrink-0"
+                onDone={(r) => {
+                  setNudgeBanner(r.text)
+                  setTimeout(() => setNudgeBanner(''), 6000)
+                  fetchMessages(false)
+                  fetchConversations()
                 }}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex-shrink-0 cursor-pointer"
-              >
-                <Heart className="w-3.5 h-3.5" />
-                <span>Link as partner</span>
-              </button>
+              />
             )}
 
             {/* Spousal Action Triggers */}
@@ -1260,11 +1276,20 @@ export default function UnifiedChatPage() {
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                         }`}
                       >
-                        <Linkified
-                          text={msg.text}
-                          linkClassName={isMe ? 'text-[#C9A84C]' : 'text-blue-700'}
-                          onOpenOwn={handleOpenOwnLink}
-                        />
+                        {!isMe && translator.shown(msg.id) ? (
+                          translator.shown(msg.id)!.text
+                        ) : (
+                          <Linkified
+                            text={msg.text}
+                            linkClassName={isMe ? 'text-[#C9A84C]' : 'text-blue-700'}
+                            onOpenOwn={handleOpenOwnLink}
+                          />
+                        )}
+                      </div>
+                    )}
+                    {(!msg.type || msg.type === 'text') && !isMe && msg.text?.trim() && (
+                      <div className="px-1 pt-0.5">
+                        <TranslateLine translator={translator} id={msg.id} text={msg.text} />
                       </div>
                     )}
                     {(!msg.type || msg.type === 'text') && findLinks(msg.text)[0] && (
@@ -1435,23 +1460,19 @@ export default function UnifiedChatPage() {
                             </form>
                           )}
                           {msg.type === 'spouse_request' &&
-                            ((!!spouseId && spouseId === activeRecipient.id) || msg.proposalData?.status === 'accepted' ? (
+                            (isChattingWithSpouse || msg.proposalData?.status === 'accepted' ? (
                               <p className="text-[11px] font-semibold text-emerald-700">Accepted — you are linked as partners.</p>
                             ) : msg.proposalData?.status === 'declined' ? (
                               <p className="text-[11px] font-semibold text-gray-500">Declined.</p>
                             ) : msg.proposalData?.toUserId === activeUserId ? (
-                              <div className={`grid gap-2 mt-1 ${spouseId ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                                {spouseId ? (
-                                  <p className="text-[11px] text-gray-500">You are already linked to a partner.</p>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleSpouseAction({ action: 'accept', messageId: msg.id })}
-                                    className="py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
-                                  >
-                                    Accept
-                                  </button>
-                                )}
+                              <div className="grid gap-2 mt-1 grid-cols-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSpouseAction({ action: 'accept', messageId: msg.id })}
+                                  className="py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer"
+                                >
+                                  Accept
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => handleSpouseAction({ action: 'decline', messageId: msg.id })}
@@ -1507,6 +1528,8 @@ export default function UnifiedChatPage() {
                               {msg.proposalData.toUserId === activeUserId && Number(amount) > 0 && (
                                 <form method="post" action="/pay/invest" className="flex-1">
                                   <input type="hidden" name="opportunityId" value={msg.proposalData.opportunityId} />
+                                  {/* From a partner: the investment is shared with them */}
+                                  {partnerIds.includes(msg.senderId || '') && <input type="hidden" name="partnerId" value={msg.senderId} />}
                                   <input type="hidden" name="amount" value={Number(amount)} />
                                   <button type="submit" className="w-full py-2.5 rounded-xl bg-[#0F1C3F] hover:bg-[#1a2f64] text-white font-bold text-xs cursor-pointer">
                                     Invest ${Number(amount).toLocaleString()}
@@ -1556,11 +1579,13 @@ export default function UnifiedChatPage() {
                           .filter(([, who]) => Array.isArray(who) && who.length > 0)
                           .map(([emoji, who]) => {
                             const mine = (who as string[]).includes(activeUserId)
+                            // On my own messages reactions are shown, not added (I can remove one I left)
                             return (
                               <button
                                 key={emoji}
+                                disabled={isMe && !mine}
                                 onClick={() => handleToggleReaction(msg.id, emoji)}
-                                className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs ${
+                                className={`px-2 py-0.5 rounded-full border text-[11px] font-semibold flex items-center gap-1 transition-colors shadow-2xs disabled:cursor-default ${
                                   mine ? 'bg-[#C9A84C]/15 border-[#C9A84C]' : 'bg-white border-gray-200 hover:border-[#C9A84C]'
                                 }`}
                               >
@@ -1569,6 +1594,7 @@ export default function UnifiedChatPage() {
                               </button>
                             )
                           })}
+                      {!isMe && (
                       <div className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-center gap-0.5 ml-1">
                         {['❤️', '👍', '🔥'].map((emoji) => (
                           <button
@@ -1580,6 +1606,7 @@ export default function UnifiedChatPage() {
                           </button>
                         ))}
                       </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1634,7 +1661,6 @@ export default function UnifiedChatPage() {
                 Find a member by their account ID or email to chat, add them, or link as partners. An email that isn&apos;t a member gets an invitation to join.
               </p>
               <FindMember
-                hasSpouse={!!spouseId}
                 onChat={(m) =>
                   handleSelectContact({
                     id: m.id,

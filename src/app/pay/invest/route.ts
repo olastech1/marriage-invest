@@ -6,9 +6,10 @@ import { PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
-// POST /pay/invest (form: opportunityId, amount)
+// POST /pay/invest (form: opportunityId, amount, partnerId?)
 // One tap from an "Invest $X" invitation in chat: opens Stripe Checkout for an
 // investment in an open opportunity. Created only after the payment succeeds.
+// From a partner's invitation it is shared with them (checked when it is created).
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const origin = req.nextUrl.origin
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
       email: session.user.email,
       title: `Investment: ${opportunity.title}`,
       description: opportunity.shortDescription,
-      payload: { opportunityId: opportunity.id },
+      payload: { opportunityId: opportunity.id, partnerId: String(form.get('partnerId') || '') || undefined },
       origin,
-      cancelPath: '/chat',
+      cancelPath: form.get('partnerId') ? `/chat?recipientId=${encodeURIComponent(String(form.get('partnerId')))}` : '/chat',
     })
     return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {

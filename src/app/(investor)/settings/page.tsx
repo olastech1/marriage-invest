@@ -43,7 +43,7 @@ export default function InvestorSettingsPage() {
   // Saved on the server (null until the member has a username)
   const [publicBioPath, setPublicBioPath] = useState<string | null>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
-  const [spouse, setSpouse] = useState<SpouseInfo | null>(null)
+  const [partners, setPartners] = useState<SpouseInfo[]>([])
 
   const [statusMsg, setStatusMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
@@ -76,17 +76,15 @@ export default function InvestorSettingsPage() {
           })
           setPublicBioPath(data.user.publicBioUrl || null)
           setAvatarUrl(data.user.avatarUrl || null)
-          setSpouse(
-            data.spouse
-              ? { name: data.spouse.name || '', email: data.spouse.email || '', phone: data.spouse.phone || '' }
-              : null
+          setPartners(
+            (data.partners || []).map((p: SpouseInfo) => ({ name: p.name || '', email: p.email || '', phone: p.phone || '' }))
           )
         }
       })
       .catch(console.error)
   }, [])
 
-  // Load the member's own profile and their spouse's contact details
+  // Load the member's own profile and their partners' contact details
   useEffect(() => {
     loadProfile()
   }, [loadProfile])
@@ -481,52 +479,30 @@ export default function InvestorSettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-[#0F1C3F] flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-[#C9A84C]" />
-                Your Partner
+                Your partners
               </h3>
-              {spouse && (
+              {partners.length > 0 && (
                 <span className="text-[10px] font-mono bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full font-bold">
-                  Linked
+                  {partners.length} linked
                 </span>
               )}
             </div>
 
-            {spouse ? (
+            {partners.length > 0 ? (
               <>
-                <p className="text-xs text-gray-500 mb-4">
-                  Your partner edits these details from their own account.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner name</label>
-                    <input
-                      type="text"
-                      value={spouse.name}
-                      disabled
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner email</label>
-                    <input
-                      type="email"
-                      value={spouse.email}
-                      disabled
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner phone</label>
-                    <input
-                      type="tel"
-                      value={spouse.phone || 'Not provided'}
-                      disabled
-                      className="w-full px-4 py-2.5 rounded-lg border border-gray-200 bg-gray-50 text-xs text-gray-600 outline-none"
-                    />
-                  </div>
+                <p className="text-xs text-gray-500 mb-4">Each partner edits these details from their own account.</p>
+                <div className="space-y-2">
+                  {partners.map((p) => (
+                    <div key={p.email} className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded-xl border border-gray-200 bg-gray-50 text-xs text-gray-700">
+                      <span className="font-semibold truncate">{p.name}</span>
+                      <span className="truncate">{p.email}</span>
+                      <span className="truncate">{p.phone || 'No phone'}</span>
+                    </div>
+                  ))}
                 </div>
               </>
             ) : (
-              <p className="text-xs text-gray-500">No partner is linked yet. Find your partner by account ID under &ldquo;Your partner&rdquo; at the top of this page.</p>
+              <p className="text-xs text-gray-500">No partner is linked yet. Link one under &ldquo;Your partners&rdquo; at the top of this page.</p>
             )}
           </div>
         </div>

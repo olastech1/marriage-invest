@@ -16,6 +16,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
 import { buildThreadId } from '@/lib/chat'
 import { ensureAccountNumber } from '@/lib/accountId'
+import { linkPartners } from '@/lib/partners'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -115,12 +116,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       orderBy: { createdAt: 'desc' },
       select: { userId: true },
     })
-    if (invitedBy) {
-      const inviter = await prisma.user.findUnique({ where: { id: invitedBy.userId }, select: { spouseId: true } })
-      if (inviter && !inviter.spouseId) {
-        await prisma.user.update({ where: { id: invitedBy.userId }, data: { spouseId: user.id } })
-        await prisma.user.update({ where: { id: user.id }, data: { spouseId: invitedBy.userId } })
-      }
+    if (invitedBy && invitedBy.userId !== user.id) {
+      await linkPartners(invitedBy.userId, user.id, 'spouse').catch((err) => console.error('[register] partner link failed', err))
     }
 
     return NextResponse.json(

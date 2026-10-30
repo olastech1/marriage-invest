@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildThreadId, createChatMessage, resolveSpouseId } from '@/lib/chat'
+import { isPartner } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
@@ -39,8 +40,9 @@ export async function POST(req: NextRequest, { params }: Params) {
   // Who is invited
   let recipient: { id: string; name: string; email: string } | null = null
   let email = ''
-  if (body.to === 'spouse') {
-    const spouseId = await resolveSpouseId(me)
+  if (body.partnerId || body.to === 'spouse') {
+    // One of my partners (older clients send 'spouse': the partner chatted with most recently)
+    const spouseId = body.partnerId ? ((await isPartner(me, String(body.partnerId))) ? String(body.partnerId) : '') : await resolveSpouseId(me)
     recipient = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, email: true } }) : null
     if (!recipient) return NextResponse.json({ success: false, error: 'You have no linked partner yet.' }, { status: 400 })
     email = recipient.email

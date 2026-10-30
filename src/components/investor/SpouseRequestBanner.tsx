@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Heart } from 'lucide-react'
+import { RELATIONS, cleanRelation } from '@/lib/relations'
 
-export type SpouseRequest = { messageId: string; fromUserId: string; fromName: string }
+export type SpouseRequest = { messageId: string; fromUserId: string; fromName: string; relation?: string }
 
 /** "X wants to link as spouses" with Accept / Decline, wherever the member lands */
 export default function SpouseRequestBanner({
@@ -60,9 +61,11 @@ export default function SpouseRequestBanner({
               <Heart className="w-4 h-4" />
             </div>
             <div className="text-sm">
-              <p className="font-bold text-rose-950">{request.fromName} wants to link your accounts as partners</p>
+              <p className="font-bold text-rose-950">
+                {request.fromName} wants to link with you ({RELATIONS[cleanRelation(request.relation)].toLowerCase()})
+              </p>
               <p className="text-xs text-rose-900/80">
-                You&apos;ll share a joint vault, reciprocate each other&apos;s deposits and approve each other&apos;s joint withdrawals.{' '}
+                You&apos;ll have a joint vault together, reciprocate each other&apos;s deposits and approve withdrawals from what you share. Your other partners aren&apos;t affected.{' '}
                 {onOpenChat ? (
                   <button type="button" onClick={() => onOpenChat(request)} className="font-semibold underline cursor-pointer">
                     Open chat

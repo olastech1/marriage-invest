@@ -544,10 +544,13 @@ export async function sendDepositReminderEmail({
   vaultName = 'your joint savings',
   note,
   frequency,
+  senderId,
 }: {
   to: string
   recipientName: string
   senderName: string
+  /** Opens the joint vault with the sender */
+  senderId?: string
   amount: number
   vaultName?: string
   note?: string
@@ -575,7 +578,7 @@ export async function sendDepositReminderEmail({
     </div>
 
     <p style="text-align:center;margin:32px 0 24px;">
-      <a href="${APP_URL}/save?amount=${amount}&target=joint" class="btn" style="background:#0F1C3F;color:#ffffff;padding:14px 32px;font-weight:700;border-radius:12px;text-decoration:none;display:inline-block;">
+      <a href="${APP_URL}/save?amount=${amount}${senderId ? `&partner=${encodeURIComponent(senderId)}` : ''}" class="btn" style="background:#0F1C3F;color:#ffffff;padding:14px 32px;font-weight:700;border-radius:12px;text-decoration:none;display:inline-block;">
         Deposit ${fmtCurrency(amount)}
       </a>
     </p>

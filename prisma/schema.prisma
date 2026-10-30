@@ -185,6 +185,8 @@ model Investment {
   confirmedAt         DateTime?
   maturityDate        DateTime?
   agreementDocumentId String?
+  /// The partner this investment is shared with (their approval is needed to withdraw); none = personal
+  partnerId           String?
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
@@ -376,6 +378,23 @@ model Avatar {
   updatedAt DateTime @updatedAt
 
   @@map("avatars")
+}
+
+/// Two members linked as partners (spouse, friend, family…). A member can have any
+/// number; each pair has its own joint vault, chat, reciprocation and approvals.
+/// userAId is the smaller id, so a pair is stored once.
+model Partnership {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  /// spouse | partner | friend | family | business | other
+  relation  String   @default("partner")
+  createdAt DateTime @default(now())
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+  @@map("partnerships")
 }
 
 /// People a member added to their chat list

@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { resolveSpouseId } from '@/lib/chat'
+import { getPartnerLinks } from '@/lib/partners'
 import { FEES, PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 
 export const dynamic = 'force-dynamic'
 
-// The couple's registration: made by me, or by my spouse naming my email
+// The couple's registration: made by me, naming my email, or by a partner I'm linked with as spouses
 async function findRegistration(userId: string, email: string) {
-  const spouseId = await resolveSpouseId(userId)
+  const spouseIds = (await getPartnerLinks(userId)).filter((l) => l.relation === 'spouse').map((l) => l.id)
   return prisma.marriageRegistration.findFirst({
     where: {
-      OR: [{ userId }, { partner2Email: email.toLowerCase() }, ...(spouseId ? [{ userId: spouseId }] : [])],
+      OR: [{ userId }, { partner2Email: email.toLowerCase() }, ...(spouseIds.length ? [{ userId: { in: spouseIds } }] : [])],
     },
     orderBy: { createdAt: 'desc' },
   })
