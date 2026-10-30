@@ -11,7 +11,7 @@ type State =
   | { kind: 'error'; message: string }
 
 const NEXT_LABEL: Record<string, string> = {
-  '/chat': 'Go to couple chat',
+  '/chat?thread=spouse': 'Go to couple chat',
   '/portfolio': 'View portfolio',
   '/certificate': 'View certificate',
   '/dashboard': 'Go to dashboard',

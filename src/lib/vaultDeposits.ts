@@ -149,7 +149,7 @@ export async function recordVaultDeposit({
       heading: `${userName} paid their share`,
       paragraphs: [`${userName} paid ${usd} toward "${planName}". If you haven't paid your share yet, you can do it from your chat.`],
       ctaLabel: 'Open chat',
-      ctaPath: '/chat',
+      ctaPath: '/chat?thread=spouse',
     })
   } else if (isReciprocalMatch) {
     await emailMember(spouseId, {

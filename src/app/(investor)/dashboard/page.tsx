@@ -399,7 +399,7 @@ export default async function DashboardPage() {
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-end">
             <Link
-              href="/chat"
+              href="/chat?thread=spouse"
               className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
             >
               Open Chat <ArrowRight size={13} />

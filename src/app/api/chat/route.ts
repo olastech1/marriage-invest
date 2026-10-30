@@ -82,7 +82,7 @@ type Conversation = {
   updatedAt: Date | string
 }
 
-/** Everyone I have a conversation with or added (no member directory). Spouse first, then most recent. */
+/** Everyone I have a conversation with or added (no member directory). Newest message first. */
 async function buildConversations(currentUserId: string, spouseId: string): Promise<Conversation[]> {
   const chatDb = await getChatDb()
   const [myMessages, saved] = await Promise.all([
@@ -167,9 +167,13 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     })
   }
 
-  return [...threads.values()].sort((a, b) =>
-    a.isSpouse !== b.isSpouse ? (a.isSpouse ? -1 : 1) : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-  )
+  // Newest message first; people with no messages yet go last (spouse first among them)
+  const lastAt = (c: Conversation) => (c.lastMessage.createdAt ? new Date(c.lastMessage.createdAt).getTime() : 0)
+  return [...threads.values()].sort((a, b) => {
+    if (lastAt(a) !== lastAt(b)) return lastAt(b) - lastAt(a)
+    if (a.isSpouse !== b.isSpouse) return a.isSpouse ? -1 : 1
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+  })
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +188,8 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url)
     const threadParam = searchParams.get('thread')
+    // Look without marking anything read (the closed chat bubble)
+    const peek = searchParams.get('peek') === '1'
     const recipientIdParam = searchParams.get('recipientId')
     const listConversations = searchParams.get('list') === 'true'
     const listUsers = searchParams.get('users') === 'true'
@@ -254,7 +260,7 @@ export async function GET(req: NextRequest) {
 
     // Mark messages addressed to me as read
     for (const msg of messages) {
-      if (!msg.read && msg.recipientId === currentUserId) {
+      if (!peek && !msg.read && msg.recipientId === currentUserId) {
         await chatDb.chatMessage.update({ where: { id: msg.id }, data: { read: true } })
         msg.read = true
       }
@@ -485,7 +491,7 @@ export async function PATCH(req: Request) {
           ? [`${currentUser.name} approved your $${amount.toLocaleString()} plan for "${plan}".`, `Pay your $${share.toLocaleString()} share from your chat.`]
           : [`${currentUser.name} declined your $${amount.toLocaleString()} plan for "${plan}".`],
         ctaLabel: 'Open chat',
-        ctaPath: '/chat',
+        ctaPath: '/chat?thread=spouse',
       })
       return NextResponse.json({ success: true, message: updated })
     }

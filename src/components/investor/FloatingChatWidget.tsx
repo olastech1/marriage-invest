@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Linkified } from '@/components/investor/LinkPreview'
 import {
   MessageSquareHeart,
   Minimize2,
@@ -63,10 +64,12 @@ export function FloatingChatWidget() {
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
   const partnerRelation = 'Spouse'
 
-  // Poll /api/chat?thread=spouse for new messages
+  const isChatPage = pathname === '/chat' || pathname?.startsWith('/chat')
+
+  // Poll /api/chat?thread=spouse for new messages (only marked read while the bubble is open)
   const fetchLiveMessages = async () => {
     try {
-      const res = await fetch('/api/chat?thread=spouse')
+      const res = await fetch(`/api/chat?thread=spouse${isOpen ? '' : '&peek=1'}`)
       const data = await res.json()
       if (data.success && Array.isArray(data.messages)) {
         const currentActiveId = data.currentUser?.id
@@ -111,6 +114,8 @@ export function FloatingChatWidget() {
   }
 
   useEffect(() => {
+    // The chat page has its own list and thread
+    if (isChatPage) return
     fetchLiveMessages()
     const timer = setInterval(fetchLiveMessages, 3500)
 
@@ -127,9 +132,7 @@ export function FloatingChatWidget() {
       clearInterval(timer)
       if (bc) bc.close()
     }
-  }, [isOpen])
-
-  const isChatPage = pathname === '/chat' || pathname?.startsWith('/chat')
+  }, [isOpen, isChatPage])
 
   // Play synthetic chime via Web Audio API
   function playChime() {
@@ -324,7 +327,9 @@ export function FloatingChatWidget() {
                         : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                     }`}
                   >
-                    <p>{m.text}</p>
+                    <p className="break-words [overflow-wrap:anywhere]">
+                      <Linkified text={m.text} linkClassName={isMe ? 'text-[#C9A84C]' : 'text-blue-700'} />
+                    </p>
                     {m.type && CARD_LABELS[m.type] && (
                       <div className="mt-2 pt-2 border-t border-amber-200/50 flex items-center justify-between gap-2">
                         <span className="text-[10px] font-bold text-[#C9A84C]">

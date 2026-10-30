@@ -15,11 +15,11 @@ async function reciprocate(req: NextRequest, depositId: string | null) {
   const origin = req.nextUrl.origin
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat')}`, 303)
+    return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat?thread=spouse')}`, 303)
   }
 
   const deposit = await findPendingDeposit(session.user.id, depositId)
-  if (!deposit) return NextResponse.redirect(`${origin}/chat`, 303)
+  if (!deposit) return NextResponse.redirect(`${origin}/chat?thread=spouse`, 303)
 
   const day = new Date(deposit.depositedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   try {
@@ -33,7 +33,7 @@ async function reciprocate(req: NextRequest, depositId: string | null) {
       description: `Deposit made on ${day}${deposit.note ? ` — "${deposit.note}"` : ''}`,
       payload: { isReciprocalMatch: true, forDepositId: deposit.messageId },
       origin,
-      cancelPath: '/chat',
+      cancelPath: '/chat?thread=spouse',
     })
     return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {

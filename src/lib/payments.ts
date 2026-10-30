@@ -149,7 +149,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     })
     return {
       purpose: 'VAULT_DEPOSIT',
-      nextUrl: '/chat',
+      nextUrl: '/chat?thread=spouse',
       message: payload.isReciprocalMatch
         ? `You reciprocated with $${amount.toLocaleString()}.`
         : `Your $${amount.toLocaleString()} deposit was added to your joint vault.`,

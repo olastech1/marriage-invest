@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatAccountNumber } from '@/lib/utils'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 import FindMember from '@/components/investor/FindMember'
 import MyAccountId from '@/components/investor/MyAccountId'
+import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
 import {
   Heart,
   Send,
@@ -139,16 +141,12 @@ export default function UnifiedChatPage() {
   // -------------------------------------------------------------------------
   // 2. Chat Recipient & Contact Management
   // -------------------------------------------------------------------------
-  // Empty until the server resolves the user's spouse (or a contact is picked)
-  const [activeRecipient, setActiveRecipient] = useState<ChatUser>({
-    id: '',
-    name: 'Your spouse',
-    avatar: 'YS',
-    online: false,
-  })
+  const router = useRouter()
+  // Empty until a chat is opened
+  const NO_CHAT: ChatUser = { id: '', name: '', avatar: '', online: false }
+  const [activeRecipient, setActiveRecipient] = useState<ChatUser>(NO_CHAT)
 
   const [availableContacts, setAvailableContacts] = useState<ChatUser[]>([])
-  const [contactsLoaded, setContactsLoaded] = useState(false)
 
   const [conversations, setConversations] = useState<ConversationItem[]>([])
   const [spouseId, setSpouseId] = useState<string>('')
@@ -169,7 +167,8 @@ export default function UnifiedChatPage() {
   const [reminderNote, setReminderNote] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [showNewChatModal, setShowNewChatModal] = useState(false)
-  const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('chat')
+  // Opens on the chat list; a chat opens when tapped or when a link names one
+  const [mobileTab, setMobileTab] = useState<'contacts' | 'chat'>('contacts')
 
   // Derive active thread ID
   const activeThreadId = getThreadId(activeUserId, activeRecipient.id)
@@ -198,7 +197,6 @@ export default function UnifiedChatPage() {
             lastFromMe: c.lastMessage?.fromMe,
           })),
         )
-        setContactsLoaded(true)
       }
     } catch (err) {
       console.warn('Failed to fetch conversations:', err)
@@ -260,45 +258,28 @@ export default function UnifiedChatPage() {
         })
         setMobileTab('chat')
       }
-    } else if (spouseId) {
-      // Default to the user's spouse
-      const spouseConvo = conversations.find((c) => c.otherUserId === spouseId)
-      const spouseContact = availableContacts.find((c) => c.id === spouseId)
-      const spouseName = spouseContact?.name || spouseConvo?.otherUserName || 'Your spouse'
-      setActiveRecipient((prev) =>
-        prev.id === spouseId
-          ? prev
-          : spouseContact || {
-              id: spouseId,
-              name: spouseName,
-              avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-            }
-      )
-    } else if (!activeRecipient.id && spouseRequests?.length) {
-      // Someone asked to link as spouses: open that chat first
-      const { fromUserId, fromName } = spouseRequests[0]
-      setActiveRecipient(
-        availableContacts.find((c) => c.id === fromUserId) || {
-          id: fromUserId,
-          name: fromName,
-          avatar: fromName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
-        }
-      )
-      setMobileTab('chat')
-    } else if (availableContacts.length > 0 && spouseRequests) {
-      // No spouse yet: open the most recent conversation instead of an empty placeholder
-      if (!activeRecipient.id) {
-        setActiveRecipient(availableContacts[0])
+    } else if (threadParam === 'spouse' && spouseId) {
+      // A "couple chat" link: open the spouse's chat once
+      if (openedLinkRef.current !== 'spouse') {
+        openedLinkRef.current = 'spouse'
+        const spouseContact = availableContacts.find((c) => c.id === spouseId)
+        const spouseName = spouseContact?.name || conversations.find((c) => c.otherUserId === spouseId)?.otherUserName || 'Your spouse'
+        setActiveRecipient(
+          spouseContact || {
+            id: spouseId,
+            name: spouseName,
+            avatar: spouseName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+          }
+        )
         setMobileTab('chat')
       }
-    } else if (contactsLoaded && spouseRequests) {
-      // Nothing to open: show the conversation list (with "New chat")
-      setMobileTab('contacts')
     }
-  }, [availableContacts, contactsLoaded, activeRecipient.id, activeUserId, spouseId, conversations, spouseRequests])
+    // Otherwise (the Chat icon or menu) the list shows and nothing opens until a chat is tapped
+  }, [availableContacts, spouseId, conversations])
 
   // Select contact & start/open chat
   const handleSelectContact = (contact: ChatUser) => {
+    openedLinkRef.current = contact.id
     setActiveRecipient(contact)
     setMobileTab('chat')
     setShowNewChatModal(false)
@@ -310,6 +291,37 @@ export default function UnifiedChatPage() {
       if (contact.name) url.searchParams.set('name', contact.name)
       window.history.replaceState({}, '', url.toString())
     }
+  }
+
+  // Back to the list: close the chat so its new messages count as unread again
+  const handleCloseChat = () => {
+    setActiveRecipient(NO_CHAT)
+    setMobileTab('contacts')
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      for (const key of ['recipientId', 'name', 'to', 'user', 'thread']) url.searchParams.delete(key)
+      window.history.replaceState({}, '', url.toString())
+    }
+  }
+
+  // A Union Verify link in a message: chat links open here, other pages in this tab
+  const handleOpenOwnLink = (href: string) => {
+    if (!URL.canParse(href)) return false
+    const url = new URL(href)
+    const id = url.searchParams.get('recipientId') || url.searchParams.get('to') || url.searchParams.get('user')
+    if (url.pathname.replace(/\/+$/, '') === '/chat' && id) {
+      if (id === activeUserId) {
+        setNudgeBanner('That is your own chat link. Share it so others can message you.')
+        setTimeout(() => setNudgeBanner(''), 5000)
+        return true
+      }
+      const known = availableContacts.find((c) => c.id.toLowerCase() === id.toLowerCase())
+      const name = known?.name || url.searchParams.get('name') || 'Member'
+      handleSelectContact(known || { id, name, avatar: name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase() })
+      return true
+    }
+    router.push(`${url.pathname}${url.search}${url.hash}`)
+    return true
   }
 
   // -------------------------------------------------------------------------
@@ -824,6 +836,25 @@ export default function UnifiedChatPage() {
 
           {/* Conversations & Contacts List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            {/* Spouse requests waiting for me (the open chat shows its own on the card) */}
+            <SpouseRequestBanner
+              stacked
+              requests={(spouseRequests || []).filter((r) => r.fromUserId !== activeRecipient.id)}
+              onOpenChat={(r) =>
+                handleSelectContact(
+                  availableContacts.find((c) => c.id === r.fromUserId) || {
+                    id: r.fromUserId,
+                    name: r.fromName,
+                    avatar: r.fromName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+                  }
+                )
+              }
+              onDone={() => {
+                fetchSpouseRequests()
+                fetchConversations()
+                fetchMessages(false)
+              }}
+            />
             {filteredContacts.length === 0 ? (
               <div className="p-6 text-center text-xs text-gray-400">
                 {searchQuery ? `No conversations match "${searchQuery}".` : 'No conversations yet. Tap "New chat" to find someone by account ID or email.'}
@@ -915,12 +946,24 @@ export default function UnifiedChatPage() {
             mobileTab === 'chat' ? 'flex' : 'hidden lg:flex'
           }`}
         >
+          {!activeRecipient.id ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-gray-50/50">
+              <div className="w-12 h-12 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/10 flex items-center justify-center text-[#C9A84C]">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <h4 className="mt-3 text-sm font-bold text-[#0F1C3F]">Choose a chat</h4>
+              <p className="mt-1 text-xs text-gray-500 max-w-xs">
+                Pick a conversation from the list, or tap New chat to find someone by account ID or email.
+              </p>
+            </div>
+          ) : (
+          <>
           {/* Thread Header */}
           <div className="px-3 sm:px-6 py-2.5 sm:py-3 border-b border-gray-100 flex items-center justify-between bg-white sticky top-0 z-20 flex-shrink-0 shadow-xs">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 type="button"
-                onClick={() => setMobileTab('contacts')}
+                onClick={handleCloseChat}
                 className="lg:hidden p-1.5 -ml-1 text-gray-600 hover:text-gray-900 rounded-xl hover:bg-gray-100 flex items-center gap-1 text-xs font-bold transition-colors"
                 title="Back to Conversations"
               >
@@ -1131,16 +1174,6 @@ export default function UnifiedChatPage() {
               </div>
             )}
 
-            {/* Spouse requests from people other than the one in this chat */}
-            <SpouseRequestBanner
-              requests={(spouseRequests || []).filter((r) => r.fromUserId !== activeRecipient.id)}
-              onDone={() => {
-                fetchSpouseRequests()
-                fetchConversations()
-                fetchMessages(false)
-              }}
-            />
-
             {/* Feedback Banners */}
             {nudgeBanner && (
               <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-800 font-bold flex items-center gap-2 shadow-xs">
@@ -1218,7 +1251,16 @@ export default function UnifiedChatPage() {
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                         }`}
                       >
-                        {msg.text}
+                        <Linkified
+                          text={msg.text}
+                          linkClassName={isMe ? 'text-[#C9A84C]' : 'text-blue-700'}
+                          onOpenOwn={handleOpenOwnLink}
+                        />
+                      </div>
+                    )}
+                    {(!msg.type || msg.type === 'text') && findLinks(msg.text)[0] && (
+                      <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <LinkPreviewCard url={findLinks(msg.text)[0]} onOpenOwn={handleOpenOwnLink} />
                       </div>
                     )}
 
@@ -1555,6 +1597,8 @@ export default function UnifiedChatPage() {
               </button>
             </form>
           </div>
+          </>
+          )}
         </div>
       </div>
 

@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   const origin = req.nextUrl.origin
   const session = await auth()
   if (!session?.user?.id) {
-    return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat')}`, 303)
+    return NextResponse.redirect(`${origin}/login?callbackUrl=${encodeURIComponent('/chat?thread=spouse')}`, 303)
   }
 
   const form = await req.formData()
@@ -29,12 +29,12 @@ export async function POST(req: NextRequest) {
     const data = (proposal?.proposalData || {}) as Record<string, unknown>
     const isParticipant = proposal && (proposal.senderId === session.user.id || proposal.recipientId === session.user.id)
     if (!proposal || proposal.type !== 'proposal' || !isParticipant || data.status !== 'approved') {
-      return NextResponse.redirect(`${origin}/chat`, 303)
+      return NextResponse.redirect(`${origin}/chat?thread=spouse`, 303)
     }
     const alreadyPaid = await prisma.chatMessage.findFirst({
       where: { threadId: proposal.threadId, senderId: session.user.id, type: 'deposit_alert', depositData: { path: ['proposalId'], equals: proposalId } },
     })
-    if (alreadyPaid) return NextResponse.redirect(`${origin}/chat`, 303)
+    if (alreadyPaid) return NextResponse.redirect(`${origin}/chat?thread=spouse`, 303)
     amount = Math.round((Number(data.amount) / 2) * 100) / 100
     title = `Your share for "${String(data.goalName || 'your plan')}"`
     payload = { proposalId }
@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       description: 'Deposit into your Union Verify joint vault',
       payload,
       origin,
-      cancelPath: '/chat',
+      cancelPath: '/chat?thread=spouse',
     })
     return NextResponse.redirect(checkoutUrl, 303)
   } catch (error) {

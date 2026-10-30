@@ -8,7 +8,19 @@ import { Heart } from 'lucide-react'
 export type SpouseRequest = { messageId: string; fromUserId: string; fromName: string }
 
 /** "X wants to link as spouses" with Accept / Decline, wherever the member lands */
-export default function SpouseRequestBanner({ requests, onDone }: { requests: SpouseRequest[]; onDone?: () => void }) {
+export default function SpouseRequestBanner({
+  requests,
+  onDone,
+  stacked = false,
+  onOpenChat,
+}: {
+  requests: SpouseRequest[]
+  onDone?: () => void
+  /** Keep the buttons under the text (narrow places like the chat list) */
+  stacked?: boolean
+  /** Open the requester's chat in place (on the chat page) */
+  onOpenChat?: (request: SpouseRequest) => void
+}) {
   const router = useRouter()
   const [busy, setBusy] = useState('')
   const [error, setError] = useState('')
@@ -41,7 +53,7 @@ export default function SpouseRequestBanner({ requests, onDone }: { requests: Sp
       {requests.map((request) => (
         <div
           key={request.messageId}
-          className="rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
+          className={`rounded-2xl border-2 border-rose-200 bg-rose-50 p-4 flex flex-col justify-between gap-3 shadow-sm ${stacked ? '' : 'sm:flex-row sm:items-center'}`}
         >
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0">
@@ -51,16 +63,22 @@ export default function SpouseRequestBanner({ requests, onDone }: { requests: Sp
               <p className="font-bold text-rose-950">{request.fromName} wants to link your accounts as spouses</p>
               <p className="text-xs text-rose-900/80">
                 You&apos;ll share a joint vault, reciprocate each other&apos;s deposits and approve each other&apos;s joint withdrawals.{' '}
-                <Link
-                  href={`/chat?recipientId=${encodeURIComponent(request.fromUserId)}&name=${encodeURIComponent(request.fromName)}`}
-                  className="font-semibold underline"
-                >
-                  Open chat
-                </Link>
+                {onOpenChat ? (
+                  <button type="button" onClick={() => onOpenChat(request)} className="font-semibold underline cursor-pointer">
+                    Open chat
+                  </button>
+                ) : (
+                  <Link
+                    href={`/chat?recipientId=${encodeURIComponent(request.fromUserId)}&name=${encodeURIComponent(request.fromName)}`}
+                    className="font-semibold underline"
+                  >
+                    Open chat
+                  </Link>
+                )}
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:flex flex-shrink-0">
+          <div className={`grid grid-cols-2 gap-2 flex-shrink-0 ${stacked ? '' : 'sm:flex'}`}>
             <button
               type="button"
               disabled={!!busy}
