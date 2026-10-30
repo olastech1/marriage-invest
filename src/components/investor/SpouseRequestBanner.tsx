@@ -28,7 +28,7 @@ export default function SpouseRequestBanner({
   if (requests.length === 0) return null
 
   const answer = async (request: SpouseRequest, action: 'accept' | 'decline') => {
-    if (action === 'decline' && !window.confirm(`Decline ${request.fromName}'s request to link as spouses?`)) return
+    if (action === 'decline' && !window.confirm(`Decline ${request.fromName}'s request to link as partners?`)) return
     setBusy(request.messageId)
     setError('')
     try {
@@ -60,7 +60,7 @@ export default function SpouseRequestBanner({
               <Heart className="w-4 h-4" />
             </div>
             <div className="text-sm">
-              <p className="font-bold text-rose-950">{request.fromName} wants to link your accounts as spouses</p>
+              <p className="font-bold text-rose-950">{request.fromName} wants to link your accounts as partners</p>
               <p className="text-xs text-rose-900/80">
                 You&apos;ll share a joint vault, reciprocate each other&apos;s deposits and approve each other&apos;s joint withdrawals.{' '}
                 {onOpenChat ? (

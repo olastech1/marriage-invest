@@ -5,6 +5,7 @@
 
 import Stripe from 'stripe'
 import { getStripeConfig } from '@/lib/stripeConfig'
+import { siteUrl } from '@/lib/site'
 
 export interface CheckoutInput {
   userId: string
@@ -22,7 +23,7 @@ export interface CheckoutInput {
 export type CheckoutResult = { sandbox: true } | { sandbox: false; url: string; sessionId: string }
 
 export function appUrl(): string {
-  return (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  return siteUrl()
 }
 
 export async function createCheckoutSession(input: CheckoutInput): Promise<CheckoutResult> {

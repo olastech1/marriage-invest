@@ -153,10 +153,10 @@ export default function AccountRatingCard({ rating }: AccountRatingCardProps) {
           </div>
           <div>
             <span className="text-[10px] uppercase font-bold text-gray-400 block">
-              Marriage registration
+              Partner linked
             </span>
             <span className="text-sm font-bold text-[#0F1C3F]">
-              {rating.hasMarriageCovenant ? 'Registered' : 'Not registered yet'}
+              {rating.hasMarriageCovenant ? 'Linked' : 'Not linked yet'}
             </span>
           </div>
         </div>

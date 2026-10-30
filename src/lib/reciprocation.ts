@@ -76,7 +76,7 @@ export async function getSpouseName(spouseId: string, fallback?: string): Promis
     where: { senderId: spouseId },
     orderBy: { createdAt: 'desc' },
   })
-  return lastSent?.senderName || fallback || 'your spouse'
+  return lastSent?.senderName || fallback || 'your partner'
 }
 
 type DepositMessage = Awaited<ReturnType<typeof loadCoupleDeposits>>[number]

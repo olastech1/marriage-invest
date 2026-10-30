@@ -19,9 +19,9 @@ import {
 } from 'lucide-react'
 
 export const metadata: Metadata = {
-  title: 'Union Verify — Marriage Investment Platform',
+  title: { absolute: 'Union Verify — Save and Invest Together' },
   description:
-    'A joint savings and investment platform for couples. One partner registers, invites their spouse, both sign a Union Verify certificate, and you save and invest together in USD.',
+    'A joint savings and investment platform for couples. One partner registers, invites their partner, both sign a Union Verify certificate, and you save and invest together in USD.',
 }
 
 export const dynamic = 'force-dynamic'
@@ -65,12 +65,12 @@ export default async function HomePage() {
           </div>
 
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold text-[#0F1C3F] tracking-tight leading-[1.15] mb-6">
-            Invest in Your Marriage. <br className="hidden sm:inline" />
+            Invest in Your Future Together. <br className="hidden sm:inline" />
             <span className="text-[#C9A84C]">Save and Invest Together.</span>
           </h1>
 
           <p className="text-base sm:text-xl text-gray-600 max-w-3xl mx-auto leading-relaxed mb-8">
-            One partner registers and invites their spouse. Together you register your union, receive your <strong>Union Verify certificate</strong>, and save and invest together in USD.
+            One partner registers and invites their partner, and you save and invest together in USD. Married, engaged or partners: registering your union for a <strong>Union Verify certificate</strong> is optional.
           </p>
 
           {/* Hero CTAs */}
@@ -79,7 +79,7 @@ export default async function HomePage() {
               href="/register"
               className="w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460] active:scale-95 transition-all shadow-lg shadow-[#C9A84C]/25"
             >
-              Start Marriage Account
+              Start a Couple Account
             </Link>
             <Link
               href="#certificate"
@@ -97,11 +97,11 @@ export default async function HomePage() {
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
               <Mail className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
-              <span className="font-medium">2. Invite Spouse</span>
+              <span className="font-medium">2. Invite Partner</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
               <Award className="w-4 h-4 text-[#0F1C3F] flex-shrink-0" />
-              <span className="font-medium">3. Sign Certificate</span>
+              <span className="font-medium">3. Link Accounts</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-50 border border-gray-100">
               <Lock className="w-4 h-4 text-[#C9A84C] flex-shrink-0" />
@@ -119,7 +119,7 @@ export default async function HomePage() {
               The Couple Workflow
             </span>
             <h2 className="text-3xl sm:text-4xl font-bold text-[#0F1C3F] mb-4">
-              How Marriage Investment Works
+              How It Works
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed">
               Five steps from sign-up to saving and investing together. Both partners take part at every step.
@@ -132,28 +132,28 @@ export default async function HomePage() {
                 step: '01',
                 title: 'First Partner Registers',
                 description:
-                  'One spouse creates an account with their name, email and phone number.',
+                  'One partner creates an account with their name, email and phone number.',
                 icon: Users,
               },
               {
                 step: '02',
-                title: 'Invite Your Spouse',
+                title: 'Invite Your Partner',
                 description:
                   'Send your partner an invitation link so they can create their own account and join you.',
                 icon: Mail,
               },
               {
                 step: '03',
-                title: 'Sign Joint Certificate',
+                title: 'Link Your Accounts',
                 description:
-                  'Both spouses review the certificate and add their digital signatures.',
+                  "Accept each other's partner request to share a joint vault and approve joint withdrawals together.",
                 icon: FileCheck,
               },
               {
                 step: '04',
-                title: 'Get Your Certificate',
+                title: 'Certificate (Optional)',
                 description:
-                  'Complete your registration to receive your Union Verify certificate, ready to print or save as a PDF.',
+                  'Married or making it official? Register your union to receive a Union Verify certificate, ready to print or save as a PDF.',
                 icon: Lock,
               },
               {
@@ -254,12 +254,12 @@ export default async function HomePage() {
               <div className="my-6 py-4 border-y border-[#C9A84C]/30 max-w-lg mx-auto">
                 <div className="flex items-center justify-center gap-4 text-center">
                   <div className="flex-1">
-                    <span className="text-[9px] uppercase font-bold text-gray-400 block">First Spouse</span>
+                    <span className="text-[9px] uppercase font-bold text-gray-400 block">First Partner</span>
                     <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Partner One</span>
                   </div>
                   <span className="text-[#C9A84C] font-serif text-lg font-bold">&</span>
                   <div className="flex-1">
-                    <span className="text-[9px] uppercase font-bold text-gray-400 block">Second Spouse</span>
+                    <span className="text-[9px] uppercase font-bold text-gray-400 block">Second Partner</span>
                     <span className="text-base sm:text-xl font-serif font-bold text-[#0F1C3F]">Partner Two</span>
                   </div>
                 </div>
@@ -516,21 +516,21 @@ export default async function HomePage() {
       </section>
       )}
 
-      {/* ── MARRIAGE SAVINGS VAULT SHOWCASE ── */}
+      {/* ── JOINT SAVINGS VAULT SHOWCASE ── */}
       <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-gradient-to-br from-[#0F1C3F] via-[#142654] to-[#0F1C3F] p-8 sm:p-14 text-white shadow-2xl border border-[#C9A84C]/30 relative overflow-hidden">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center relative z-10">
             <div className="lg:col-span-7 space-y-4">
               <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
                 <PiggyBank className="w-3.5 h-3.5" />
-                Marriage Savings Vaults
+                Joint Savings Vaults
               </div>
               <h2 className="text-3xl sm:text-4xl font-serif font-bold text-white tracking-tight leading-tight">
                 Save Together for Life Milestones. <br />
-                <span className="text-[#C9A84C]">Both Spouses Contribute.</span>
+                <span className="text-[#C9A84C]">Both Partners Contribute.</span>
               </h2>
               <p className="text-sm text-gray-300 leading-relaxed max-w-xl">
-                Whether you’re saving for a home down payment, an education fund or an anniversary trip, both spouses can deposit separately or split a deposit 50/50, and both can see every contribution.
+                Whether you’re saving for a home down payment, an education fund or an anniversary trip, both partners can deposit separately or split a deposit 50/50, and both can see every contribution.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
@@ -556,7 +556,7 @@ export default async function HomePage() {
                   href="/register"
                   className="px-6 py-3.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm text-center hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
                 >
-                  Start Marriage Savings
+                  Start Saving Together
                 </Link>
                 <Link
                   href={certificateHref}
@@ -590,8 +590,8 @@ export default async function HomePage() {
               {/* Progress bar */}
               <div className="space-y-1">
                 <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden flex">
-                  <div className="bg-indigo-600 h-full w-[23%]" title="Spouse 1" />
-                  <div className="bg-[#C9A84C] h-full w-[21%]" title="Spouse 2" />
+                  <div className="bg-indigo-600 h-full w-[23%]" title="Partner 1" />
+                  <div className="bg-[#C9A84C] h-full w-[21%]" title="Partner 2" />
                 </div>
                 <div className="flex justify-between text-[11px] text-gray-500 font-medium">
                   <span>Partner 1: $11,400</span>
@@ -626,8 +626,8 @@ export default async function HomePage() {
           <div className="space-y-3">
             {[
               {
-                q: 'How does one partner invite their spouse?',
-                a: 'Once the first partner creates an account, they can enter their spouse’s name and email on the certificate page and share the invitation link. The partner opens the link, creates their own account, and can then review and co-sign the certificate.',
+                q: 'How does one partner invite their partner?',
+                a: 'Once the first partner creates an account, they can enter their partner’s name and email on the certificate page and share the invitation link. The partner opens the link, creates their own account, and can then review and co-sign the certificate.',
               },
               {
                 q: 'Do both partners need to sign the certificate?',
@@ -638,7 +638,7 @@ export default async function HomePage() {
                 a: 'All platform transactions, investments, distributions and fees are in United States Dollars (USD).',
               },
               {
-                q: 'How are returns and distributions distributed between spouses?',
+                q: 'How are returns and distributions distributed between partners?',
                 a: 'Distributions, if any, are credited to the joint account according to each opportunity’s schedule. Both partners can see the joint account. Returns are not guaranteed and you can lose money.',
               },
             ].map((faq, i) => (

@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/db'
 import fs from 'fs'
 import path from 'path'
+import { siteUrl } from '@/lib/site'
 
 export interface StripeGatewayConfig {
   secretKey: string
@@ -64,7 +65,7 @@ export async function getStripeConfig(): Promise<StripeGatewayConfig> {
   const isLive = secretKey.startsWith('sk_live_')
   const mode = isPlaceholder ? 'SANDBOX' : (isLive ? 'LIVE' : 'TEST')
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  const appUrl = siteUrl()
   const webhookUrl = `${appUrl}/api/webhooks/stripe`
 
   return {

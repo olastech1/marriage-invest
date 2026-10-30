@@ -45,11 +45,18 @@ const credentialsSchema = z.object({
   password: z.string().min(1, 'Password is required'),
 })
 
+// Sign-in follows the address the member is on. A Vercel deploy address left in
+// AUTH_URL / NEXTAUTH_URL would send everyone to *.vercel.app after signing in.
+for (const key of ['AUTH_URL', 'NEXTAUTH_URL'] as const) {
+  if (/\.vercel\.app/i.test(process.env[key] || '')) delete process.env[key]
+}
+
 // ---------------------------------------------------------------------------
 // NextAuth configuration
 // ---------------------------------------------------------------------------
 const config: NextAuthConfig = {
   session: { strategy: 'jwt' },
+  trustHost: true,
 
   pages: {
     signIn: '/login',

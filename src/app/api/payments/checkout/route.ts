@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       amount,
       type = 'DEPOSIT', // 'DEPOSIT' | 'INVESTMENT' | 'WEDDING_GIFT' | 'REGISTRATION'
       title = 'Union Verify Deposit',
-      description = 'Mutual Spousal Contribution Vault',
+      description = 'Mutual Partner Contribution Vault',
       metadata = {},
       successUrl,
       cancelUrl,

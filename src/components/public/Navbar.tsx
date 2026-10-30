@@ -29,7 +29,7 @@ const moreNavLinks: NavItem[] = [
 
 const allMobileLinks: NavItem[] = [
   { label: 'Get Married', href: '/get-married', badge: 'New' },
-  { label: 'Marriage Certificate', href: '/#certificate' },
+  { label: 'Union Certificate', href: '/#certificate' },
   { label: 'Wedding Registry', href: '/registry', badge: 'Gifts' },
   { label: 'Investment Opportunities', href: '/investments' },
   { label: 'How It Works', href: '/#how-it-works' },

@@ -39,7 +39,7 @@ interface Props {
 
 export default function UrgentNotificationCenter({
   initialNotifications,
-  partnerName = 'your spouse',
+  partnerName = 'your partner',
 }: Props) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications || [])
   const [attendingIds, setAttendingIds] = useState<Record<string, boolean>>({})
@@ -199,7 +199,7 @@ export default function UrgentNotificationCenter({
                             : 'bg-blue-600 text-white'
                         }`}
                       >
-                        {isDeposit ? 'Spouse deposit' : isReminder ? 'Reminder' : 'Update'}
+                        {isDeposit ? 'Partner deposit' : isReminder ? 'Reminder' : 'Update'}
                       </span>
                       <span className="text-[11px] font-semibold text-slate-500">
                         {new Date(notif.createdAt).toLocaleDateString()}
@@ -220,7 +220,7 @@ export default function UrgentNotificationCenter({
                           <span className="font-mono">${Number(notif.amount).toLocaleString()}</span>
                         </div>
                         <p className="text-[11px] text-rose-700">
-                          Joint withdrawals stay locked while a spouse&apos;s deposit has not been reciprocated.
+                          Joint withdrawals stay locked while a partner&apos;s deposit has not been reciprocated.
                         </p>
                       </div>
                     )}

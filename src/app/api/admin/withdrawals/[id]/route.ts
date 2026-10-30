@@ -90,7 +90,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       meta = null
     }
     if (action === 'approve' && meta?.partnerApprovalStatus === 'AWAITING_PARTNER') {
-      return NextResponse.json({ error: 'The spouse has not approved this withdrawal yet.' }, { status: 409 })
+      return NextResponse.json({ error: 'The partner has not approved this withdrawal yet.' }, { status: 409 })
     }
     const decisionNote = meta ? JSON.stringify({ ...meta, adminDecisionNote: adminNote || '' }) : adminNote || null
 

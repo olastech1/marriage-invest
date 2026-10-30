@@ -13,6 +13,7 @@ type ProfileUser = {
   name: string
   username: string | null
   accountNumber: string | null
+  avatarUrl: string | null
   email: string
   phone: string | null
   bio: string | null
@@ -34,6 +35,7 @@ function present(u: ProfileUser) {
     name: u.name,
     username: u.username || '',
     accountNumber: u.accountNumber || '',
+    avatarUrl: u.avatarUrl || null,
     email: u.email,
     phone: u.phone || '',
     bio: u.bio || '',

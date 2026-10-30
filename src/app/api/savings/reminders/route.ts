@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const session = await auth()
     const userId = session?.user?.id
     if (!userId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
-    const userName = session?.user?.name || 'Your spouse'
+    const userName = session?.user?.name || 'Your partner'
     const body = await req.json()
 
     const { action = 'send_now', amount = 0, vaultName = 'your joint vault', note = '' } = body
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       const spouseId = await resolveSpouseId(userId)
       const spouse = spouseId ? await prisma.user.findUnique({ where: { id: spouseId } }) : null
       if (!spouse) {
-        return NextResponse.json({ success: false, error: 'Connect with your spouse first.' }, { status: 400 })
+        return NextResponse.json({ success: false, error: 'Connect with your partner first.' }, { status: 400 })
       }
       const numAmount = Math.round(Number(amount) * 100) / 100
       if (!(numAmount > 0)) {

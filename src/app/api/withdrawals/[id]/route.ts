@@ -89,7 +89,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
     // Only the requester's spouse can approve or decline (never the requester)
     if (withdrawal.userId === userId || (await resolveSpouseId(withdrawal.userId)) !== userId) {
-      return NextResponse.json({ error: 'Only your spouse can approve this withdrawal.' }, { status: 403 })
+      return NextResponse.json({ error: 'Only your partner can approve this withdrawal.' }, { status: 403 })
     }
 
     let currentMetadata: any = {}
@@ -107,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'This withdrawal has already been decided.' }, { status: 409 })
     }
 
-    const partnerName = session?.user?.name || 'Your spouse'
+    const partnerName = session?.user?.name || 'Your partner'
     const usd = `$${Number(withdrawal.amount).toLocaleString()}`
     const fund = withdrawal.investment?.opportunity?.title || 'your investment'
     const card = { amount: Number(withdrawal.amount), withdrawalId: withdrawal.id, vaultTitle: fund }
@@ -148,7 +148,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       })
       await emailMember(withdrawal.userId, {
         subject: `${partnerName} approved your ${usd} withdrawal`,
-        heading: 'Your spouse approved the withdrawal',
+        heading: 'Your partner approved the withdrawal',
         paragraphs: [`${partnerName} approved your withdrawal of ${usd} from ${fund}. It is now with our team for processing.`],
         ctaLabel: 'View withdrawals',
         ctaPath: '/withdrawals',
@@ -198,7 +198,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       })
       await emailMember(withdrawal.userId, {
         subject: `${partnerName} declined your ${usd} withdrawal`,
-        heading: 'Your spouse declined the withdrawal',
+        heading: 'Your partner declined the withdrawal',
         paragraphs: [`${partnerName} declined your withdrawal of ${usd} from ${fund}. The money stays invested.`],
         ctaLabel: 'View withdrawals',
         ctaPath: '/withdrawals',

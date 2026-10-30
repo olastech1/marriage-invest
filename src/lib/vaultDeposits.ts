@@ -37,7 +37,7 @@ export async function recordVaultDeposit({
   proposalId,
 }: VaultDepositInput) {
   const spouseId = await resolveSpouseId(userId)
-  const spouseName = spouseId ? await getSpouseName(spouseId) : 'your spouse'
+  const spouseName = spouseId ? await getSpouseName(spouseId) : 'your partner'
 
   const proposal = proposalId ? await prisma.chatMessage.findUnique({ where: { id: proposalId } }) : null
   const planName = String((proposal?.proposalData as Record<string, unknown> | null)?.goalName || 'your plan')
@@ -123,7 +123,7 @@ export async function recordVaultDeposit({
         actionLabel: `Reciprocate $${amount.toLocaleString()}`,
         metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount, depositMessageId: message.id },
       },
-    }).catch((err) => console.error('[recordVaultDeposit] spouse notification failed', err))
+    }).catch((err) => console.error('[recordVaultDeposit] partner notification failed', err))
   }
 
   // Close the prompt for the deposit just reciprocated

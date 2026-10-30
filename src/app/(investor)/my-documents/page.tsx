@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import DocumentLibraryClient from '@/components/investor/DocumentLibraryClient'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
+import { resolveSpouseId } from '@/lib/chat'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,7 +64,8 @@ export default async function InvestorDocumentsPage() {
       t.type === 'FEE' &&
       (t.description?.toLowerCase().includes('matrimonial') || t.reference?.startsWith('FEE-REG'))
   )
-  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant)
+  // Couple linked: a linked partner, or a union registered on the platform
+  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant || (await resolveSpouseId(userId)))
 
   const acknowledgedDocIds = new Set(acknowledgments.map((a) => a.documentId))
 

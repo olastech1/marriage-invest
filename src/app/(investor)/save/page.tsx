@@ -62,7 +62,7 @@ function SavePageContent() {
     load()
   }, [load])
 
-  const spouseName = reciprocation?.partnerName || 'your spouse'
+  const spouseName = reciprocation?.partnerName || 'your partner'
   const hasSpouse = !!reciprocation?.partnerId
   const owedBySpouse = reciprocation?.owedBySpouse || 0
   const total = deposits.reduce((sum, d) => sum + d.amount, 0)
@@ -119,7 +119,7 @@ function SavePageContent() {
       <div>
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Joint vault</h1>
         <p className="text-sm text-gray-500">
-          {hasSpouse ? `Shared with ${spouseName}.` : 'Connect with your spouse from the chat page to save together.'}
+          {hasSpouse ? `Shared with ${spouseName}.` : 'Connect with your partner from the chat page to save together.'}
         </p>
       </div>
 
@@ -245,7 +245,7 @@ function SavePageContent() {
             <Bell className="w-5 h-5 text-[#C9A84C]" /> Request money from {spouseName}
           </h2>
           {!hasSpouse ? (
-            <p className="text-sm text-gray-500">Connect with your spouse first.</p>
+            <p className="text-sm text-gray-500">Connect with your partner first.</p>
           ) : (
             <>
               <input

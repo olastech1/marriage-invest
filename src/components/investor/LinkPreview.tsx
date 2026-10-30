@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { ExternalLink, Link2 } from 'lucide-react'
+import UserAvatar from '@/components/investor/UserAvatar'
 
 export type LinkPreviewData = {
   url: string
@@ -11,6 +12,7 @@ export type LinkPreviewData = {
   siteName: string
   internal: boolean
   initials?: string
+  avatar?: string | null
 }
 
 const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s<>"']+/gi
@@ -131,11 +133,14 @@ export function LinkPreviewCard({ url, onOpenOwn }: { url: string; onOpenOwn?: (
         />
       )}
       <div className="flex items-start gap-2.5 p-3">
-        {(!preview.image || imageFailed) && (
-          <div className="w-10 h-10 rounded-full bg-[#0F1C3F] text-[#C9A84C] font-bold text-xs flex items-center justify-center flex-shrink-0">
-            {preview.initials || <Link2 className="w-4 h-4" />}
-          </div>
-        )}
+        {(!preview.image || imageFailed) &&
+          (preview.initials ? (
+            <UserAvatar name={preview.title.replace(/^Chat with /, '')} src={preview.avatar} className="w-10 h-10 text-xs" />
+          ) : (
+            <div className="w-10 h-10 rounded-full bg-[#0F1C3F] text-[#C9A84C] flex items-center justify-center flex-shrink-0">
+              <Link2 className="w-4 h-4" />
+            </div>
+          ))}
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 truncate">{preview.siteName}</p>
           <p className="text-[13px] font-bold text-[#0F1C3F] leading-snug line-clamp-2">{preview.title}</p>

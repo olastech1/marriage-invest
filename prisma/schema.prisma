@@ -368,6 +368,16 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+/// Profile photos (small JPEG/PNG/WebP), served by /api/avatar/[userId]
+model Avatar {
+  userId    String   @id
+  data      Bytes
+  mimeType  String
+  updatedAt DateTime @updatedAt
+
+  @@map("avatars")
+}
+
 /// People a member added to their chat list
 model Contact {
   id        String   @id @default(cuid())

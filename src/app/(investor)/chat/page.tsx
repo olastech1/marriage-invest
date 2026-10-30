@@ -8,6 +8,7 @@ import { formatAccountNumber } from '@/lib/utils'
 import SpouseRequestBanner, { type SpouseRequest } from '@/components/investor/SpouseRequestBanner'
 import FindMember from '@/components/investor/FindMember'
 import MyAccountId from '@/components/investor/MyAccountId'
+import UserAvatar from '@/components/investor/UserAvatar'
 import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
 import {
   Heart,
@@ -41,6 +42,7 @@ export interface ChatUser {
   name: string
   username?: string
   accountNumber?: string
+  avatarUrl?: string | null
   email?: string
   role?: string
   bio?: string
@@ -96,6 +98,7 @@ export interface ConversationItem {
   otherUserName: string
   otherUsername?: string | null
   otherAccountNumber?: string | null
+  otherAvatarUrl?: string | null
   kind?: 'spouse' | 'member' | 'visitor'
   guestEmail?: string | null
   lastMessage?: {
@@ -188,6 +191,7 @@ export default function UnifiedChatPage() {
             name: c.otherUserName,
             username: c.otherUsername || undefined,
             accountNumber: c.otherAccountNumber || undefined,
+            avatarUrl: c.otherAvatarUrl || null,
             role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
             bio: c.lastMessage?.text.slice(0, 80),
             avatar: c.otherUserName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
@@ -242,7 +246,8 @@ export default function UnifiedChatPage() {
       } else if (matched) {
         // Fill in their details (account ID, profile) once the list has them
         setActiveRecipient((prev) =>
-          prev.id.toLowerCase() === matched.id.toLowerCase() && (prev.accountNumber !== matched.accountNumber || prev.username !== matched.username)
+          prev.id.toLowerCase() === matched.id.toLowerCase() &&
+          (prev.accountNumber !== matched.accountNumber || prev.username !== matched.username || prev.avatarUrl !== matched.avatarUrl)
             ? matched
             : prev
         )
@@ -263,7 +268,7 @@ export default function UnifiedChatPage() {
       if (openedLinkRef.current !== 'spouse') {
         openedLinkRef.current = 'spouse'
         const spouseContact = availableContacts.find((c) => c.id === spouseId)
-        const spouseName = spouseContact?.name || conversations.find((c) => c.otherUserId === spouseId)?.otherUserName || 'Your spouse'
+        const spouseName = spouseContact?.name || conversations.find((c) => c.otherUserId === spouseId)?.otherUserName || 'Your partner'
         setActiveRecipient(
           spouseContact || {
             id: spouseId,
@@ -470,7 +475,7 @@ export default function UnifiedChatPage() {
     if (e) e.preventDefault()
     if (!inputText.trim()) return
     if (!activeRecipient.id) {
-      setNudgeBanner('No spouse connected yet — copy your chat link and send it to your spouse to start chatting.')
+      setNudgeBanner('No partner connected yet — copy your chat link and send it to your partner to start chatting.')
       return
     }
 
@@ -537,7 +542,7 @@ export default function UnifiedChatPage() {
   const handleSpouseAction = async (
     body: { action: 'request'; userId: string } | { action: 'accept' | 'decline'; messageId: string },
   ) => {
-    if (body.action === 'decline' && !window.confirm(`Decline ${activeRecipient.name}'s request to link as spouses?`)) return
+    if (body.action === 'decline' && !window.confirm(`Decline ${activeRecipient.name}'s request to link as partners?`)) return
     try {
       const res = await fetch('/api/spouse', {
         method: 'POST',
@@ -550,7 +555,7 @@ export default function UnifiedChatPage() {
           ? body.action === 'decline'
             ? 'Request declined.'
             : data.linked
-              ? `You are now linked with ${activeRecipient.name} as spouses.`
+              ? `You are now linked with ${activeRecipient.name} as partners.`
               : `Request sent to ${activeRecipient.name}${data.emailed ? ' (in chat and by email)' : ' in chat'}.`
           : data.error || 'Something went wrong.',
       )
@@ -878,15 +883,18 @@ export default function UnifiedChatPage() {
                           : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
                     }`}
                   >
-                    <div className={`w-11 h-11 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-xs shadow-xs ${
-                      isSelected
-                        ? 'bg-[#C9A84C] text-[#0F1C3F]'
-                        : isSpouse
-                          ? 'bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F]'
-                          : 'bg-slate-100 text-slate-700 border border-slate-200'
-                    }`}>
-                      {contact.avatar || (contact.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                    </div>
+                    <UserAvatar
+                      name={contact.name}
+                      src={contact.avatarUrl}
+                      className="w-11 h-11 text-xs shadow-xs"
+                      fallbackClassName={
+                        isSelected
+                          ? 'bg-[#C9A84C] text-[#0F1C3F]'
+                          : isSpouse
+                            ? 'bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F]'
+                            : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
@@ -897,7 +905,7 @@ export default function UnifiedChatPage() {
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                             isSelected ? 'bg-[#C9A84C] text-[#0F1C3F]' : 'bg-rose-50 text-rose-700 border border-rose-200'
                           }`}>
-                            Spouse
+                            Partner
                           </span>
                         )}
                         {contact.role === 'Visitor' && (
@@ -971,11 +979,12 @@ export default function UnifiedChatPage() {
                 <span className="text-[11px]">Chats</span>
               </button>
 
-              <div className="relative flex-shrink-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C] font-bold flex items-center justify-center text-xs sm:text-sm shadow-xs">
-                  {activeRecipient.avatar || (activeRecipient.name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
-                </div>
-              </div>
+              <UserAvatar
+                name={activeRecipient.name}
+                src={activeRecipient.avatarUrl}
+                className="w-9 h-9 sm:w-10 sm:h-10 text-xs sm:text-sm shadow-xs"
+                fallbackClassName="bg-gradient-to-tr from-[#0F1C3F] to-[#24376b] text-[#C9A84C]"
+              />
 
               <div className="min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
@@ -983,7 +992,7 @@ export default function UnifiedChatPage() {
                     {activeRecipient.name}
                   </h3>
                   {isChattingWithSpouse && (
-                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Spouse)</span>
+                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">(Partner)</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
@@ -1025,14 +1034,14 @@ export default function UnifiedChatPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm(`Ask ${activeRecipient.name} to link your accounts as spouses? You'll share a joint vault and approve each other's joint withdrawals.`)) {
+                  if (window.confirm(`Ask ${activeRecipient.name} to link your accounts as partners? You'll share a joint vault and approve each other's joint withdrawals.`)) {
                     handleSpouseAction({ action: 'request', userId: activeRecipient.id })
                   }
                 }}
                 className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex-shrink-0 cursor-pointer"
               >
                 <Heart className="w-3.5 h-3.5" />
-                <span>Link as spouse</span>
+                <span>Link as partner</span>
               </button>
             )}
 
@@ -1388,7 +1397,7 @@ export default function UnifiedChatPage() {
                             : msg.type === 'certificate'
                               ? { label: 'Marriage Certificate', Icon: Award, tone: 'border-[#C9A84C]/50 bg-[#C9A84C]/10 text-[#8a6d1f]' }
                               : msg.type === 'spouse_request'
-                                ? { label: 'Spouse request', Icon: Heart, tone: 'border-rose-200 bg-rose-50/60 text-rose-700' }
+                                ? { label: 'Partner request', Icon: Heart, tone: 'border-rose-200 bg-rose-50/60 text-rose-700' }
                                 : msg.type === 'invest_invite'
                                   ? { label: 'Invitation to invest', Icon: Sparkles, tone: 'border-indigo-200 bg-indigo-50/60 text-indigo-700' }
                                   : msg.type === 'investment'
@@ -1427,13 +1436,13 @@ export default function UnifiedChatPage() {
                           )}
                           {msg.type === 'spouse_request' &&
                             ((!!spouseId && spouseId === activeRecipient.id) || msg.proposalData?.status === 'accepted' ? (
-                              <p className="text-[11px] font-semibold text-emerald-700">Accepted — you are linked as spouses.</p>
+                              <p className="text-[11px] font-semibold text-emerald-700">Accepted — you are linked as partners.</p>
                             ) : msg.proposalData?.status === 'declined' ? (
                               <p className="text-[11px] font-semibold text-gray-500">Declined.</p>
                             ) : msg.proposalData?.toUserId === activeUserId ? (
                               <div className={`grid gap-2 mt-1 ${spouseId ? 'grid-cols-1' : 'grid-cols-2'}`}>
                                 {spouseId ? (
-                                  <p className="text-[11px] text-gray-500">You are already linked to a spouse.</p>
+                                  <p className="text-[11px] text-gray-500">You are already linked to a partner.</p>
                                 ) : (
                                   <button
                                     type="button"
@@ -1622,7 +1631,7 @@ export default function UnifiedChatPage() {
             </div>
             <div className="p-4 space-y-3">
               <p className="text-xs text-gray-600">
-                Find a member by their account ID or email to chat, add them, or link as spouses. An email that isn&apos;t a member gets an invitation to join.
+                Find a member by their account ID or email to chat, add them, or link as partners. An email that isn&apos;t a member gets an invitation to join.
               </p>
               <FindMember
                 hasSpouse={!!spouseId}
@@ -1632,6 +1641,7 @@ export default function UnifiedChatPage() {
                     name: m.name,
                     username: m.username || undefined,
                     accountNumber: m.accountNumber || undefined,
+                    avatarUrl: m.avatarUrl,
                     avatar: m.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
                   })
                 }
@@ -1689,7 +1699,7 @@ export default function UnifiedChatPage() {
                   className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 focus:outline-none focus:border-[#C9A84C]"
                 />
                 <span className="text-[11px] text-gray-500 mt-1 block">
-                  Each spouse contributes 50% (${((parseFloat(proposalAmount) || 0) / 2).toFixed(2)})
+                  Each partner contributes 50% (${((parseFloat(proposalAmount) || 0) / 2).toFixed(2)})
                 </span>
               </div>
 

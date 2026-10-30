@@ -70,7 +70,7 @@ export const DAILY_QUESTS: DailyQuest[] = [
       'Conservative: Protect capital with safe 6.8% vaults',
       'Balanced: 70% safe bonds / 30% growth syndicates',
       'Growth: High conviction in celebrity tour & fanbase syndicates',
-      'Dynamic: Let my spouse lead investment selections',
+      'Dynamic: Let my partner lead investment selections',
     ],
   },
   {
@@ -116,7 +116,7 @@ export const DAILY_QUESTS: DailyQuest[] = [
     id: 'quest-day-7',
     dayIndex: 7,
     category: 'VISION',
-    categoryLabel: 'Spousal Synergy',
+    categoryLabel: 'Partner Synergy',
     title: 'The 7-Day Wealth Covenant',
     question: 'What is one promise you want to make to our joint marriage vault for the upcoming month?',
     hint: 'Automating monthly transfers, reviewing transactions without judgment, or celebrating milestones.',

@@ -4,17 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Heart, MessageSquare, Search, UserPlus, Check } from 'lucide-react'
 import { formatAccountNumber } from '@/lib/utils'
+import UserAvatar from '@/components/investor/UserAvatar'
 
 export type FoundMember = {
   id: string
   name: string
   username: string | null
   accountNumber: string | null
+  avatarUrl?: string | null
   isSpouse: boolean
   added: boolean
 }
-
-const initials = (name: string) => name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 
 /**
  * Find one member by account ID (or email), then chat, add them or link as spouses.
@@ -82,7 +82,7 @@ export default function FindMember({
 
   const linkSpouse = async () => {
     if (!member) return
-    if (!window.confirm(`Ask ${member.name} (ID ${formatAccountNumber(member.accountNumber)}) to link your accounts as spouses? You'll share a joint vault and approve each other's joint withdrawals.`)) return
+    if (!window.confirm(`Ask ${member.name} (ID ${formatAccountNumber(member.accountNumber)}) to link your accounts as partners? You'll share a joint vault and approve each other's joint withdrawals.`)) return
     setBusy('spouse')
     try {
       const data = await post('/api/spouse', { action: 'request', userId: member.id })
@@ -91,8 +91,8 @@ export default function FindMember({
         text: !data.success
           ? data.error || 'Something went wrong.'
           : data.linked
-            ? `You are now linked with ${member.name} as spouses.`
-            : `Spouse request sent to ${member.name}. They accept it on their dashboard or in your chat.`,
+            ? `You are now linked with ${member.name} as partners.`
+            : `Partner request sent to ${member.name}. They accept it on their dashboard or in your chat.`,
       })
       if (data.linked) setMember({ ...member, isSpouse: true })
       onChange?.()
@@ -137,9 +137,7 @@ export default function FindMember({
       {member && (
         <div className="p-3 rounded-2xl border border-gray-200 bg-white space-y-3">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-[#0F1C3F] text-[#C9A84C] font-bold text-xs flex items-center justify-center flex-shrink-0">
-              {initials(member.name)}
-            </div>
+            <UserAvatar name={member.name} src={member.avatarUrl} className="w-10 h-10 text-xs" />
             <div className="min-w-0">
               <p className="text-sm font-bold text-[#0F1C3F] truncate">{member.name}</p>
               <p className="text-xs text-gray-500 font-mono">ID: {formatAccountNumber(member.accountNumber)}</p>
@@ -169,11 +167,11 @@ export default function FindMember({
                 disabled={!!busy}
                 className="py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 font-bold text-xs flex items-center justify-center gap-1 cursor-pointer disabled:opacity-60"
               >
-                <Heart className="w-3.5 h-3.5" /> Link as spouse
+                <Heart className="w-3.5 h-3.5" /> Link as partner
               </button>
             )}
           </div>
-          {member.isSpouse && <p className="text-[11px] font-semibold text-emerald-700">This is your spouse.</p>}
+          {member.isSpouse && <p className="text-[11px] font-semibold text-emerald-700">This is your partner.</p>}
         </div>
       )}
 

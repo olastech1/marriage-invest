@@ -54,6 +54,6 @@ export async function findMember(query: string) {
   if (!Object.values(where)[0]) return null
   return prisma.user.findFirst({
     where: { ...where, role: 'INVESTOR' },
-    select: { id: true, name: true, username: true, accountNumber: true },
+    select: { id: true, name: true, username: true, accountNumber: true, avatarUrl: true },
   })
 }

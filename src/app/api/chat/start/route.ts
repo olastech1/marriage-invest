@@ -5,6 +5,7 @@ import { sendEmail } from '@/lib/email'
 import { escapeHtml, formatAccountNumber } from '@/lib/utils'
 import { resolveSpouseId } from '@/lib/chat'
 import { findMember, isEmail } from '@/lib/accountId'
+import { siteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
         name: member.name,
         username: member.username,
         accountNumber: member.accountNumber,
+        avatarUrl: member.avatarUrl,
         isSpouse: spouseId === member.id,
         added: !!saved,
       },
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: "That's your own email." }, { status: 400 })
   }
   const inviter = session.user.name || 'A Union Verify member'
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  const appUrl = siteUrl()
   const sent = await sendEmail({
     to: email,
     subject: `${inviter} invited you to chat on Union Verify`,

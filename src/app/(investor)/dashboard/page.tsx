@@ -193,7 +193,8 @@ export default async function DashboardPage() {
   const hasFeeCovenant = realCompletedTransactions.some(
     (t) => t.type === 'FEE' && (t.description?.toLowerCase().includes('matrimonial') || t.reference?.startsWith('FEE-REG'))
   )
-  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant)
+  // Couple linked: a linked partner, or a union registered on the platform
+  const hasMarriageCovenant = Boolean(marriageAudit || hasFeeCovenant || reciprocation.spouseId)
 
   // Account rating from signed documents, verification and real deposits
   const accountRating = computeAccountRating({
@@ -227,8 +228,8 @@ export default async function DashboardPage() {
   })
 
   // A spouse deposit I still need to reciprocate
-  const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your spouse'
-  const spouseName = reciprocation.spouseName || 'your spouse'
+  const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your partner'
+  const spouseName = reciprocation.spouseName || 'your partner'
 
   return (
     <div className="space-y-6">
@@ -245,7 +246,7 @@ export default async function DashboardPage() {
             <MyAccountId accountId={accountId} />
             {!reciprocation.spouseId && spouseRequests.length === 0 && (
               <Link href="/settings#spouse" className="text-xs font-bold text-rose-700 underline">
-                Link your spouse
+                Link your partner
               </Link>
             )}
           </div>
@@ -331,7 +332,7 @@ export default async function DashboardPage() {
                 {pendingSpousalApprovals.length === 1 ? 'A withdrawal request is' : `${pendingSpousalApprovals.length} withdrawal requests are`} waiting for your approval
               </h3>
               <p className="text-xs text-amber-900/80 leading-relaxed max-w-2xl">
-                {reciprocation.spouseName || 'Your spouse'} asked to withdraw from your joint savings. Nothing is paid out until you approve or decline.
+                {reciprocation.spouseName || 'Your partner'} asked to withdraw from your joint savings. Nothing is paid out until you approve or decline.
               </p>
             </div>
           </div>
@@ -351,7 +352,7 @@ export default async function DashboardPage() {
       {/* ── Account Rating ──────────────────────────────────────────── */}
       <AccountRatingCard rating={accountRating} />
 
-      {/* ── Joint Marriage Savings Banner ──────────────────────────── */}
+      {/* ── Joint Savings Banner ──────────────────────────────────── */}
       <div className="rounded-2xl bg-gradient-to-r from-[#0F1C3F] via-[#1a2f64] to-[#0F1C3F] p-5 sm:p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-[#C9A84C]/30 relative overflow-hidden">
         <div className="space-y-1.5 z-10">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
@@ -359,10 +360,10 @@ export default async function DashboardPage() {
             Joint savings · {settings.vaultApy}% APY (variable, not guaranteed)
           </div>
           <h2 className="text-lg sm:text-xl font-bold text-white">
-            Save together with your spouse
+            Save together with your partner
           </h2>
           <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-            Both of you deposit into one joint savings balance. When one spouse deposits, the other reciprocates, and joint withdrawals need both of you to agree.
+            Both of you deposit into one joint savings balance. When one partner deposits, the other reciprocates, and joint withdrawals need both of you to agree.
           </p>
         </div>
 
@@ -391,7 +392,7 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Spouse Chat
+              Partner Chat
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
               Message {spouseName} and plan your deposits together. Deposit updates also appear here.
@@ -412,17 +413,17 @@ export default async function DashboardPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] bg-[#C9A84C]/10 px-2.5 py-0.5 rounded-full">
-                For Unmarried Couples
+                Optional
               </span>
               <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
                 <HeartHandshake className="w-4 h-4 text-[#C9A84C]" />
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Get Married Online · $500
+              Register Your Union · $500
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Never been married? Complete your online marriage registration and unlock joint investing.
+              Married or making it official? Register your union online. Saving and investing together work without it.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
@@ -448,10 +449,10 @@ export default async function DashboardPage() {
               </div>
             </div>
             <h3 className="text-base font-bold text-[#0F1C3F]">
-              Marriage Certificate · $500
+              Union Certificate · $500
             </h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Review and co-sign with your spouse, then get your marriage certificate.
+              Co-sign with your partner, then get your Union Verify certificate.
             </p>
           </div>
           <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">

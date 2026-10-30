@@ -17,6 +17,7 @@ import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { recordVaultDeposit } from '@/lib/vaultDeposits'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
+import { siteUrl } from '@/lib/site'
 
 export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE'
 
@@ -346,11 +347,11 @@ async function linkOrInviteSpouse(userId: string, inviterName: string, partnerEm
     }
     return
   }
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  const appUrl = siteUrl()
   await sendEmail({
     to: email,
     subject: `${inviterName} invited you to Union Verify`,
     html: `<p>${escapeHtml(inviterName)} registered your union on Union Verify and invited you to join.</p>
 <p><a href="${appUrl}/register?email=${encodeURIComponent(email)}">Create your account</a> with this email address to link it to theirs.</p>`,
-  }).catch((err) => console.error('[payments] spouse invite email failed', err))
+  }).catch((err) => console.error('[payments] partner invite email failed', err))
 }

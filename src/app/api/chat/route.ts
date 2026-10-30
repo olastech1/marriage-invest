@@ -14,6 +14,7 @@ import {
 import { getReciprocationStatus } from '@/lib/reciprocation'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
+import { siteUrl } from '@/lib/site'
 
 const DEMO_NAMES: Record<string, string> = {
   usr_jane_doe: 'Jane Doe',
@@ -50,7 +51,7 @@ async function findGuestEmail(threadId: string): Promise<string | null> {
 }
 
 async function emailVisitorReply(to: string, fromName: string, text: string): Promise<boolean> {
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  const appUrl = siteUrl()
   return sendEmail({
     to,
     subject: `${fromName} replied to your message on Union Verify`,
@@ -75,6 +76,7 @@ type Conversation = {
   otherUserName: string
   otherUsername: string | null
   otherAccountNumber: string | null
+  otherAvatarUrl: string | null
   kind: 'spouse' | 'member' | 'visitor'
   isSpouse: boolean
   guestEmail: string | null
@@ -101,10 +103,10 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
     if (otherId && !otherId.startsWith('guest_')) otherIds.add(otherId)
   }
   if (spouseId) otherIds.add(spouseId)
-  const members = new Map<string, { name: string; username: string | null; accountNumber: string | null }>()
+  const members = new Map<string, { name: string; username: string | null; accountNumber: string | null; avatarUrl: string | null }>()
   for (const u of await prisma.user.findMany({
     where: { id: { in: [...otherIds] } },
-    select: { id: true, name: true, username: true, accountNumber: true },
+    select: { id: true, name: true, username: true, accountNumber: true, avatarUrl: true },
   })) {
     members.set(u.id.toLowerCase(), u)
   }
@@ -129,6 +131,7 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
           'Member',
         otherUsername: other?.username || null,
         otherAccountNumber: other?.accountNumber || null,
+        otherAvatarUrl: other?.avatarUrl || null,
         kind: otherId === spouseId ? 'spouse' : isVisitor ? 'visitor' : 'member',
         isSpouse: otherId === spouseId,
         guestEmail: null,
@@ -146,7 +149,7 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
 
   // People I added and my spouse, before the first message
   const placeholders = saved.map((c) => ({ id: c.contactId, text: 'Added to your chats. Say hello.', at: c.createdAt }))
-  if (spouseId) placeholders.unshift({ id: spouseId, text: 'Say hello to your spouse.', at: new Date() })
+  if (spouseId) placeholders.unshift({ id: spouseId, text: 'Say hello to your partner.', at: new Date() })
   for (const p of placeholders) {
     const threadId = buildThreadId(currentUserId, p.id)
     if (threads.has(threadId)) continue
@@ -156,9 +159,10 @@ async function buildConversations(currentUserId: string, spouseId: string): Prom
       threadId,
       lastMessage: { text: p.text, createdAt: null, fromMe: false },
       otherUserId: p.id,
-      otherUserName: other?.name || DEMO_NAMES[p.id] || 'Your spouse',
+      otherUserName: other?.name || DEMO_NAMES[p.id] || 'Your partner',
       otherUsername: other?.username || null,
       otherAccountNumber: other?.accountNumber || null,
+      otherAvatarUrl: other?.avatarUrl || null,
       kind: p.id === spouseId ? 'spouse' : 'member',
       isSpouse: p.id === spouseId,
       guestEmail: null,
@@ -343,7 +347,7 @@ export async function POST(req: Request) {
     }
     if (!effectiveRecipientId || effectiveRecipientId === sender.id) {
       return NextResponse.json(
-        { success: false, error: 'No recipient. Share your chat invite link with your spouse to connect.' },
+        { success: false, error: 'No recipient. Share your chat invite link with your partner to connect.' },
         { status: 400 },
       )
     }

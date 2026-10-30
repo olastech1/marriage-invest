@@ -22,6 +22,7 @@ import {
   Loader2 as LoaderCircleIcon,
   ShieldCheck as ShieldCheckIcon,
 } from 'lucide-react'
+import DeviceAccounts from '@/components/investor/DeviceAccounts'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -60,6 +61,8 @@ function LoginForm() {
 
   // Pre-fill error from URL query param (NextAuth redirects here on error)
   const urlError = resolveError(searchParams.get('error'))
+  // Signing in to a second account (from the account menu)
+  const addingAccount = searchParams.get('addAccount') === '1'
 
   const [fields, setFields] = useState<LoginFields>({ email: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
@@ -123,11 +126,16 @@ function LoginForm() {
     <>
       {/* Heading */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-[#0F1C3F]">Welcome back</h1>
+        <h1 className="text-2xl font-bold text-[#0F1C3F]">{addingAccount ? 'Add another account' : 'Welcome back'}</h1>
         <p className="mt-1.5 text-sm text-slate-500">
-          Sign in to your Union Verify account to continue.
+          {addingAccount
+            ? 'Sign in to the other account. You can switch between them from your photo at the top right.'
+            : 'Sign in to your Union Verify account to continue.'}
         </p>
       </div>
+
+      {/* Accounts still signed in on this device */}
+      {!addingAccount && <DeviceAccounts next={searchParams.get('callbackUrl') ?? '/dashboard'} />}
 
       {/* Server / URL error banner */}
       {serverError && (

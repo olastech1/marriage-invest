@@ -18,14 +18,14 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: 'Union Verify — Marriage Investment Platform',
+    default: 'Union Verify — Save and Invest Together',
     template: '%s | Union Verify',
   },
   description:
     'A joint savings and investment platform for couples. Explore opportunities, manage your portfolio, and track your investments.',
-  keywords: ['investment', 'marriage investment', 'portfolio', 'USD investment', 'Union Verify'],
+  keywords: ['investment', 'couples savings', 'joint savings', 'marriage investment', 'portfolio', 'USD investment', 'Union Verify'],
   openGraph: {
-    title: 'Union Verify — Marriage Investment Platform',
+    title: 'Union Verify — Save and Invest Together',
     description: 'A joint savings and investment platform for couples.',
     type: 'website',
     locale: 'en_US',

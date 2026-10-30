@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SpouseLinkPanel from '@/components/investor/SpouseLinkPanel'
+import ProfilePhotoPicker from '@/components/investor/ProfilePhotoPicker'
 import {
   User,
   CheckCircle2,
@@ -41,6 +42,7 @@ export default function InvestorSettingsPage() {
   })
   // Saved on the server (null until the member has a username)
   const [publicBioPath, setPublicBioPath] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [spouse, setSpouse] = useState<SpouseInfo | null>(null)
 
   const [statusMsg, setStatusMsg] = useState('')
@@ -73,6 +75,7 @@ export default function InvestorSettingsPage() {
             showPhone: data.user.showPhone !== false,
           })
           setPublicBioPath(data.user.publicBioUrl || null)
+          setAvatarUrl(data.user.avatarUrl || null)
           setSpouse(
             data.spouse
               ? { name: data.spouse.name || '', email: data.spouse.email || '', phone: data.spouse.phone || '' }
@@ -142,6 +145,11 @@ export default function InvestorSettingsPage() {
         <p className="text-xs text-gray-500 mt-1">
           Edit your public bio page, your contact details and who can message you.
         </p>
+      </div>
+
+      {/* ── PROFILE PHOTO ── */}
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <ProfilePhotoPicker name={profile.name} avatarUrl={avatarUrl} onChange={setAvatarUrl} />
       </div>
 
       {/* ── ACCOUNT ID & SPOUSE LINK ── */}
@@ -237,7 +245,7 @@ export default function InvestorSettingsPage() {
           }`}
         >
           <User size={14} className={activeTab === 'profile' ? 'text-[#C9A84C]' : ''} />
-          <span>Profile & Spouse</span>
+          <span>Profile & Partner</span>
         </button>
       </div>
 
@@ -473,7 +481,7 @@ export default function InvestorSettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-[#0F1C3F] flex items-center gap-2">
                 <Smartphone className="w-4 h-4 text-[#C9A84C]" />
-                Your Spouse
+                Your Partner
               </h3>
               {spouse && (
                 <span className="text-[10px] font-mono bg-blue-50 text-blue-800 px-2 py-0.5 rounded-full font-bold">
@@ -485,11 +493,11 @@ export default function InvestorSettingsPage() {
             {spouse ? (
               <>
                 <p className="text-xs text-gray-500 mb-4">
-                  Your spouse edits these details from their own account.
+                  Your partner edits these details from their own account.
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Spouse name</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner name</label>
                     <input
                       type="text"
                       value={spouse.name}
@@ -498,7 +506,7 @@ export default function InvestorSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Spouse email</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner email</label>
                     <input
                       type="email"
                       value={spouse.email}
@@ -507,7 +515,7 @@ export default function InvestorSettingsPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Spouse phone</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5">Partner phone</label>
                     <input
                       type="tel"
                       value={spouse.phone || 'Not provided'}
@@ -518,7 +526,7 @@ export default function InvestorSettingsPage() {
                 </div>
               </>
             ) : (
-              <p className="text-xs text-gray-500">No spouse is linked yet. Find your spouse by account ID under &ldquo;Your spouse&rdquo; at the top of this page.</p>
+              <p className="text-xs text-gray-500">No partner is linked yet. Find your partner by account ID under &ldquo;Your partner&rdquo; at the top of this page.</p>
             )}
           </div>
         </div>

@@ -27,6 +27,8 @@ export type LinkPreview = {
   internal: boolean
   /** Initials to show instead of an image (member links) */
   initials?: string
+  /** Member's profile photo (member links) */
+  avatar?: string | null
 }
 
 const OWN_HOSTS = new Set(['unionverify.com', 'www.unionverify.com', 'marriage-invest.vercel.app'])
@@ -63,7 +65,7 @@ async function ownPreview(url: URL): Promise<LinkPreview> {
     const member = id
       ? await prisma.user.findFirst({
           where: { OR: [{ id }, { username: id.toLowerCase() }], role: 'INVESTOR' },
-          select: { name: true, accountNumber: true },
+          select: { name: true, accountNumber: true, avatarUrl: true },
         })
       : null
     if (member) {
@@ -72,6 +74,7 @@ async function ownPreview(url: URL): Promise<LinkPreview> {
         title: `Chat with ${member.name}`,
         description: `Union Verify member${member.accountNumber ? ` · ID ${formatAccountNumber(member.accountNumber)}` : ''}`,
         initials: initials(member.name),
+        avatar: member.avatarUrl,
       }
     }
     return { ...base, title: 'Union Verify chat', description: 'Open the conversation on Union Verify.' }
@@ -81,10 +84,16 @@ async function ownPreview(url: URL): Promise<LinkPreview> {
   if (profile) {
     const member = await prisma.user.findUnique({
       where: { username: decodeURIComponent(profile[1]).toLowerCase() },
-      select: { name: true, bio: true },
+      select: { name: true, bio: true, avatarUrl: true },
     })
     if (member) {
-      return { ...base, title: member.name, description: member.bio?.slice(0, 200) || 'Union Verify member profile', initials: initials(member.name) }
+      return {
+        ...base,
+        title: member.name,
+        description: member.bio?.slice(0, 200) || 'Union Verify member profile',
+        initials: initials(member.name),
+        avatar: member.avatarUrl,
+      }
     }
   }
 

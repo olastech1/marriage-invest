@@ -5,8 +5,9 @@ import { buildThreadId, createChatMessage, getIncomingSpouseRequests, resolveSpo
 import { sendEmail } from '@/lib/email'
 import { emailMember } from '@/lib/activity'
 import { escapeHtml } from '@/lib/utils'
+import { siteUrl } from '@/lib/site'
 
-const appUrl = () => (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+const appUrl = () => siteUrl()
 
 export const dynamic = 'force-dynamic'
 
@@ -32,7 +33,7 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
   }
   const requesterId = data.fromUserId
   if (await resolveSpouseId(requesterId)) {
-    return NextResponse.json({ success: false, error: 'They are already linked to a spouse.' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'They are already linked to a partner.' }, { status: 400 })
   }
   await prisma.$transaction([
     prisma.user.update({ where: { id: me }, data: { spouseId: requesterId } }),
@@ -47,7 +48,7 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
       senderName: myName,
       recipientId: requesterId,
       recipientName: request.senderName,
-      text: `${myName} accepted. You are now linked as spouses.`,
+      text: `${myName} accepted. You are now linked as partners.`,
       timestamp: timestamp(),
       type: 'text',
     },
@@ -62,7 +63,7 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
     .create({
       data: {
         userId: requesterId,
-        title: `${myName} accepted — you're linked as spouses`,
+        title: `${myName} accepted — you're linked as partners`,
         message: 'Your joint vault, reciprocation and withdrawal approvals are now shared.',
         type: 'SUCCESS',
         link: `/chat?recipientId=${encodeURIComponent(me)}&name=${encodeURIComponent(myName)}`,
@@ -72,9 +73,9 @@ async function acceptRequest(me: string, myName: string, messageId: string) {
   if (requester) {
     await sendEmail({
       to: requester.email,
-      subject: `${myName} accepted your spouse request`,
+      subject: `${myName} accepted your partner request`,
       html: `<p>Hi ${escapeHtml(requester.name)},</p>
-<p>${escapeHtml(myName)} accepted. Your Union Verify accounts are now linked as spouses.</p>
+<p>${escapeHtml(myName)} accepted. Your Union Verify accounts are now linked as partners.</p>
 <p><a href="${appUrl()}/dashboard">Open your dashboard</a></p>`,
     }).catch(() => false)
   }
@@ -137,7 +138,7 @@ export async function POST(req: NextRequest) {
         senderName: myName,
         recipientId: requesterId,
         recipientName: request.senderName,
-        text: `${myName} declined the request to link as spouses.`,
+        text: `${myName} declined the request to link as partners.`,
         timestamp: timestamp(),
         type: 'text',
       },
@@ -151,7 +152,7 @@ export async function POST(req: NextRequest) {
       .create({
         data: {
           userId: requesterId,
-          title: `${myName} declined your spouse request`,
+          title: `${myName} declined your partner request`,
           message: 'Your accounts were not linked.',
           type: 'WARNING',
           link: chatLink,
@@ -159,9 +160,9 @@ export async function POST(req: NextRequest) {
       })
       .catch(() => {})
     await emailMember(requesterId, {
-      subject: `${myName} declined your spouse request`,
-      heading: 'Spouse request declined',
-      paragraphs: [`${myName} declined your request to link your Union Verify accounts as spouses. Your accounts were not linked.`],
+      subject: `${myName} declined your partner request`,
+      heading: 'Partner request declined',
+      paragraphs: [`${myName} declined your request to link your Union Verify accounts as partners. Your accounts were not linked.`],
       ctaLabel: 'Open the chat',
       ctaPath: chatLink,
     })
@@ -169,14 +170,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (await resolveSpouseId(me)) {
-    return NextResponse.json({ success: false, error: 'Your account is already linked to a spouse.' }, { status: 400 })
+    return NextResponse.json({ success: false, error: 'Your account is already linked to a partner.' }, { status: 400 })
   }
 
   if (body.action === 'request') {
     const other = await prisma.user.findFirst({ where: { id: String(body.userId || ''), role: 'INVESTOR' }, select: { id: true, name: true, email: true } })
     if (!other || other.id === me) return NextResponse.json({ success: false, error: 'Member not found.' }, { status: 404 })
     if (await resolveSpouseId(other.id)) {
-      return NextResponse.json({ success: false, error: `${other.name} is already linked to a spouse.` }, { status: 400 })
+      return NextResponse.json({ success: false, error: `${other.name} is already linked to a partner.` }, { status: 400 })
     }
     // They already asked me: asking back means yes
     const theirRequest = (await getIncomingSpouseRequests(me)).find((r) => r.fromUserId === other.id)
@@ -193,7 +194,7 @@ export async function POST(req: NextRequest) {
         senderName: myName,
         recipientId: other.id,
         recipientName: other.name,
-        text: `${myName} asked to link your accounts as spouses (joint vault, reciprocation and withdrawal approvals).`,
+        text: `${myName} asked to link your accounts as partners (joint vault, reciprocation and withdrawal approvals).`,
         timestamp: timestamp(),
         type: 'spouse_request',
         proposalData: { status: 'pending', fromUserId: me, toUserId: other.id },
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
       .create({
         data: {
           userId: other.id,
-          title: `${myName} wants to link as spouses`,
+          title: `${myName} wants to link as partners`,
           message: 'Accept or decline on your dashboard or in your chat with them.',
           type: 'INFO',
           link: chatLink,
@@ -221,9 +222,9 @@ export async function POST(req: NextRequest) {
       .catch(() => {})
     const emailed = await sendEmail({
       to: other.email,
-      subject: `${myName} wants to link your Union Verify accounts as spouses`,
+      subject: `${myName} wants to link your Union Verify accounts as partners`,
       html: `<p>Hi ${escapeHtml(other.name)},</p>
-<p>${escapeHtml(myName)} asked to link your Union Verify accounts as spouses. Linked spouses share a joint vault, reciprocate each other's deposits and approve each other's joint withdrawals.</p>
+<p>${escapeHtml(myName)} asked to link your Union Verify accounts as partners. Linked partners share a joint vault, reciprocate each other's deposits and approve each other's joint withdrawals.</p>
 <p><a href="${appUrl()}${chatLink}">Open the request</a> and tap <strong>Accept</strong> if you agree. If you don't know ${escapeHtml(myName)}, just ignore this email.</p>`,
     }).catch(() => false)
     return NextResponse.json({ success: true, emailed })

@@ -35,7 +35,7 @@ const CARD_LABELS: Record<string, string> = {
   investment: 'Investment',
   withdrawal: 'Withdrawal',
   certificate: 'Certificate',
-  spouse_request: 'Spouse request',
+  spouse_request: 'Partner request',
   love_note: 'Love note',
 }
 
@@ -60,9 +60,9 @@ export function FloatingChatWidget() {
   const [partner, setPartner] = useState<{ id: string; name: string } | null>(null)
   const [pendingMatch, setPendingMatch] = useState<{ pendingDeposits?: { messageId: string; amount: number }[] } | null>(null)
 
-  const displayPartnerName = partner?.name || 'Your spouse'
+  const displayPartnerName = partner?.name || 'Your partner'
   const partnerInitials = displayPartnerName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-  const partnerRelation = 'Spouse'
+  const partnerRelation = 'Partner'
 
   const isChatPage = pathname === '/chat' || pathname?.startsWith('/chat')
 
@@ -310,7 +310,7 @@ export function FloatingChatWidget() {
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50/50 text-xs">
             {messages.length === 0 && (
               <p className="text-center text-[11px] text-gray-400 pt-6">
-                {partner ? `No messages with ${displayPartnerName} yet.` : 'No spouse is linked to your account yet.'}
+                {partner ? `No messages with ${displayPartnerName} yet.` : 'No partner is linked to your account yet.'}
               </p>
             )}
             {messages.map((m) => {
@@ -391,7 +391,7 @@ export function FloatingChatWidget() {
           type="button"
           onClick={handleOpenWidget}
           className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 hidden lg:inline-flex items-center gap-2.5 px-4 py-3 rounded-full bg-[#0F1C3F] text-white shadow-2xl hover:bg-[#17274f] border border-[#C9A84C]/50 transition-all hover:scale-105 active:scale-95 group backdrop-blur-sm"
-          title="Open Spouse Chat"
+          title="Open Partner Chat"
         >
           <div className="relative flex items-center justify-center">
             <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#C9A84C] to-[#edd9a4] text-[#0F1C3F] font-bold flex items-center justify-center text-[11px] shadow-sm">
@@ -401,7 +401,7 @@ export function FloatingChatWidget() {
 
           <div className="flex flex-col text-left">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-bold text-white">Spouse Chat</span>
+              <span className="text-xs font-bold text-white">Partner Chat</span>
             </div>
             <span className="text-[10px] text-gray-300 font-medium">
               {displayPartnerName}

@@ -19,7 +19,7 @@ export default async function SoloInvestmentPage() {
       <div>
         <h1 className="text-2xl font-bold text-[#0F1C3F]">Invest on your own</h1>
         <p className="text-sm text-gray-500">
-          Investments made here are in your name only and don&apos;t need your spouse&apos;s approval. Returns are projections,
+          Investments made here are in your name only and don&apos;t need your partner&apos;s approval. Returns are projections,
           not guarantees, and your capital is at risk.
         </p>
       </div>

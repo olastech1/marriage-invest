@@ -124,7 +124,7 @@ export default async function AdminInvestorsPage({
                   acknowledgedDocIds: docIds,
                   allDocuments,
                   isIdentityVerified: Boolean(inv.identityVerified),
-                  hasMarriageCovenant: realTransactions.some((t: any) => t.type === 'FEE'),
+                  hasMarriageCovenant: Boolean(inv.spouseId) || realTransactions.some((t: any) => t.type === 'FEE'),
                   realDepositedAmount: realDeposited,
                   realInvestedAmount: totalFunded,
                 })

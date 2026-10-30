@@ -89,7 +89,7 @@ export function computeAccountRating(params: ComputeRatingParams): AccountRating
 
   let score = 0
 
-  // 1. Marriage registration (20 pts)
+  // 1. Couple linked: a linked partner or a registered union (20 pts)
   const covenantMet = hasMarriageCovenant
   if (covenantMet) {
     score += 20
@@ -141,7 +141,7 @@ export function computeAccountRating(params: ComputeRatingParams): AccountRating
       min: 90,
       tier: 'AAA',
       title: 'Account fully set up',
-      subtitle: 'Marriage registered, identity verified, documents signed and real deposits on record.',
+      subtitle: 'Partner linked, identity verified, documents signed and real deposits on record.',
       statusLabel: 'Complete',
       color: {
         bg: 'bg-amber-50',
@@ -237,11 +237,11 @@ export function computeAccountRating(params: ComputeRatingParams): AccountRating
 
   const checklist = [
     {
-      label: 'Marriage registration',
+      label: 'Partner linked',
       met: covenantMet,
       description: covenantMet
-        ? 'Your marriage registration is on record'
-        : 'Register your marriage on the Get Married page (+20 pts)',
+        ? 'Your partner is linked (or your union is registered)'
+        : 'Link your partner in Settings, or register your union (+20 pts)',
       docType: 'MARRIAGE_COVENANT',
     },
     {

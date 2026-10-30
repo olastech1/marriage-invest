@@ -23,6 +23,8 @@ import {
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 import NotificationBellDropdown from '@/components/investor/NotificationBellDropdown'
+import UserAvatar from '@/components/investor/UserAvatar'
+import AccountMenu from '@/components/investor/AccountMenu'
 
 // ---------------------------------------------------------------------------
 // Navigation (every item stays inside the member area)
@@ -81,14 +83,6 @@ function pageTitle(pathname: string): string {
   return PAGE_TITLES[pathname] || 'Member area'
 }
 
-function initialsOf(name?: string | null) {
-  return (name ?? 'Member')
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
-}
 
 function UnreadBadge({ count }: { count: number }) {
   if (count <= 0) return null
@@ -110,7 +104,7 @@ function Sidebar({
   onClose,
 }: {
   pathname: string
-  user: { name?: string | null; email?: string | null }
+  user: { name?: string | null; email?: string | null; avatarUrl?: string | null }
   publicBioUrl: string | null
   unread: number
   onClose?: () => void
@@ -170,9 +164,7 @@ function Sidebar({
 
       <div className="border-t border-white/10 p-4 space-y-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#C9A84C] text-sm font-bold text-[#0F1C3F]">
-            {initialsOf(user.name)}
-          </div>
+          <UserAvatar name={user.name} src={user.avatarUrl} className="h-9 w-9 text-sm" fallbackClassName="bg-[#C9A84C] text-[#0F1C3F]" />
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-white">{user.name ?? 'Member'}</p>
             <p className="truncate text-xs text-white/50">{user.email ?? ''}</p>
@@ -198,14 +190,24 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
   const pathname = usePathname()
   const [menuOpen, setMenuOpen] = useState(false)
   const [publicBioUrl, setPublicBioUrl] = useState<string | null>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [accountNumber, setAccountNumber] = useState<string | null>(null)
   const [unread, setUnread] = useState(0)
 
-  // The member's own public profile URL (null until they choose a username)
+  // The member's own public profile URL (null until they choose a username) and photo
   useEffect(() => {
-    fetch('/api/user/profile')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setPublicBioUrl(data?.user?.publicBioUrl ?? null))
-      .catch(() => setPublicBioUrl(null))
+    const load = () =>
+      fetch('/api/user/profile')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          setPublicBioUrl(data?.user?.publicBioUrl ?? null)
+          setAvatarUrl(data?.user?.avatarUrl ?? null)
+          setAccountNumber(data?.user?.accountNumber || null)
+        })
+        .catch(() => setPublicBioUrl(null))
+    load()
+    window.addEventListener('uv:profile-changed', load)
+    return () => window.removeEventListener('uv:profile-changed', load)
   }, [])
 
   // Unread chat messages, for the Chat badge
@@ -223,7 +225,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
     return () => clearInterval(timer)
   }, [pathname])
 
-  const user = session?.user || { name: null, email: '' }
+  const user = { ...(session?.user || { name: null, email: '' }), avatarUrl }
   const isChat = pathname === '/chat'
   const title = pageTitle(pathname)
 
@@ -270,13 +272,7 @@ export default function InvestorLayout({ children }: { children: React.ReactNode
                 <span className="absolute top-1 right-1 lg:static h-2.5 w-2.5 rounded-full bg-rose-500" aria-label={`${unread} unread`} />
               )}
             </Link>
-            <Link
-              href="/settings"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-[#0F1C3F] text-xs font-bold text-[#C9A84C]"
-              aria-label="Account settings"
-            >
-              {initialsOf(user.name)}
-            </Link>
+            <AccountMenu user={{ ...user, accountNumber }} />
           </div>
         </header>
 

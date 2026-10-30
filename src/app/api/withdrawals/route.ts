@@ -124,8 +124,8 @@ export async function GET() {
           accountNumber: w.accountNumber ? `••••${w.accountNumber.slice(-4)}` : null,
           createdAt: w.createdAt,
           requesterId: w.userId,
-          requesterName: meta?.requestedByName || w.user?.name || 'your spouse',
-          partnerName: meta?.partnerName || 'your spouse',
+          requesterName: meta?.requestedByName || w.user?.name || 'your partner',
+          partnerName: meta?.partnerName || 'your partner',
           opportunityTitle: w.investment?.opportunity?.title || 'Joint Marriage Reserve',
           referenceNumber: w.investment?.referenceNumber,
           partnerApprovalStatus: meta?.partnerApprovalStatus || 'AWAITING_PARTNER',
@@ -141,7 +141,7 @@ export async function GET() {
       withdrawals,
       eligibleInvestments,
       pendingPartnerApprovals,
-      partnerName: reciprocation.spouseName || 'your spouse',
+      partnerName: reciprocation.spouseName || 'your partner',
       hasPendingReciprocation,
       pendingReciprocation,
     })
@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
     const netAmount = Math.max(0, amount - fee - penalty)
 
     const spouseId = await resolveSpouseId(userId)
-    const partnerName = spouseId ? await getSpouseName(spouseId) : (customPartnerName || 'your spouse')
+    const partnerName = spouseId ? await getSpouseName(spouseId) : (customPartnerName || 'your partner')
     // Without a linked spouse there is nobody to approve, so it goes straight to review
     const needsPartner = !isSolo && !!spouseId
 

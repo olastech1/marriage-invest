@@ -23,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
         name: user.name,
         username,
         avatar: user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
+        avatarUrl: user.avatarUrl || null,
         bio: user.bio || '',
         identityVerified: user.identityVerified,
         memberSince: String(user.createdAt.getFullYear()),

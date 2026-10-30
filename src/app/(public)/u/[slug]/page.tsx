@@ -24,6 +24,7 @@ interface PublicProfile {
   name: string
   username: string
   avatar: string
+  avatarUrl?: string | null
   bio: string
   identityVerified: boolean
   memberSince: string
@@ -213,9 +214,14 @@ export default function UserPublicProfilePage() {
           {/* Avatars */}
           <div className="flex items-center justify-center my-2">
             <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] p-0.5 shadow-xl">
-              <div className="w-full h-full rounded-full bg-[#0F1C3F] flex items-center justify-center font-bold text-2xl text-white">
-                {profile.avatar || primaryName.slice(0, 2).toUpperCase()}
-              </div>
+              {profile.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- small photo from our own API
+                <img src={profile.avatarUrl} alt={`${primaryName}'s photo`} className="w-full h-full rounded-full object-cover bg-[#0F1C3F]" />
+              ) : (
+                <div className="w-full h-full rounded-full bg-[#0F1C3F] flex items-center justify-center font-bold text-2xl text-white">
+                  {profile.avatar || primaryName.slice(0, 2).toUpperCase()}
+                </div>
+              )}
             </div>
 
           </div>

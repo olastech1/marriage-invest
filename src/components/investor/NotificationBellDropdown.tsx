@@ -128,7 +128,7 @@ export default function NotificationBellDropdown() {
                   <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
                   <p className="text-xs font-bold text-slate-800">Nothing needs your attention</p>
                   <p className="text-[11px] text-slate-500">
-                    When your spouse makes a deposit, it will show up here.
+                    When your partner makes a deposit, it will show up here.
                   </p>
                 </div>
               ) : (
@@ -167,7 +167,7 @@ export default function NotificationBellDropdown() {
                           href="/chat?thread=spouse"
                           onClick={() => setIsOpen(false)}
                           className="text-[10px] font-bold text-slate-500 hover:text-[#0F1C3F] flex items-center gap-1 bg-white px-2 py-0.5 rounded-md border border-slate-200"
-                          title="Discuss this with your spouse in chat"
+                          title="Discuss this with your partner in chat"
                         >
                           <MessageSquareHeart size={11} className="text-[#C9A84C]" />
                           Chat

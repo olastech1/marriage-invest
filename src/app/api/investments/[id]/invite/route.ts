@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { buildThreadId, createChatMessage, resolveSpouseId } from '@/lib/chat'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
+import { siteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (body.to === 'spouse') {
     const spouseId = await resolveSpouseId(me)
     recipient = spouseId ? await prisma.user.findUnique({ where: { id: spouseId }, select: { id: true, name: true, email: true } }) : null
-    if (!recipient) return NextResponse.json({ success: false, error: 'You have no linked spouse yet.' }, { status: 400 })
+    if (!recipient) return NextResponse.json({ success: false, error: 'You have no linked partner yet.' }, { status: 400 })
     email = recipient.email
   } else {
     email = String(body.to || '').trim().toLowerCase()
@@ -54,7 +55,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     recipient = await prisma.user.findUnique({ where: { email }, select: { id: true, name: true, email: true } })
   }
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'https://unionverify.com').replace(/\/$/, '')
+  const appUrl = siteUrl()
   const fundUrl = `${appUrl}/investments/${opportunity.slug}`
   const amountText = amount ? `$${amount.toLocaleString()} ` : ''
 
