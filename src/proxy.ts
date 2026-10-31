@@ -27,10 +27,15 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL(request.nextUrl.pathname + request.nextUrl.search, SITE_URL), 308)
   }
 
-  // Signed-in member area: redirect to login when there is no session
   const path = request.nextUrl.pathname
+  // The admin area starts at its dashboard
+  if (path === '/admin' || path === '/admin/') return NextResponse.redirect(new URL('/admin/dashboard', request.url))
+
+  // Signed-in member area: redirect to login when there is no session
   if (!MEMBER_AREA.some((p) => path === p || path.startsWith(`${p}/`))) return NextResponse.next()
   const session = await auth()
+  // Admins land on the admin dashboard (after signing in, switching accounts, or the Dashboard button)
+  if (session?.user?.role === 'ADMIN' && path === '/dashboard') return NextResponse.redirect(new URL('/admin/dashboard', request.url))
   if (session?.user?.id) return NextResponse.next()
 
   const login = new URL('/login', request.url)
