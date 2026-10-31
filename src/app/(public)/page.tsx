@@ -48,7 +48,8 @@ export default async function HomePage() {
   }
 
   const session = await auth().catch(() => null)
-  const certificateHref = session?.user ? '/certificate' : '/register'
+  const signedIn = !!session?.user
+  const certificateHref = signedIn ? '/certificate' : '/register'
 
   return (
     <div className="bg-white min-h-screen">
@@ -76,7 +77,7 @@ export default async function HomePage() {
           {/* Hero CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
             <Link
-              href="/register"
+              href={signedIn ? '/dashboard' : '/register'}
               className="w-full sm:w-auto px-7 py-3.5 text-sm sm:text-base font-bold text-[#0F1C3F] bg-[#C9A84C] rounded-xl hover:bg-[#d4b460] active:scale-95 transition-all shadow-lg shadow-[#C9A84C]/25"
             >
               Start Investing
@@ -217,7 +218,7 @@ export default async function HomePage() {
                     Fund Details
                   </Link>
                   <Link
-                    href={`/register?redirect=/investments/${opp.slug}`}
+                    href={signedIn ? `/investments/${opp.slug}` : `/register?redirect=/investments/${opp.slug}`}
                     className="flex-1 py-2.5 text-center text-xs font-bold text-[#0F1C3F] bg-[#C9A84C] hover:bg-[#d4b460] rounded-xl transition-colors shadow-sm"
                   >
                     Invest Now
@@ -349,7 +350,7 @@ export default async function HomePage() {
 
               <div className="pt-4 flex flex-col sm:flex-row gap-3">
                 <Link
-                  href="/register"
+                  href={signedIn ? '/save' : '/register'}
                   className="px-6 py-3.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-sm text-center hover:bg-[#d4b460] transition-colors shadow-md shadow-[#C9A84C]/25"
                 >
                   Start Saving Together

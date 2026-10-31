@@ -14,6 +14,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
+import { auth } from '@/lib/auth'
 import InvestmentCard, { type InvestmentOpportunityCard } from '@/components/public/InvestmentCard'
 import type { Metadata } from 'next'
 import type { OpportunityStatus } from '@prisma/client'
@@ -249,6 +250,7 @@ interface PageProps {
 }
 
 export default async function InvestmentsPage({ searchParams }: PageProps) {
+  const signedIn = !!(await auth().catch(() => null))?.user
   const { status: rawStatus } = await searchParams
 
   // Drafts are never shown publicly
@@ -316,6 +318,26 @@ export default async function InvestmentsPage({ searchParams }: PageProps) {
           {opportunities.length > 0 && (
             <div className="mt-10 rounded-2xl bg-[#0F1C3F] p-8 text-center text-white">
               <h2 className="text-xl font-bold">Ready to invest?</h2>
+              {signedIn ? (
+                <>
+                  <p className="mt-2 text-blue-200 text-sm">Open any opportunity above to invest, then track it in your portfolio.</p>
+                  <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <Link
+                      href="/dashboard"
+                      className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-6 py-3 text-sm font-bold text-[#0F1C3F] hover:bg-[#d9b95c] transition-colors"
+                    >
+                      Go to dashboard
+                    </Link>
+                    <Link
+                      href="/portfolio"
+                      className="inline-flex items-center gap-2 rounded-lg border border-white/30 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+                    >
+                      My portfolio
+                    </Link>
+                  </div>
+                </>
+              ) : (
+                <>
               <p className="mt-2 text-blue-200 text-sm">
                 Create an account to see full opportunity details, submit investments,
                 and track your portfolio.
@@ -334,6 +356,8 @@ export default async function InvestmentsPage({ searchParams }: PageProps) {
                   Sign In
                 </Link>
               </div>
+                </>
+              )}
             </div>
           )}
         </Suspense>
