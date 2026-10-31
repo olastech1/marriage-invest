@@ -28,14 +28,39 @@ try {
   process.exit(0)
 }
 
+/**
+ * Prisma puts every change to one table in a single ALTER TABLE ("ADD COLUMN a,
+ * ALTER COLUMN b SET DATA TYPE …"). Split those into one statement per change,
+ * so a skipped destructive change doesn't take the safe ones (a new column)
+ * down with it. Commas inside brackets (DECIMAL(18,2)) don't split.
+ */
+function splitAlterTable(statement) {
+  const m = statement.match(/^(ALTER\s+TABLE\s+(?:"[^"]+"\.)?"[^"]+")\s+([\s\S]+)$/i)
+  if (!m) return [statement]
+  const clauses = []
+  let depth = 0
+  let current = ''
+  for (const ch of m[2]) {
+    if (ch === '(') depth++
+    if (ch === ')') depth--
+    if (ch === ',' && depth === 0) {
+      clauses.push(current.trim())
+      current = ''
+    } else current += ch
+  }
+  if (current.trim()) clauses.push(current.trim())
+  return clauses.map((clause) => `${m[1]} ${clause}`)
+}
+
 // Split into statements, dropping comment lines
 const statements = sql
   .split('\n')
   .filter((line) => !line.trim().startsWith('--'))
   .join('\n')
   .split(/;\s*\n/)
-  .map((s) => s.trim())
+  .map((s) => s.trim().replace(/;$/, ''))
   .filter(Boolean)
+  .flatMap(splitAlterTable)
 
 const DESTRUCTIVE = /\bDROP\b|\bALTER\s+COLUMN\b[^;]*\bTYPE\b|\bRENAME\b|\bTRUNCATE\b/i
 
