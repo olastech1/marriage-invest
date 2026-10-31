@@ -2,7 +2,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { redirect } from 'next/navigation'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
+import { computeAccountRating, isDemoTransaction, countsInTotals } from '@/lib/rating'
 import { Search, CheckCircle2, Clock } from 'lucide-react'
 import LoadErrorBanner from '@/components/admin/LoadErrorBanner'
 
@@ -120,7 +120,7 @@ export default async function AdminInvestorsPage({
                 </tr>
               )}
               {investors.map((inv: any) => {
-                const realInvestments = (inv.investments || []).filter((i: any) => !isDemoInvestment(i))
+                const realInvestments = (inv.investments || []).filter((i: any) => countsInTotals(i))
                 const realTransactions = (inv.transactions || []).filter((t: any) => !isDemoTransaction(t))
                 const totalFunded = realInvestments.reduce((sum: number, i: any) => sum + Number(i.amount), 0)
                 const realDeposited = realTransactions

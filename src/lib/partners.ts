@@ -68,6 +68,8 @@ export type Partner = {
   avatarUrl: string | null
   relation: Relation
   relationLabel: string
+  /** What they let their partners see (null: hidden) */
+  shared: { email: string | null; phone: string | null }
 }
 
 /** Partners with their details, for lists and pickers */
@@ -76,12 +78,19 @@ export async function getPartners(userId: string): Promise<Partner[]> {
   if (!links.length) return []
   const users = await prisma.user.findMany({
     where: { id: { in: links.map((l) => l.id) } },
-    select: { id: true, name: true, email: true, accountNumber: true, avatarUrl: true },
+    select: { id: true, name: true, email: true, accountNumber: true, avatarUrl: true, phone: true, partnerSeesEmail: true, partnerSeesPhone: true },
   })
   return links
     .map((l) => {
       const u = users.find((x) => x.id === l.id)
-      return u ? { ...u, relation: l.relation, relationLabel: RELATIONS[l.relation] as string } : null
+      if (!u) return null
+      const { phone, partnerSeesEmail, partnerSeesPhone, ...rest } = u
+      return {
+        ...rest,
+        relation: l.relation,
+        relationLabel: RELATIONS[l.relation] as string,
+        shared: { email: partnerSeesEmail ? u.email : null, phone: partnerSeesPhone && phone ? phone : null },
+      }
     })
     .filter((p): p is Partner => !!p)
 }

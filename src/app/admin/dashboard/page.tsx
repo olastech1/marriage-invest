@@ -87,7 +87,7 @@ async function getDashboardData() {
 
     // 2. Sum of all active/matured investment amounts
     prisma.investment.aggregate({
-      where: { status: { in: ['ACTIVE', 'MATURED'] } },
+      where: { status: { in: ['ACTIVE', 'MATURED'] }, fundingSource: { not: 'CREDIT' } },
       _sum: { amount: true },
     }),
 

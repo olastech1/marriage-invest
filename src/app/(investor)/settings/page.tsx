@@ -40,6 +40,8 @@ export default function InvestorSettingsPage() {
     publicChatEnabled: true,
     showEmail: true,
     showPhone: true,
+    partnerSeesEmail: false,
+    partnerSeesPhone: false,
   })
   // Saved on the server (null until the member has a username)
   const [publicBioPath, setPublicBioPath] = useState<string | null>(null)
@@ -74,6 +76,8 @@ export default function InvestorSettingsPage() {
             publicChatEnabled: data.user.publicChatEnabled !== false,
             showEmail: data.user.showEmail !== false,
             showPhone: data.user.showPhone !== false,
+            partnerSeesEmail: !!data.user.partnerSeesEmail,
+            partnerSeesPhone: !!data.user.partnerSeesPhone,
           })
           setPublicBioPath(data.user.publicBioUrl || null)
           setAvatarUrl(data.user.avatarUrl || null)
@@ -121,6 +125,8 @@ export default function InvestorSettingsPage() {
           publicChatEnabled: profile.publicChatEnabled,
           showPhone: profile.showPhone,
           showEmail: profile.showEmail,
+          partnerSeesEmail: profile.partnerSeesEmail,
+          partnerSeesPhone: profile.partnerSeesPhone,
         }),
       })
       const data = await res.json()
@@ -392,6 +398,32 @@ export default function InvestorSettingsPage() {
                 <div className="text-xs">
                   <span className="font-bold text-gray-900 block">Show my phone and WhatsApp</span>
                   <span className="text-gray-500">Show call and WhatsApp buttons on your bio page.</span>
+                </div>
+              </label>
+
+              <p id="partner-privacy" className="pt-2 text-xs font-bold text-gray-700">What partners see</p>
+              <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profile.partnerSeesEmail}
+                  onChange={(e) => setProfile({ ...profile, partnerSeesEmail: e.target.checked })}
+                  className="rounded text-[#C9A84C] focus:ring-[#C9A84C] w-4 h-4"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-gray-900 block">Partners can see my email</span>
+                  <span className="text-gray-500">Only people you&apos;ve linked with as partners.</span>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:bg-gray-50 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={profile.partnerSeesPhone}
+                  onChange={(e) => setProfile({ ...profile, partnerSeesPhone: e.target.checked })}
+                  className="rounded text-[#C9A84C] focus:ring-[#C9A84C] w-4 h-4"
+                />
+                <div className="text-xs">
+                  <span className="font-bold text-gray-900 block">Partners can see my phone number</span>
+                  <span className="text-gray-500">Only people you&apos;ve linked with as partners.</span>
                 </div>
               </label>
             </div>

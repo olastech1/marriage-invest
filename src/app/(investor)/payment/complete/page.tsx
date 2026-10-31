@@ -13,6 +13,7 @@ type State =
 const NEXT_LABEL: Record<string, string> = {
   '/chat': 'Go to chat',
   '/save': 'View joint vault',
+  '/wallet': 'View wallet',
   '/portfolio': 'View portfolio',
   '/certificate': 'View certificate',
   '/dashboard': 'Go to dashboard',

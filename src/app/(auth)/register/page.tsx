@@ -171,6 +171,8 @@ function RegisterForm() {
           email: fields.email.toLowerCase().trim(),
           phone: fields.phone.trim(),
           password: fields.password,
+          // From a member's invite link (shared on WhatsApp): their account ID
+          invite: searchParams.get('invite') || undefined,
         }),
       })
 

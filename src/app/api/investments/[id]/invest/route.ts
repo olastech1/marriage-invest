@@ -2,18 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
+import { PaymentsNotConfiguredError, createInvestment, startPayment } from '@/lib/payments'
+import { WalletBalanceError } from '@/lib/wallet'
 
 const investSchema = z.object({
   amount: z.number().positive('Investment amount must be positive'),
+  /** card (Stripe), wallet (wallet cash) or credit (wallet credit) */
+  source: z.enum(['card', 'wallet', 'credit']).default('card'),
 })
 
 type Params = { params: Promise<{ id: string }> }
 
 // ---------------------------------------------------------------------------
 // POST /api/investments/[id]/invest { amount }
-// Starts a Stripe Checkout for an investment in an admin-created opportunity.
-// The investment is created only after the payment succeeds.
+// Card: starts a Stripe Checkout; the investment is created once it's paid.
+// Wallet / credit: taken from that wallet balance and created straight away.
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest, { params }: Params): Promise<NextResponse> {
   try {
@@ -49,6 +52,18 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
       return NextResponse.json({ error: `Only $${Math.max(0, remaining).toLocaleString()} of this round remains.` }, { status: 400 })
     }
 
+    if (parsed.data.source !== 'card') {
+      const { message } = await createInvestment({
+        userId,
+        userName: session.user.name || 'Member',
+        opportunityId: opportunity.id,
+        amount,
+        partnerId: null,
+        source: parsed.data.source === 'wallet' ? 'WALLET' : 'CREDIT',
+      })
+      return NextResponse.json({ success: true, message, nextUrl: '/portfolio' })
+    }
+
     const checkoutUrl = await startPayment({
       purpose: 'INVESTMENT',
       amount,
@@ -63,6 +78,9 @@ export async function POST(req: NextRequest, { params }: Params): Promise<NextRe
     })
     return NextResponse.json({ success: true, checkoutUrl })
   } catch (error) {
+    if (error instanceof WalletBalanceError) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
     if (error instanceof PaymentsNotConfiguredError) {
       return NextResponse.json({ error: error.message }, { status: 503 })
     }

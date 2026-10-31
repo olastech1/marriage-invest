@@ -19,8 +19,9 @@ import { recordVaultDeposit } from '@/lib/vaultDeposits'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { siteUrl } from '@/lib/site'
 import { recordInvitation } from '@/lib/invitations'
+import { moveWallet, walletRef } from '@/lib/wallet'
 
-export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF'
+export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF' | 'WALLET_TOPUP'
 
 /** Platform service fees, in USD (set here, never by the browser) */
 export const FEES = {
@@ -161,83 +162,33 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
   },
 
   async INVESTMENT({ userId, userName, amount, payload, paymentRef }) {
-    const opportunity = await prisma.investmentOpportunity.findUnique({ where: { id: payload.opportunityId } })
-    if (!opportunity) throw new Error('Investment opportunity no longer exists')
-
-    const now = new Date()
-    const maturityDate = new Date(now)
-    maturityDate.setMonth(maturityDate.getMonth() + opportunity.termMonths)
-    const referenceNumber = `INV-${Date.now().toString(36).toUpperCase()}`
     // Paid from a partner's invitation: shared with them (they approve withdrawals); otherwise personal
     const partnerId = payload.partnerId && (await isPartner(userId, String(payload.partnerId))) ? String(payload.partnerId) : null
+    const { message } = await createInvestment({ userId, userName, opportunityId: payload.opportunityId, amount, partnerId, source: 'CARD', paymentRef })
+    return { purpose: 'INVESTMENT', nextUrl: '/portfolio', message }
+  },
 
+  async WALLET_TOPUP({ userId, amount, paymentRef }) {
+    const now = new Date()
+    const reference = `TXN-${walletRef('WAL')}`
     await prisma.$transaction(async (tx) => {
-      const investment = await tx.investment.create({
-        data: {
-          userId,
-          opportunityId: opportunity.id,
-          referenceNumber,
-          amount: new Prisma.Decimal(amount),
-          status: 'ACTIVE',
-          confirmedAt: now,
-          maturityDate,
-          partnerId,
-        },
-      })
+      await moveWallet(tx, { userId, kind: 'CASH', amount, reason: 'Added by card', reference })
       await tx.transaction.create({
         data: {
           userId,
-          investmentId: investment.id,
           type: 'DEPOSIT',
           amount: new Prisma.Decimal(amount),
           fee: new Prisma.Decimal(0),
           netAmount: new Prisma.Decimal(amount),
           status: 'COMPLETED',
-          reference: `TXN-${referenceNumber}`,
+          reference,
           stripePaymentIntentId: paymentRef,
-          description: `Investment in ${opportunity.title}`,
-          metadata: { opportunityId: opportunity.id, investorName: userName },
+          description: 'Wallet top-up',
           processedAt: now,
         },
       })
-      await tx.investmentOpportunity.update({
-        where: { id: opportunity.id },
-        data: { fundedAmount: { increment: new Prisma.Decimal(amount) } },
-      })
-      await tx.notification.create({
-        data: {
-          userId,
-          title: 'Investment confirmed',
-          message: `Your $${amount.toLocaleString()} investment in ${opportunity.title} is active (ref ${referenceNumber}).`,
-          type: 'SUCCESS',
-          link: '/portfolio',
-        },
-      })
     })
-    const usd = `$${amount.toLocaleString()}`
-    await postToCoupleChat(userId, userName, partnerId, {
-      type: 'investment',
-      text: `Invested ${usd} in ${opportunity.title}.`,
-      proposalData: { goalName: opportunity.title, amount, slug: opportunity.slug },
-    })
-    await emailMember(userId, {
-      subject: `Investment confirmed: ${usd} in ${opportunity.title}`,
-      heading: 'Your investment is active',
-      paragraphs: [
-        `Your ${usd} investment in ${opportunity.title} is active (reference ${referenceNumber}).`,
-        `Term: ${opportunity.termMonths} months. Returns are projections, not guarantees.`,
-      ],
-      ctaLabel: 'View portfolio',
-      ctaPath: '/portfolio',
-    })
-    await emailMember(partnerId, {
-      subject: `${userName} invested ${usd} in ${opportunity.title}`,
-      heading: `${userName} made an investment`,
-      paragraphs: [`${userName} invested ${usd} in ${opportunity.title}.`],
-      ctaLabel: 'View the opportunity',
-      ctaPath: `/investments/${opportunity.slug}`,
-    })
-    return { purpose: 'INVESTMENT', nextUrl: '/portfolio', message: `Your ${usd} investment in ${opportunity.title} is active.` }
+    return { purpose: 'WALLET_TOPUP', nextUrl: '/wallet', message: `$${amount.toLocaleString()} was added to your wallet.` }
   },
 
   async MARRIAGE_REGISTRATION({ userId, userName, amount, payload, paymentRef }) {
@@ -362,6 +313,114 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     }
     return { purpose: 'CERTIFICATE', nextUrl: '/certificate', message: 'Your certificate is ready.' }
   },
+}
+
+/**
+ * Create an active investment. CARD was paid by card just now; WALLET is taken
+ * from wallet cash and CREDIT from wallet credit in the same database
+ * transaction. CREDIT investments are left out of the round's raised amount and
+ * the ledger, and can't be withdrawn.
+ */
+export async function createInvestment(input: {
+  userId: string
+  userName: string
+  opportunityId: string
+  amount: number
+  partnerId: string | null
+  source: 'CARD' | 'WALLET' | 'CREDIT'
+  paymentRef?: string
+}): Promise<{ message: string; referenceNumber: string }> {
+  const { userId, userName, amount, partnerId, source } = input
+  const opportunity = await prisma.investmentOpportunity.findUnique({ where: { id: input.opportunityId } })
+  if (!opportunity) throw new Error('Investment opportunity no longer exists')
+
+  const now = new Date()
+  const maturityDate = new Date(now)
+  maturityDate.setMonth(maturityDate.getMonth() + opportunity.termMonths)
+  const referenceNumber = `INV-${Date.now().toString(36).toUpperCase()}`
+
+  await prisma.$transaction(async (tx) => {
+    const investment = await tx.investment.create({
+      data: {
+        userId,
+        opportunityId: opportunity.id,
+        referenceNumber,
+        amount: new Prisma.Decimal(amount),
+        status: 'ACTIVE',
+        confirmedAt: now,
+        maturityDate,
+        partnerId,
+        fundingSource: source,
+      },
+    })
+    if (source === 'CARD') {
+      await tx.transaction.create({
+        data: {
+          userId,
+          investmentId: investment.id,
+          type: 'DEPOSIT',
+          amount: new Prisma.Decimal(amount),
+          fee: new Prisma.Decimal(0),
+          netAmount: new Prisma.Decimal(amount),
+          status: 'COMPLETED',
+          reference: `TXN-${referenceNumber}`,
+          stripePaymentIntentId: input.paymentRef,
+          description: `Investment in ${opportunity.title}`,
+          metadata: { opportunityId: opportunity.id, investorName: userName },
+          processedAt: now,
+        },
+      })
+    } else {
+      // Throws (and undoes the investment) if the balance is too low
+      await moveWallet(tx, {
+        userId,
+        kind: source === 'WALLET' ? 'CASH' : 'CREDIT',
+        amount: -amount,
+        reason: `Invested in ${opportunity.title}`,
+        investmentId: investment.id,
+      })
+    }
+    if (source !== 'CREDIT') {
+      await tx.investmentOpportunity.update({
+        where: { id: opportunity.id },
+        data: { fundedAmount: { increment: new Prisma.Decimal(amount) } },
+      })
+    }
+    await tx.notification.create({
+      data: {
+        userId,
+        title: 'Investment confirmed',
+        message: `Your $${amount.toLocaleString()} investment in ${opportunity.title} is active (ref ${referenceNumber}).`,
+        type: 'SUCCESS',
+        link: '/portfolio',
+      },
+    })
+  })
+  const usd = `$${amount.toLocaleString()}`
+  await postToCoupleChat(userId, userName, partnerId, {
+    type: 'investment',
+    text: `Invested ${usd} in ${opportunity.title}.`,
+    proposalData: { goalName: opportunity.title, amount, slug: opportunity.slug },
+  })
+  await emailMember(userId, {
+    subject: `Investment confirmed: ${usd} in ${opportunity.title}`,
+    heading: 'Your investment is active',
+    paragraphs: [
+      `Your ${usd} investment in ${opportunity.title} is active (reference ${referenceNumber}).`,
+      `Term: ${opportunity.termMonths} months. Returns are projections, not guarantees.`,
+      ...(source === 'CREDIT' ? ['It was paid with your wallet credit, so it can\'t be withdrawn.'] : []),
+    ],
+    ctaLabel: 'View portfolio',
+    ctaPath: '/portfolio',
+  })
+  await emailMember(partnerId, {
+    subject: `${userName} invested ${usd} in ${opportunity.title}`,
+    heading: `${userName} made an investment`,
+    paragraphs: [`${userName} invested ${usd} in ${opportunity.title}.`],
+    ctaLabel: 'View the opportunity',
+    ctaPath: `/investments/${opportunity.slug}`,
+  })
+  return { message: `Your ${usd} investment in ${opportunity.title} is active.`, referenceNumber }
 }
 
 async function uniqueNumber(prefix: string): Promise<string> {

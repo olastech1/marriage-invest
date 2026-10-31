@@ -21,6 +21,8 @@ type ProfileUser = {
   publicChatEnabled: boolean
   showPhone: boolean
   showEmail: boolean
+  partnerSeesEmail: boolean
+  partnerSeesPhone: boolean
   role: string
   identityVerified: boolean
 }
@@ -43,6 +45,8 @@ function present(u: ProfileUser) {
     publicChatEnabled: u.publicChatEnabled,
     showPhone: u.showPhone,
     showEmail: u.showEmail,
+    partnerSeesEmail: u.partnerSeesEmail,
+    partnerSeesPhone: u.partnerSeesPhone,
     publicBioUrl: u.username ? `/u/${u.username}` : null,
     role: u.role,
     avatar: initials(u.name),
@@ -81,7 +85,7 @@ export async function PATCH(req: NextRequest) {
     const currentUserId = session?.user?.id
     if (!currentUserId) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 })
     const body = await req.json()
-    const { name, phone, bio, socials, publicChatEnabled, showPhone, showEmail, username } = body
+    const { name, phone, bio, socials, publicChatEnabled, showPhone, showEmail, partnerSeesEmail, partnerSeesPhone, username } = body
 
     const data: Record<string, unknown> = {}
     if (name) data.name = String(name).slice(0, 80)
@@ -91,6 +95,8 @@ export async function PATCH(req: NextRequest) {
     if (publicChatEnabled !== undefined) data.publicChatEnabled = Boolean(publicChatEnabled)
     if (showPhone !== undefined) data.showPhone = Boolean(showPhone)
     if (showEmail !== undefined) data.showEmail = Boolean(showEmail)
+    if (partnerSeesEmail !== undefined) data.partnerSeesEmail = Boolean(partnerSeesEmail)
+    if (partnerSeesPhone !== undefined) data.partnerSeesPhone = Boolean(partnerSeesPhone)
     if (username) {
       const clean = String(username).toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40)
       const taken = await prisma.user.findFirst({ where: { username: clean, NOT: { id: currentUserId } } })

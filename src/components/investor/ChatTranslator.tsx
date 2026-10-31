@@ -68,7 +68,6 @@ export const LANGUAGES: { code: string; name: string }[] = [
 ]
 
 const STORE_LANG = 'uv-translate-lang'
-const STORE_AUTO = 'uv-translate-auto'
 
 const read = (key: string) => {
   try {
@@ -104,10 +103,9 @@ function initialLanguage() {
   return match?.code || 'en'
 }
 
-/** Translations of chat messages into my language, by message id; optional auto-translate */
+/** Translations of chat messages into my language, by message id. Messages from others are always translated */
 export function useChatTranslator(messages: { id: string; text: string; type?: string; senderId?: string }[], myId: string) {
   const [lang, setLangState] = useState(initialLanguage)
-  const [auto, setAutoState] = useState(() => typeof window !== 'undefined' && read(STORE_AUTO) === '1')
   const [results, setResults] = useState<Record<string, Result>>({})
   const [original, setOriginal] = useState<Record<string, boolean>>({})
   const asked = useRef(new Set<string>())
@@ -115,10 +113,6 @@ export function useChatTranslator(messages: { id: string; text: string; type?: s
   const setLang = (code: string) => {
     setLangState(code)
     write(STORE_LANG, code)
-  }
-  const setAuto = (on: boolean) => {
-    setAutoState(on)
-    write(STORE_AUTO, on ? '1' : '0')
   }
 
   const key = (id: string) => `${lang}|${id}`
@@ -157,18 +151,15 @@ export function useChatTranslator(messages: { id: string; text: string; type?: s
     [lang],
   )
 
-  // Auto-translate: messages from other people
+  // Messages from other people, in any language, appear in mine
   useEffect(() => {
-    if (!auto) return
     const incoming = messages.filter((m) => (!m.type || m.type === 'text') && m.senderId !== myId && m.text?.trim())
     translate(incoming.slice(-25))
-  }, [auto, messages, myId, translate])
+  }, [messages, myId, translate])
 
   return {
     lang,
     setLang,
-    auto,
-    setAuto,
     translate,
     result: (id: string): Result | undefined => results[key(id)],
     /** The translated text to show instead of the original, if any */
@@ -177,6 +168,8 @@ export function useChatTranslator(messages: { id: string; text: string; type?: s
       return r && typeof r === 'object' && r.text && r.from && base(r.from) !== base(lang) && !original[key(id)] ? r : null
     },
     showingOriginal: (id: string) => !!original[key(id)],
+    /** Neither the server nor this browser can translate */
+    unavailable: Object.values(results).includes('unavailable'),
     toggleOriginal: (id: string) => setOriginal((o) => ({ ...o, [key(id)]: !o[key(id)] })),
   }
 }
@@ -195,7 +188,8 @@ export function TranslateLine({ translator, id, text }: { translator: ChatTransl
     )
   }
   if (r === 'loading') return <span className="text-[10px] text-gray-400">Translating…</span>
-  if (r === 'unavailable') return <span className="text-[10px] text-gray-400">Translation isn&apos;t available on this device yet.</span>
+  // Said once in the translate menu instead of under every message
+  if (r === 'unavailable') return null
   if (r === 'error') {
     return (
       <button type="button" className={`${cls} text-rose-500`} onClick={() => translator.translate([{ id, text }])}>
@@ -204,7 +198,7 @@ export function TranslateLine({ translator, id, text }: { translator: ChatTransl
     )
   }
   if (!r.from || base(r.from) === base(translator.lang)) {
-    return translator.auto ? null : <span className="text-[10px] text-gray-400">Already in {languageName(translator.lang, translator.lang)}</span>
+    return null
   }
   return (
     <span className="text-[10px] text-gray-400">
@@ -236,7 +230,7 @@ export function TranslateSettings({ translator, align = 'left' }: { translator: 
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className={`inline-flex items-center gap-0.5 font-semibold hover:underline cursor-pointer ${translator.auto ? 'text-emerald-600' : 'text-gray-500'}`}
+        className="inline-flex items-center gap-0.5 font-semibold hover:underline cursor-pointer text-emerald-600"
         aria-label="Translation settings"
       >
         <Languages className="w-3.5 h-3.5" />
@@ -259,13 +253,8 @@ export function TranslateSettings({ translator, align = 'left' }: { translator: 
               ))}
             </select>
           </label>
-          <label className="flex items-center justify-between gap-2 cursor-pointer">
-            <span>
-              <span className="block font-semibold">Auto-translate</span>
-              <span className="block text-[11px] text-gray-500">Messages in other languages appear in yours.</span>
-            </span>
-            <input type="checkbox" checked={translator.auto} onChange={(e) => translator.setAuto(e.target.checked)} className="w-4 h-4 accent-[#0F1C3F]" />
-          </label>
+          <p className="text-[11px] text-gray-500">Messages in any other language appear in yours automatically.</p>
+          {translator.unavailable && <p className="text-[11px] text-amber-700">Translation isn&apos;t switched on for this site yet, so messages show as sent.</p>}
           <p className="text-[10px] text-gray-400">Machine translation can be wrong. Tap &ldquo;See original&rdquo; on any message.</p>
         </div>
       )}

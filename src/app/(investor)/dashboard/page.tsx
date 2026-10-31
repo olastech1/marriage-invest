@@ -13,7 +13,7 @@ import SpouseRequestBanner from '@/components/investor/SpouseRequestBanner'
 import MyAccountId from '@/components/investor/MyAccountId'
 import VerifyEmailBanner from '@/components/investor/VerifyEmailBanner'
 import { ensureAccountNumber } from '@/lib/accountId'
-import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
+import { computeAccountRating, isDemoTransaction, countsInTotals } from '@/lib/rating'
 import {
   Bell,
   CheckCircle,
@@ -143,7 +143,7 @@ export default async function DashboardPage() {
   ])
 
   // ── compute real stats (strictly excluding demo deposits & investments) ─
-  const realInvestments = investments.filter((i) => !isDemoInvestment(i))
+  const realInvestments = investments.filter((i) => countsInTotals(i))
   const realCompletedTransactions = allCompletedTransactions.filter((t) => !isDemoTransaction(t))
 
   const realDepositedAmount = realCompletedTransactions

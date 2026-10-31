@@ -120,6 +120,9 @@ model User {
   publicChatEnabled  Boolean   @default(true)
   showPhone          Boolean   @default(false)
   showEmail          Boolean   @default(false)
+  /// Linked partners can see my email / phone (separate from the public bio page)
+  partnerSeesEmail   Boolean   @default(false)
+  partnerSeesPhone   Boolean   @default(false)
   spouseId           String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -187,6 +190,8 @@ model Investment {
   agreementDocumentId String?
   /// The partner this investment is shared with (their approval is needed to withdraw); none = personal
   partnerId           String?
+  /// How it was paid: CARD, WALLET (cash balance) or CREDIT (credit balance: never withdrawable, not counted in totals)
+  fundingSource       String           @default("CARD")
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
 
@@ -524,4 +529,42 @@ model MarriageRegistration {
 
   @@index([userId])
   @@map("marriage_registrations")
+}
+
+/// Wallet ledger: the balance is the sum of entries. CASH is real money (card
+/// top-ups, withdrawable). CREDIT is added by admins, can only be invested and
+/// can never be withdrawn. The two are never mixed.
+model WalletEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  kind         String // CASH | CREDIT
+  amount       Decimal  @db.Decimal(18, 2) // + in, - out
+  reason       String
+  reference    String   @unique
+  investmentId String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+
+  @@index([userId, kind])
+  @@map("wallet_entries")
+}
+
+/// A request to withdraw wallet cash to a bank; the cash is held as soon as it's requested
+model WalletWithdrawal {
+  id            String    @id @default(cuid())
+  userId        String
+  amount        Decimal   @db.Decimal(18, 2)
+  status        String    @default("PENDING") // PENDING | PAID | REJECTED
+  bankName      String
+  accountName   String
+  accountNumber String
+  routingNumber String?
+  adminNote     String?
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("wallet_withdrawals")
 }

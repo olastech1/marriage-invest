@@ -13,6 +13,7 @@ import {
   TrendingUp,
   CreditCard,
   ArrowDownToLine,
+  Wallet,
   FileText,
   BarChart3,
   Settings,
@@ -37,6 +38,7 @@ export const ADMIN_NAV_GROUPS: { title: string | null; items: AdminNavItem[] }[]
     items: [
       { label: 'Investors', href: '/admin/investors', icon: Users },
       { label: 'Verifications', href: '/admin/verifications', icon: BadgeCheck },
+      { label: 'Wallets', href: '/admin/wallets', icon: Wallet },
       { label: 'Withdrawals', href: '/admin/withdrawals', icon: ArrowDownToLine },
       { label: 'Transactions', href: '/admin/transactions', icon: CreditCard },
     ],

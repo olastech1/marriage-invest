@@ -167,6 +167,9 @@ export default async function PortfolioPage() {
                     <tr key={inv.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-4 px-6 font-mono font-medium text-gray-900">
                         {inv.referenceNumber}
+                        {inv.fundingSource === 'CREDIT' && (
+                          <span className="block font-sans text-[10px] font-semibold text-gray-500">Paid with credit · can&apos;t be withdrawn</span>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <Link

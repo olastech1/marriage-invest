@@ -16,6 +16,8 @@ export type PartnerItem = {
   avatarUrl: string | null
   relation: string
   relationLabel: string
+  /** Contact details they chose to share with partners */
+  shared?: { email: string | null; phone: string | null }
 }
 
 type Status = {
@@ -64,6 +66,21 @@ export default function SpouseLinkPanel() {
                       {p.relationLabel}
                       {p.accountNumber && <span className="font-mono"> · ID {formatAccountNumber(p.accountNumber)}</span>}
                     </p>
+                    {(p.shared?.email || p.shared?.phone) && (
+                      <p className="text-[11px] text-gray-600 truncate">
+                        {p.shared.email && (
+                          <a href={`mailto:${p.shared.email}`} className="hover:underline">
+                            {p.shared.email}
+                          </a>
+                        )}
+                        {p.shared.email && p.shared.phone && ' · '}
+                        {p.shared.phone && (
+                          <a href={`tel:${p.shared.phone}`} className="hover:underline">
+                            {p.shared.phone}
+                          </a>
+                        )}
+                      </p>
+                    )}
                   </div>
                   <Link
                     href={`/save?partner=${encodeURIComponent(p.id)}`}
@@ -98,6 +115,9 @@ export default function SpouseLinkPanel() {
             <p className="text-xs text-gray-600">
               {status.partners.length ? 'Link another partner: a spouse, a friend, family…' : 'Link a partner: a spouse, a friend, family…'} Find them by
               their account ID (they see it here in their Settings) or email, then tap <strong>Link</strong>. Each partner has a separate joint vault with you.
+            </p>
+            <p className="text-[11px] text-gray-500">
+              Partners see your email or phone only if you turn it on under <a href="#partner-privacy" className="underline">Profile → What partners see</a>.
             </p>
             <FindMember onChange={load} />
           </div>

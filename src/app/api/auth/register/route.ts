@@ -19,7 +19,7 @@ import { ensureAccountNumber } from '@/lib/accountId'
 import { linkPartners } from '@/lib/partners'
 import { createAuthToken } from '@/lib/authTokens'
 import { sendVerificationEmail } from '@/lib/email'
-import { welcomeInvitedMember } from '@/lib/invitations'
+import { recordInvitation, welcomeInvitedMember } from '@/lib/invitations'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -115,6 +115,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         where: { id: m.id },
         data: { senderId, recipientId, threadId: buildThreadId(senderId, recipientId || senderId) },
       })
+    }
+
+    // Came from a member's invite link: count it as their invite
+    const inviteCode = String((body as { invite?: unknown })?.invite ?? '')
+    if (/^\d{8}$/.test(inviteCode)) {
+      const inviter = await prisma.user.findFirst({ where: { accountNumber: inviteCode }, select: { id: true } })
+      if (inviter && inviter.id !== user.id) await recordInvitation(inviter.id, normalizedEmail)
     }
 
     // Invited by email: show up in the inviter's chats

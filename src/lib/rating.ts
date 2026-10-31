@@ -68,6 +68,11 @@ export function isDemoInvestment(inv: {
   return false
 }
 
+/** Counts towards invested totals and the rating: not demo data, not paid with wallet credit */
+export function countsInTotals(inv: { referenceNumber?: string | null; fundingSource?: string | null }): boolean {
+  return !isDemoInvestment(inv) && inv.fundingSource !== 'CREDIT'
+}
+
 interface ComputeRatingParams {
   acknowledgedDocIds: string[]
   allDocuments: Array<{ id: string; name: string; type: string }>

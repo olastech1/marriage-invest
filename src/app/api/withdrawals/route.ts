@@ -67,6 +67,8 @@ export async function GET() {
         where: {
           userId,
           status: { in: ['ACTIVE', 'MATURED'] },
+          // Paid with wallet credit: never withdrawable
+          fundingSource: { not: 'CREDIT' },
         },
         select: {
           id: true,
@@ -189,6 +191,10 @@ export async function POST(req: NextRequest) {
 
     if (!investment || investment.userId !== userId) {
       return NextResponse.json({ error: 'Investment not found or access denied' }, { status: 404 })
+    }
+
+    if (investment.fundingSource === 'CREDIT') {
+      return NextResponse.json({ error: "This investment was paid with wallet credit, so it can't be withdrawn." }, { status: 400 })
     }
 
     if (investment.status !== 'ACTIVE' && investment.status !== 'MATURED') {

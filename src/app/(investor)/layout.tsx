@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Share2,
   ExternalLink,
+  Wallet,
 } from 'lucide-react'
 import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 import NotificationBellDropdown from '@/components/investor/NotificationBellDropdown'
@@ -37,6 +38,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Money',
     items: [
+      { href: '/wallet', label: 'Wallet', icon: Wallet },
       { href: '/save', label: 'Joint vault', icon: PiggyBank },
       { href: '/withdrawals', label: 'Withdrawals', icon: ArrowUpFromLine },
       { href: '/transactions', label: 'Transactions', icon: ArrowLeftRight },
