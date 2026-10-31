@@ -73,6 +73,7 @@ export default function AdminSettingsPage() {
     secretKeySaved: false,
     webhookSecretSaved: false,
     webhookUrl: '',
+    source: 'none',
     supportedEvents: [] as string[],
   })
   const [showStripeSecret, setShowStripeSecret] = useState(false)
@@ -131,6 +132,7 @@ export default function AdminSettingsPage() {
           secretKeySaved: Boolean(data.rawSecretKeyPresent),
           webhookSecretSaved: Boolean(data.rawWebhookSecretPresent),
           webhookUrl: data.webhookUrl || '',
+          source: data.source || 'none',
           supportedEvents: Array.isArray(data.supportedEvents) ? data.supportedEvents : [],
         })
       })
@@ -437,9 +439,18 @@ EMAIL_FROM_NAME="${emailSettings.fromName}"`
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Stripe API Keys & Webhook Secret</h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  Used to take card payments for deposits. Saved secrets are never shown here; leave a secret field
-                  empty to keep the saved value.
+                  Used for every card payment: investments, wallet top-ups, vault deposits and the union package. Saved secrets are
+                  stored encrypted and never shown here; leave a secret field empty to keep the saved value.
                 </p>
+                {stripeInfo.loaded && (
+                  <p className="text-xs font-semibold text-gray-700 mt-1">
+                    {stripeInfo.source === 'admin'
+                      ? 'In use: the keys saved here.'
+                      : stripeInfo.source === 'environment'
+                        ? 'In use: the keys set in Vercel. Keys you save here will replace them.'
+                        : 'No Stripe keys yet, so card payments are off.'}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 self-start">
                 <span className={`text-xs font-bold px-3 py-1 rounded-full ${stripeBadge.cls}`}>

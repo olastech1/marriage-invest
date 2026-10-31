@@ -1,6 +1,15 @@
+/**
+ * Stripe keys, set by the admin in Admin → Settings → Payments & Stripe.
+ * Stored in app_settings (key "stripe.gateway"), with the secret key and the
+ * webhook secret encrypted (AES-256-GCM, key derived from AUTH_SECRET). Keys
+ * saved here win over the STRIPE_* environment variables, which stay as the
+ * fallback. Every server instance reads the database (cached for a few
+ * seconds), so a change applies everywhere straight away.
+ */
+
+import crypto from 'crypto'
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import fs from 'fs'
-import path from 'path'
 import { siteUrl } from '@/lib/site'
 
 export interface StripeGatewayConfig {
@@ -11,71 +20,109 @@ export interface StripeGatewayConfig {
   isPlaceholder: boolean
   isLive: boolean
   webhookUrl: string
+  /** Where the keys come from: saved by an admin, or the environment */
+  source: 'admin' | 'environment' | 'none'
 }
 
-declare global {
-  var __STRIPE_CONFIG: {
-    secretKey?: string
-    publishableKey?: string
-    webhookSecret?: string
-  } | undefined
+type Keys = { secretKey: string; publishableKey: string; webhookSecret: string }
+type Stored = { secretKey?: string; publishableKey?: string; webhookSecret?: string; updatedAt?: string; updatedById?: string }
+
+const SETTING_KEY = 'stripe.gateway'
+const CACHE_MS = 5000
+let cache: { at: number; keys: Keys | null } | null = null
+
+// ── Encryption of the secrets at rest ────────────────────────────────────────
+function cipherKey() {
+  const secret = process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET
+  if (!secret) throw new Error('AUTH_SECRET is not set, so Stripe keys cannot be stored safely.')
+  return crypto.createHash('sha256').update(`stripe-keys:${secret}`).digest()
+}
+
+function encrypt(value: string): string {
+  if (!value) return ''
+  const iv = crypto.randomBytes(12)
+  const c = crypto.createCipheriv('aes-256-gcm', cipherKey(), iv)
+  const data = Buffer.concat([c.update(value, 'utf8'), c.final()])
+  return `enc:v1:${Buffer.concat([iv, c.getAuthTag(), data]).toString('base64')}`
+}
+
+function decrypt(value: string | undefined): string {
+  if (!value) return ''
+  if (!value.startsWith('enc:v1:')) return value
+  try {
+    const raw = Buffer.from(value.slice(7), 'base64')
+    const d = crypto.createDecipheriv('aes-256-gcm', cipherKey(), raw.subarray(0, 12))
+    d.setAuthTag(raw.subarray(12, 28))
+    return Buffer.concat([d.update(raw.subarray(28)), d.final()]).toString('utf8')
+  } catch {
+    console.error('[stripeConfig] Saved Stripe keys could not be decrypted (was AUTH_SECRET changed?). Save them again in Admin → Settings.')
+    return ''
+  }
+}
+
+// ── Reading ─────────────────────────────────────────────────────────────────
+async function savedKeys(): Promise<Keys | null> {
+  if (cache && Date.now() - cache.at < CACHE_MS) return cache.keys
+  let keys: Keys | null = null
+  try {
+    const row = await prisma.appSetting.findUnique({ where: { key: SETTING_KEY } })
+    if (row) {
+      const v = row.value as Stored
+      keys = { secretKey: decrypt(v.secretKey), publishableKey: v.publishableKey || '', webhookSecret: decrypt(v.webhookSecret) }
+    } else {
+      keys = await moveOldSavedKeys()
+    }
+  } catch (err) {
+    console.warn('[stripeConfig] Could not read saved Stripe keys:', err)
+  }
+  cache = { at: Date.now(), keys }
+  return keys
+}
+
+/**
+ * Keys saved before this change sat in plain text in the audit log. Move the
+ * latest set into app_settings (encrypted) and blank the secrets in those
+ * audit rows; the rows themselves are kept.
+ */
+async function moveOldSavedKeys(): Promise<Keys | null> {
+  const old = await prisma.auditLog.findMany({ where: { entity: 'SystemSettings', action: 'STRIPE_GATEWAY_CONFIG' }, orderBy: { createdAt: 'desc' } })
+  if (!old.length) return null
+  const latest = (old[0].after || {}) as Stored
+  const keys = { secretKey: latest.secretKey || '', publishableKey: latest.publishableKey || '', webhookSecret: latest.webhookSecret || '' }
+  await writeKeys(keys)
+  for (const row of old) {
+    const after = (row.after || {}) as Stored
+    await prisma.auditLog.update({
+      where: { id: row.id },
+      data: { after: { ...after, secretKey: maskSecret(after.secretKey || ''), webhookSecret: maskSecret(after.webhookSecret || '') } },
+    })
+  }
+  return keys
 }
 
 export async function getStripeConfig(): Promise<StripeGatewayConfig> {
-  // 1. Check in-memory global cache
-  let secretKey = globalThis.__STRIPE_CONFIG?.secretKey
-  let publishableKey = globalThis.__STRIPE_CONFIG?.publishableKey
-  let webhookSecret = globalThis.__STRIPE_CONFIG?.webhookSecret
-
-  // 2. If missing, check database AuditLog
-  if (!secretKey || !publishableKey) {
-    try {
-      const savedLog = await prisma.auditLog.findFirst({
-        where: {
-          entity: 'SystemSettings',
-          action: 'STRIPE_GATEWAY_CONFIG',
-        },
-        orderBy: { createdAt: 'desc' },
-      })
-
-      if (savedLog?.after) {
-        const afterData = savedLog.after as any
-        if (!secretKey && afterData.secretKey) secretKey = afterData.secretKey
-        if (!publishableKey && afterData.publishableKey) publishableKey = afterData.publishableKey
-        if (!webhookSecret && afterData.webhookSecret) webhookSecret = afterData.webhookSecret
-      }
-    } catch (dbErr) {
-      console.warn('[getStripeConfig] Database check failed:', dbErr)
-    }
+  const saved = await savedKeys()
+  const env = {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   }
-
-  // 3. Fallback to process.env
-  if (!secretKey) secretKey = process.env.STRIPE_SECRET_KEY || ''
-  if (!publishableKey) publishableKey = process.env.STRIPE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || ''
-  if (!webhookSecret) webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || ''
-
-  // Cache in memory for subsequent requests in this runtime
-  globalThis.__STRIPE_CONFIG = {
-    secretKey,
-    publishableKey,
-    webhookSecret,
-  }
+  // Admin-saved keys win; any left empty fall back to the environment
+  const secretKey = saved?.secretKey || env.secretKey
+  const publishableKey = saved?.publishableKey || env.publishableKey
+  const webhookSecret = saved?.webhookSecret || env.webhookSecret
 
   const isPlaceholder = !secretKey || secretKey.includes('placeholder')
-  const isLive = secretKey.startsWith('sk_live_')
-  const mode = isPlaceholder ? 'SANDBOX' : (isLive ? 'LIVE' : 'TEST')
-
-  const appUrl = siteUrl()
-  const webhookUrl = `${appUrl}/api/webhooks/stripe`
-
+  const isLive = secretKey.startsWith('sk_live_') || secretKey.startsWith('rk_live_')
   return {
     secretKey,
     publishableKey,
     webhookSecret,
-    mode,
+    mode: isPlaceholder ? 'SANDBOX' : isLive ? 'LIVE' : 'TEST',
     isPlaceholder,
     isLive,
-    webhookUrl,
+    webhookUrl: `${siteUrl()}/api/webhooks/stripe`,
+    source: saved?.secretKey ? 'admin' : env.secretKey ? 'environment' : 'none',
   }
 }
 
@@ -87,104 +134,57 @@ export function maskSecret(value: string): string {
 }
 
 /** A masked value echoed back from the admin UI means "unchanged" */
-function isMasked(value?: string): boolean {
-  return !!value && value.includes('…')
+const isMasked = (value?: string) => !!value && value.includes('…')
+
+// ── Saving ──────────────────────────────────────────────────────────────────
+export class StripeKeyError extends Error {}
+
+async function writeKeys(keys: Keys, updatedById?: string) {
+  const value: Stored = {
+    secretKey: encrypt(keys.secretKey),
+    publishableKey: keys.publishableKey,
+    webhookSecret: encrypt(keys.webhookSecret),
+    updatedAt: new Date().toISOString(),
+    updatedById,
+  }
+  await prisma.appSetting.upsert({
+    where: { key: SETTING_KEY },
+    update: { value: value as Prisma.InputJsonValue },
+    create: { key: SETTING_KEY, value: value as Prisma.InputJsonValue },
+  })
+  cache = null
 }
 
-export async function saveStripeConfig(params: {
-  secretKey?: string
-  publishableKey?: string
-  webhookSecret?: string
-}): Promise<StripeGatewayConfig> {
-  const current = await getStripeConfig()
-
-  const pick = (incoming: string | undefined, existing: string) =>
-    (incoming !== undefined && !isMasked(incoming) ? incoming : existing).trim()
-  const secretKey = pick(params.secretKey, current.secretKey)
-  const publishableKey = pick(params.publishableKey, current.publishableKey)
-  const webhookSecret = pick(params.webhookSecret, current.webhookSecret)
-
-  // 1. Update in-memory runtime cache
-  globalThis.__STRIPE_CONFIG = {
-    secretKey,
-    publishableKey,
-    webhookSecret,
+export async function saveStripeConfig(
+  params: { secretKey?: string; publishableKey?: string; webhookSecret?: string },
+  updatedById?: string,
+): Promise<StripeGatewayConfig> {
+  const current = (await savedKeys()) || { secretKey: '', publishableKey: '', webhookSecret: '' }
+  // Blank or masked: keep what's saved
+  const pick = (incoming: string | undefined, existing: string) => {
+    const v = (incoming ?? '').trim()
+    return v && !isMasked(v) ? v : existing
+  }
+  const keys = {
+    secretKey: pick(params.secretKey, current.secretKey),
+    publishableKey: pick(params.publishableKey, current.publishableKey),
+    webhookSecret: pick(params.webhookSecret, current.webhookSecret),
   }
 
-  // 2. Update process.env
-  if (secretKey) process.env.STRIPE_SECRET_KEY = secretKey
-  if (publishableKey) {
-    process.env.STRIPE_PUBLISHABLE_KEY = publishableKey
-    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = publishableKey
+  if (keys.secretKey && !/^(sk|rk)_(live|test)_[A-Za-z0-9]+$/.test(keys.secretKey)) {
+    throw new StripeKeyError('The secret key should start with sk_live_ or sk_test_ (or rk_ for a restricted key).')
   }
-  if (webhookSecret) process.env.STRIPE_WEBHOOK_SECRET = webhookSecret
-
-  // 3. Persist in database
-  try {
-    await prisma.auditLog.create({
-      data: {
-        action: 'STRIPE_GATEWAY_CONFIG',
-        entity: 'SystemSettings',
-        after: {
-          secretKey,
-          publishableKey,
-          webhookSecret,
-          updatedAt: new Date().toISOString(),
-        },
-      },
-    })
-  } catch (dbErr) {
-    console.warn('[saveStripeConfig] Failed saving to database:', dbErr)
+  if (keys.publishableKey && !/^pk_(live|test)_[A-Za-z0-9]+$/.test(keys.publishableKey)) {
+    throw new StripeKeyError('The publishable key should start with pk_live_ or pk_test_.')
+  }
+  if (keys.webhookSecret && !/^whsec_[A-Za-z0-9]+$/.test(keys.webhookSecret)) {
+    throw new StripeKeyError('The webhook signing secret should start with whsec_.')
+  }
+  const liveSecret = /_live_/.test(keys.secretKey)
+  if (keys.secretKey && keys.publishableKey && liveSecret !== /_live_/.test(keys.publishableKey)) {
+    throw new StripeKeyError('One key is live and the other is test. Use both live keys or both test keys.')
   }
 
-  // 4. Safely attempt local file persistence (fails gracefully on read-only serverless filesystems like Vercel)
-  try {
-    const projectRoot = process.cwd()
-    const envPaths = [
-      path.join(projectRoot, '.env'),
-      path.join(projectRoot, '.env.local'),
-    ]
-
-    for (const envPath of envPaths) {
-      if (fs.existsSync(/*turbopackIgnore: true*/ envPath)) {
-        let content = fs.readFileSync(/*turbopackIgnore: true*/ envPath, 'utf8')
-
-        if (secretKey) {
-          if (content.includes('STRIPE_SECRET_KEY=')) {
-            content = content.replace(/STRIPE_SECRET_KEY=.*/g, `STRIPE_SECRET_KEY="${secretKey}"`)
-          } else {
-            content += `\nSTRIPE_SECRET_KEY="${secretKey}"`
-          }
-        }
-
-        if (publishableKey) {
-          if (content.includes('STRIPE_PUBLISHABLE_KEY=')) {
-            content = content.replace(/STRIPE_PUBLISHABLE_KEY=.*/g, `STRIPE_PUBLISHABLE_KEY="${publishableKey}"`)
-          } else {
-            content += `\nSTRIPE_PUBLISHABLE_KEY="${publishableKey}"`
-          }
-          if (content.includes('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=')) {
-            content = content.replace(/NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=.*/g, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${publishableKey}"`)
-          } else {
-            content += `\nNEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY="${publishableKey}"`
-          }
-        }
-
-        if (webhookSecret) {
-          if (content.includes('STRIPE_WEBHOOK_SECRET=')) {
-            content = content.replace(/STRIPE_WEBHOOK_SECRET=.*/g, `STRIPE_WEBHOOK_SECRET="${webhookSecret}"`)
-          } else {
-            content += `\nSTRIPE_WEBHOOK_SECRET="${webhookSecret}"`
-          }
-        }
-
-        fs.writeFileSync(/*turbopackIgnore: true*/ envPath, content, 'utf8')
-      }
-    }
-  } catch (fsErr) {
-    // Read-only filesystem on Vercel is completely normal; memory + DB storage handles persistence
-    console.info('[saveStripeConfig] Local env write skipped (serverless read-only filesystem)')
-  }
-
+  await writeKeys(keys, updatedById)
   return getStripeConfig()
 }

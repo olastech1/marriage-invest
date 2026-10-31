@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { getStripeConfig, maskSecret, saveStripeConfig } from '@/lib/stripeConfig'
+import { StripeKeyError, getStripeConfig, maskSecret, saveStripeConfig } from '@/lib/stripeConfig'
+import { prisma } from '@/lib/db'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,7 @@ export async function GET() {
       isPlaceholder: config.isPlaceholder,
       isLive: config.isLive,
       mode: config.mode,
+      source: config.source,
       currency: 'USD',
       webhookUrl: config.webhookUrl,
       supportedEvents: [
@@ -49,15 +51,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { secretKey, publishableKey, webhookSecret } = body
 
-    const updatedConfig = await saveStripeConfig({
-      secretKey,
-      publishableKey,
-      webhookSecret,
-    })
+    const updatedConfig = await saveStripeConfig({ secretKey, publishableKey, webhookSecret }, session.user.id)
+    // Who changed the keys and when (never the keys themselves)
+    await prisma.auditLog
+      .create({ data: { userId: session.user.id, action: 'STRIPE_KEYS_UPDATED', entity: 'SystemSettings', after: { mode: updatedConfig.mode } } })
+      .catch(() => {})
 
     return NextResponse.json({
       success: true,
-      message: 'Stripe payment configuration saved successfully!',
+      message: `Stripe keys saved (${updatedConfig.mode === 'LIVE' ? 'live' : 'test'} mode). Payments use them straight away.`,
       mode: updatedConfig.mode,
       config: {
         secretKey: maskSecret(updatedConfig.secretKey),
@@ -69,6 +71,7 @@ export async function POST(req: NextRequest) {
       },
     })
   } catch (error: any) {
+    if (error instanceof StripeKeyError) return NextResponse.json({ error: error.message }, { status: 400 })
     console.error('[POST /api/admin/payments]', error)
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
