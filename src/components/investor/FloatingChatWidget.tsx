@@ -356,7 +356,7 @@ export function FloatingChatWidget() {
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                 >
                   {m.media && (m.type === 'image' || m.type === 'video') ? (
-                    <ChatMediaBubble kind={m.type} data={m.media} caption={m.text} isMe={isMe} />
+                    <ChatMediaBubble kind={m.type} data={m.media} caption={m.text} isMe={isMe} messageId={m.id} onUnlocked={fetchLiveMessages} />
                   ) : (
                   <div
                     className={`p-3 rounded-2xl max-w-[85%] leading-relaxed shadow-xs ${

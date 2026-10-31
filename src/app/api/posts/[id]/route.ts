@@ -44,6 +44,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const { mediaId } = found.post
   await prisma.$transaction([
     prisma.profilePost.delete({ where: { id } }),
+    prisma.postReaction.deleteMany({ where: { postId: id } }),
+    prisma.postComment.deleteMany({ where: { postId: id } }),
     ...(mediaId ? [prisma.chatMediaPart.deleteMany({ where: { mediaId } }), prisma.chatMedia.deleteMany({ where: { id: mediaId } })] : []),
   ])
   return NextResponse.json({ success: true })

@@ -5,6 +5,7 @@ import { isParticipant } from '@/lib/chat'
 import { imageType } from '@/lib/imageType'
 import { partLength, videoType } from '@/lib/chatMedia'
 import { canSeePostMedia } from '@/lib/posts'
+import { canSeeChatMedia } from '@/lib/chatUnlock'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,7 +50,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 
 // ---------------------------------------------------------------------------
 // GET /api/chat/media/[id]  the photo or video: for the two people in the chat,
-// or, on a profile post, for anyone who can see the post (free, mine, or paid for).
+// (a locked one once paid for), or, on a profile post, for anyone who can see the
+// post (free, mine, or paid for).
 // Videos are served in byte ranges (one stored piece per response), which is
 // how browsers play and seek them anyway.
 // ---------------------------------------------------------------------------
@@ -60,7 +62,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const media = await prisma.chatMedia.findUnique({ where: { id } })
   const allowed =
-    !!media?.complete && (media.threadId.startsWith('post:') ? await canSeePostMedia(id, me) : !!me && isParticipant(media.threadId, me))
+    !!media?.complete &&
+    (media.threadId.startsWith('post:')
+      ? await canSeePostMedia(id, me)
+      : !!me && isParticipant(media.threadId, me) && (await canSeeChatMedia(id, media.threadId, me)))
   if (!media || !allowed) return new Response('Not found', { status: 404 })
 
   const headers: Record<string, string> = {

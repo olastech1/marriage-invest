@@ -17,6 +17,7 @@ import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
 import { guestClaimToken } from '@/lib/guestChats'
+import { MAX_POST_PRICE, MIN_POST_PRICE } from '@/lib/posts'
 
 /** Messages sent when a chat opens; older ones load as the member scrolls up */
 const PAGE_SIZE = 60
@@ -295,6 +296,17 @@ export async function GET(req: NextRequest) {
     const hasMore = page.length > PAGE_SIZE
     const messages = page.slice(0, PAGE_SIZE).reverse()
 
+    // Locked photos/videos sent to me: say which I've paid for
+    const lockedForMe = messages.filter((m) => m.recipientId === currentUserId && Number((m.proposalData as { price?: number } | null)?.price) > 0)
+    if (lockedForMe.length) {
+      const paid = new Set(
+        (await prisma.chatUnlock.findMany({ where: { buyerId: currentUserId, messageId: { in: lockedForMe.map((m) => m.id) } }, select: { messageId: true } })).map(
+          (u) => u.messageId,
+        ),
+      )
+      for (const m of lockedForMe) m.proposalData = { ...(m.proposalData as object), locked: !paid.has(m.id) }
+    }
+
     // Mark everything addressed to me as read, in one go
     if (!peek && !beforeDate && messages.some((m) => !m.read && m.recipientId === currentUserId)) {
       await chatDb.chatMessage.updateMany({ where: { threadId, recipientId: currentUserId, read: false }, data: { read: true } })
@@ -407,9 +419,16 @@ export async function POST(req: Request) {
       }
       const claimed = await prisma.chatMedia.updateMany({ where: { id: row.id, complete: false }, data: { complete: true } })
       if (!claimed.count) return NextResponse.json({ success: false, error: 'This file was already sent.' }, { status: 409 })
+      // Locked: the other person pays to see it (a tiny blurred preview shows meanwhile)
+      const price = body.price == null || body.price === '' ? 0 : Math.round(Number(body.price) * 100) / 100
+      if (price && !(price >= MIN_POST_PRICE && price <= MAX_POST_PRICE)) {
+        return NextResponse.json({ success: false, error: `Set a price between $${MIN_POST_PRICE} and $${MAX_POST_PRICE}.` }, { status: 400 })
+      }
+      const preview =
+        price && typeof body.preview === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(body.preview) && body.preview.length < 8000 ? body.preview : null
       media = {
         kind: row.kind,
-        data: { mediaId: row.id, mimeType: row.mimeType, width: row.width, height: row.height, size: row.size },
+        data: { mediaId: row.id, mimeType: row.mimeType, width: row.width, height: row.height, size: row.size, ...(price ? { price, preview } : {}) },
       }
     }
 

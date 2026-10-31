@@ -1,9 +1,89 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X } from 'lucide-react'
+import { CreditCard, Lock, Wallet, X } from 'lucide-react'
 
-export type MediaData = { mediaId: string; mimeType?: string; width?: number | null; height?: number | null }
+export type MediaData = {
+  mediaId: string
+  mimeType?: string
+  width?: number | null
+  height?: number | null
+  /** Locked: the person it was sent to pays this to see it */
+  price?: number
+  preview?: string | null
+  /** Sent to me, locked, not paid for yet */
+  locked?: boolean
+}
+
+const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+
+/** The blurred cover on a locked photo/video sent to me, with card / wallet payment */
+function LockedCover({ kind, data, messageId, onUnlocked }: { kind: 'image' | 'video'; data: MediaData; messageId: string; onUnlocked?: () => void }) {
+  const [paying, setPaying] = useState(false)
+  const [cash, setCash] = useState<number | null>(null)
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+  const price = data.price || 0
+
+  const open = async () => {
+    setPaying(true)
+    const d = await fetch('/api/wallet')
+      .then((r) => r.json())
+      .catch(() => null)
+    setCash(d?.success ? d.cash : 0)
+  }
+  const unlock = async (source: 'card' | 'wallet') => {
+    setBusy(source)
+    setError('')
+    try {
+      const res = await fetch('/api/chat/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId, source }) })
+      const d = await res.json()
+      if (!d.success) throw new Error(d.error || 'Could not unlock. Try again.')
+      if (d.checkoutUrl) {
+        window.location.href = d.checkoutUrl
+        return
+      }
+      onUnlocked?.()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+    setBusy('')
+  }
+
+  return (
+    <div className="relative w-full h-full flex flex-col items-center justify-center gap-2 p-3 text-center overflow-hidden">
+      {data.preview ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={data.preview} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110" />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a2f64] to-[#0F1C3F]" />
+      )}
+      <div className="relative w-10 h-10 rounded-full bg-black/50 flex items-center justify-center">
+        <Lock className="w-4 h-4 text-white" />
+      </div>
+      {!paying ? (
+        <button type="button" onClick={open} className="relative px-3.5 py-2 rounded-xl bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold cursor-pointer">
+          Unlock {kind === 'video' ? 'video' : 'photo'} for {usd(price)}
+        </button>
+      ) : (
+        <div className="relative w-full max-w-[220px] rounded-xl bg-white text-[#0F1C3F] p-2.5 space-y-1.5 shadow-xl">
+          <button type="button" onClick={() => unlock('card')} disabled={!!busy} className="w-full py-2 rounded-lg bg-[#0F1C3F] text-white text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+            <CreditCard className="w-3.5 h-3.5" /> {busy === 'card' ? 'Opening…' : `Pay ${usd(price)} by card`}
+          </button>
+          {cash !== null && cash >= price && (
+            <button type="button" onClick={() => unlock('wallet')} disabled={!!busy} className="w-full py-2 rounded-lg border border-[#0F1C3F] text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+              <Wallet className="w-3.5 h-3.5" /> {busy === 'wallet' ? 'Unlocking…' : `Wallet cash (${usd(cash)})`}
+            </button>
+          )}
+          {error && <p className="text-[11px] text-rose-700">{error}</p>}
+          <button type="button" onClick={() => setPaying(false)} className="w-full text-[11px] text-gray-500 cursor-pointer">
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024
 const MAX_SIDE = 1600
@@ -106,7 +186,22 @@ export async function uploadChatMedia(
 }
 
 /** A photo or video in a chat bubble; tap a photo to see it full screen */
-export function ChatMediaBubble({ kind, data, caption, isMe }: { kind: 'image' | 'video'; data: MediaData; caption?: string; isMe: boolean }) {
+export function ChatMediaBubble({
+  kind,
+  data,
+  caption,
+  isMe,
+  messageId,
+  onUnlocked,
+}: {
+  kind: 'image' | 'video'
+  data: MediaData
+  caption?: string
+  isMe: boolean
+  messageId?: string
+  /** Paid for: refresh the messages */
+  onUnlocked?: () => void
+}) {
   const [open, setOpen] = useState(false)
   const [failed, setFailed] = useState(false)
   // Bumped to try loading again
@@ -125,7 +220,9 @@ export function ChatMediaBubble({ kind, data, caption, isMe }: { kind: 'image' |
   return (
     <div className={`rounded-2xl overflow-hidden shadow-xs border ${isMe ? 'bg-[#0F1C3F] border-[#0F1C3F] rounded-tr-none' : 'bg-white border-gray-200 rounded-tl-none'}`}>
       <div className="bg-gray-100 w-[260px] sm:w-[320px] max-h-[420px] flex items-center justify-center" style={{ aspectRatio: ratio }}>
-        {failed ? (
+        {data.locked && !isMe && messageId ? (
+          <LockedCover kind={kind} data={data} messageId={messageId} onUnlocked={onUnlocked} />
+        ) : failed ? (
           // Couldn't load, or this browser can't play the format (e.g. an iPhone video on Android)
           <div className="p-4 text-center space-y-2 text-xs text-gray-600">
             <p>{kind === 'video' ? "This video can't play here." : "This photo didn't load."}</p>
@@ -154,6 +251,11 @@ export function ChatMediaBubble({ kind, data, caption, isMe }: { kind: 'image' |
           <video src={`${src}#t=0.1`} controls playsInline preload="metadata" onError={() => setFailed(true)} className="w-full h-full object-contain bg-black" />
         )}
       </div>
+      {isMe && !!data.price && (
+        <p className="px-3 pt-2 text-[11px] text-[#C9A84C] font-semibold flex items-center gap-1">
+          <Lock className="w-3 h-3" /> Locked for them · {usd(data.price)}
+        </p>
+      )}
       {caption && (
         <p className={`px-3 py-2 text-xs sm:text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${isMe ? 'text-white' : 'text-gray-800'}`}>{caption}</p>
       )}

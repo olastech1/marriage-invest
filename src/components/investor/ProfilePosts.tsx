@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { CreditCard, ImagePlus, Lock, MoreHorizontal, Pin, PinOff, Trash2, Wallet, X } from 'lucide-react'
+import { CreditCard, ImagePlus, Lock, MessageCircle, MessageSquare, MoreHorizontal, Pin, PinOff, Share2, SmilePlus, Trash2, Wallet, X } from 'lucide-react'
+import VerifiedTick from '@/components/VerifiedTick'
 import { uploadChatMedia } from '@/components/investor/ChatMedia'
 
 type Post = {
@@ -19,7 +20,22 @@ type Post = {
   pinned: boolean
   createdAt: string
   stats?: { unlocks: number; earned: number }
+  reactions: Record<string, number>
+  myReaction: string | null
+  comments: number
 }
+
+type Author = { id: string; name: string }
+type Comment = {
+  id: string
+  text: string
+  createdAt: string
+  author: { id: string; name: string; avatarUrl: string | null; verified: boolean; profile: string | null }
+  canDelete: boolean
+  replies?: Comment[]
+}
+
+const REACTIONS = ['❤️', '👍', '😂', '😮', '🔥']
 
 const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
 const when = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(d).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
@@ -29,6 +45,7 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [mine, setMine] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
+  const [author, setAuthor] = useState<Author>({ id: userId, name: '' })
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null)
 
   const load = useCallback(
@@ -41,6 +58,7 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
           setPosts(data.posts)
           setMine(data.mine)
           setSignedIn(data.signedIn)
+          setAuthor(data.author)
         }),
     [userId],
   )
@@ -54,6 +72,7 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
         setPosts(data.posts)
         setMine(data.mine)
         setSignedIn(data.signedIn)
+        setAuthor(data.author)
       })
   }, [userId])
 
@@ -76,7 +95,7 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
       {note && <p className={`text-xs ${note.ok ? 'text-emerald-300' : 'text-rose-300'}`}>{note.text}</p>}
       {posts.length === 0 && <p className="text-xs text-gray-400">No posts yet. Share a photo, a video or an update.</p>}
       {posts.map((p) => (
-        <PostCard key={p.id} post={p} owner={owner} signedIn={signedIn} slug={slug} onChange={load} onNote={setNote} />
+        <PostCard key={p.id} post={p} owner={owner} mine={mine} author={author} signedIn={signedIn} slug={slug} onChange={load} onNote={setNote} />
       ))}
     </div>
   )
@@ -205,6 +224,8 @@ function Composer({ onPosted }: { onPosted: () => void }) {
 function PostCard({
   post,
   owner,
+  mine,
+  author,
   signedIn,
   slug,
   onChange,
@@ -212,6 +233,9 @@ function PostCard({
 }: {
   post: Post
   owner: boolean
+  /** I wrote it (even when previewing as a visitor) */
+  mine: boolean
+  author: Author
   signedIn: boolean
   slug: string
   onChange: () => void
@@ -374,9 +398,9 @@ function PostCard({
         <p className="px-4 py-2 text-[11px] text-gray-400 border-t border-white/10">
           Unlocked by {post.stats?.unlocks || 0} {post.stats?.unlocks === 1 ? 'person' : 'people'} · {usd(post.stats?.earned || 0)} earned
         </p>
-      ) : (
-        <div className="h-3" />
-      )}
+      ) : null}
+
+      <PostActions post={post} mine={mine} author={author} signedIn={signedIn} slug={slug} onChange={onChange} />
 
       {zoom && post.mediaUrl && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setZoom(false)} role="dialog" aria-label="Photo">
@@ -388,5 +412,209 @@ function PostCard({
         </div>
       )}
     </article>
+  )
+}
+
+/** Reactions, comments with replies, message the author, share */
+function PostActions({ post, mine, author, signedIn, slug, onChange }: { post: Post; mine: boolean; author: Author; signedIn: boolean; slug: string; onChange: () => void }) {
+  const [picker, setPicker] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [comments, setComments] = useState<Comment[] | null>(null)
+  const [text, setText] = useState('')
+  const [replyTo, setReplyTo] = useState<Comment | null>(null)
+  const [sending, setSending] = useState(false)
+  const [note, setNote] = useState('')
+  const here = `/u/${slug}#post-${post.id}`
+  const login = `/login?callbackUrl=${encodeURIComponent(here)}`
+  const chat = `/chat?recipientId=${encodeURIComponent(author.id)}&name=${encodeURIComponent(author.name)}`
+  const total = Object.values(post.reactions).reduce((a, b) => a + b, 0)
+
+  const loadComments = () =>
+    fetch(`/api/posts/${post.id}/comments`)
+      .then((r) => r.json())
+      .then((d) => d.success && setComments(d.comments))
+      .catch(() => {})
+
+  const react = async (emoji: string) => {
+    setPicker(false)
+    await fetch(`/api/posts/${post.id}/react`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ emoji }) }).catch(() => {})
+    onChange()
+  }
+
+  const toggleComments = () => {
+    if (!open && !comments) loadComments()
+    setOpen(!open)
+  }
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!text.trim()) return
+    setSending(true)
+    setNote('')
+    const res = await fetch(`/api/posts/${post.id}/comments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, parentId: replyTo?.id }),
+    })
+    const d = await res.json().catch(() => ({}))
+    setSending(false)
+    if (!d.success) return setNote(d.error || 'Could not post your comment.')
+    setText('')
+    setReplyTo(null)
+    await loadComments()
+    onChange()
+  }
+
+  const remove = async (c: Comment) => {
+    if (!window.confirm(c.replies?.length ? 'Delete this comment and its replies?' : 'Delete this comment?')) return
+    await fetch(`/api/posts/${post.id}/comments?commentId=${c.id}`, { method: 'DELETE' }).catch(() => {})
+    await loadComments()
+    onChange()
+  }
+
+  const share = async () => {
+    const url = `${window.location.origin}${here}`
+    const title = `${author.name} on Union Verify`
+    if (navigator.share) {
+      await navigator.share({ title, text: post.caption.slice(0, 120) || title, url }).catch(() => {})
+      return
+    }
+    await navigator.clipboard.writeText(url).catch(() => {})
+    setNote('Link copied.')
+    setTimeout(() => setNote(''), 2500)
+  }
+
+  const btn = 'flex-1 py-2 rounded-xl text-xs font-semibold text-gray-200 hover:bg-white/10 flex items-center justify-center gap-1.5 cursor-pointer'
+  const when = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+  const CommentRow = ({ c, reply }: { c: Comment; reply?: boolean }) => (
+    <div className={`flex gap-2 ${reply ? 'ml-8' : ''}`}>
+      <div className="w-7 h-7 rounded-full bg-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center text-[10px] font-bold text-[#C9A84C]">
+        {c.author.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.author.avatarUrl} alt="" className="w-full h-full object-cover" />
+        ) : (
+          c.author.name.slice(0, 1).toUpperCase()
+        )}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="rounded-2xl bg-white/10 px-3 py-2">
+          <p className="text-[11px] font-bold text-white flex items-center gap-1">
+            {c.author.profile ? <Link href={`/u/${c.author.profile}`}>{c.author.name}</Link> : c.author.name}
+            {c.author.verified && <VerifiedTick className="w-3 h-3" />}
+          </p>
+          <p className="text-xs text-gray-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{c.text}</p>
+        </div>
+        <div className="flex gap-3 px-2 pt-0.5 text-[10px] text-gray-400">
+          <span>{when(c.createdAt)}</span>
+          {signedIn && (
+            <button type="button" onClick={() => setReplyTo(c)} className="font-semibold hover:text-white cursor-pointer">
+              Reply
+            </button>
+          )}
+          {c.canDelete && (
+            <button type="button" onClick={() => remove(c)} className="font-semibold hover:text-rose-300 cursor-pointer">
+              Delete
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="px-3 pb-3 pt-2">
+      {(total > 0 || post.comments > 0) && (
+        <div className="px-1 pb-2 flex items-center justify-between text-[11px] text-gray-400">
+          <span>{total > 0 && `${Object.keys(post.reactions).join('')} ${total}`}</span>
+          {post.comments > 0 && (
+            <button type="button" onClick={toggleComments} className="hover:text-white cursor-pointer">
+              {post.comments} {post.comments === 1 ? 'comment' : 'comments'}
+            </button>
+          )}
+        </div>
+      )}
+      <div className="relative flex border-t border-white/10 pt-1">
+        {picker && (
+          <div className="absolute bottom-full left-0 mb-1 z-20 flex gap-1 px-2 py-1.5 rounded-full bg-white shadow-xl">
+            {REACTIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => react(r)}
+                className={`text-xl leading-none p-1 rounded-full hover:scale-125 transition-transform cursor-pointer ${post.myReaction === r ? 'bg-amber-100' : ''}`}
+                aria-label={`React ${r}`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+        {signedIn ? (
+          <button type="button" onClick={() => setPicker(!picker)} className={btn}>
+            {post.myReaction ? <span className="text-sm leading-none">{post.myReaction}</span> : <SmilePlus className="w-4 h-4" />} React
+          </button>
+        ) : (
+          <Link href={login} className={btn}>
+            <SmilePlus className="w-4 h-4" /> React
+          </Link>
+        )}
+        <button type="button" onClick={toggleComments} className={btn}>
+          <MessageCircle className="w-4 h-4" /> Comment
+        </button>
+        {!mine && (
+          <Link href={signedIn ? chat : `/login?callbackUrl=${encodeURIComponent(chat)}`} className={btn}>
+            <MessageSquare className="w-4 h-4" /> Message
+          </Link>
+        )}
+        <button type="button" onClick={share} className={btn}>
+          <Share2 className="w-4 h-4" /> Share
+        </button>
+      </div>
+      {note && <p className="px-1 pt-1 text-[11px] text-emerald-300">{note}</p>}
+
+      {open && (
+        <div className="pt-3 space-y-3">
+          {!comments ? (
+            <p className="text-[11px] text-gray-400 px-1">Loading…</p>
+          ) : (
+            comments.map((c) => (
+              <div key={c.id} className="space-y-2">
+                <CommentRow c={c} />
+                {c.replies?.map((r) => <CommentRow key={r.id} c={r} reply />)}
+              </div>
+            ))
+          )}
+          {signedIn ? (
+            <form onSubmit={send} className="space-y-1">
+              {replyTo && (
+                <p className="text-[11px] text-gray-400 px-1 flex items-center gap-2">
+                  Replying to {replyTo.author.name}
+                  <button type="button" onClick={() => setReplyTo(null)} className="text-gray-300 hover:text-white cursor-pointer" aria-label="Cancel reply">
+                    <X className="w-3 h-3" />
+                  </button>
+                </p>
+              )}
+              <div className="flex gap-2">
+                <input
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  maxLength={1000}
+                  placeholder={replyTo ? 'Write a reply…' : 'Write a comment…'}
+                  className="flex-1 min-w-0 px-3 py-2 rounded-xl bg-white/10 border border-white/15 text-base sm:text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-[#C9A84C]"
+                />
+                <button type="submit" disabled={sending || !text.trim()} className="px-3 rounded-xl bg-[#C9A84C] text-[#0F1C3F] text-xs font-bold disabled:opacity-50 cursor-pointer">
+                  {sending ? '…' : 'Send'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <Link href={login} className="block text-center text-xs font-semibold text-[#C9A84C] py-1">
+              Sign in to comment
+            </Link>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

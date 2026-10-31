@@ -397,6 +397,11 @@ export default function UnifiedChatPage() {
   // A photo or video on its way
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [upload, setUpload] = useState<{ kind: 'image' | 'video'; progress: number } | null>(null)
+  // Picked, not sent yet: add a caption or a price first
+  const [picked, setPicked] = useState<{ file: File; url: string } | null>(null)
+  const [pickedCaption, setPickedCaption] = useState('')
+  const [pickedLock, setPickedLock] = useState(false)
+  const [pickedPrice, setPickedPrice] = useState('5')
   const [uploadError, setUploadError] = useState('')
   // Messages we sent recently (id -> sent time). Kept on screen until a poll returns them,
   // so a stale poll response can't make a just-sent message vanish.
@@ -653,20 +658,37 @@ export default function UnifiedChatPage() {
   }
 
   // A photo or video from the phone: upload it in pieces, then send it as a message
-  const handlePickMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePickMedia = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !activeRecipient.id) return
+    setUploadError('')
+    setPickedCaption('')
+    setPickedLock(false)
+    setPicked({ file, url: URL.createObjectURL(file) })
+  }
+  const cancelPicked = () => {
+    if (picked) URL.revokeObjectURL(picked.url)
+    setPicked(null)
+  }
+
+  const handleSendMedia = async () => {
+    if (!picked || !activeRecipient.id) return
+    const { file, url } = picked
+    const caption = pickedCaption.trim()
+    const price = pickedLock ? parseFloat(pickedPrice) : null
+    setPicked(null)
+    URL.revokeObjectURL(url)
     const recipient = activeRecipient
     setUploadError('')
     setUpload({ kind: file.type.startsWith('video/') ? 'video' : 'image', progress: 0 })
     setTimeout(() => scrollToBottom(true), 40)
     try {
-      const { mediaId } = await uploadChatMedia(file, { recipientId: recipient.id }, (progress) => setUpload((u) => (u ? { ...u, progress } : u)))
+      const { mediaId, preview } = await uploadChatMedia(file, { recipientId: recipient.id }, (progress) => setUpload((u) => (u ? { ...u, progress } : u)))
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'media', mediaId, recipientId: recipient.id, recipientName: recipient.name }),
+        body: JSON.stringify({ type: 'media', mediaId, text: caption, price, preview, recipientId: recipient.id, recipientName: recipient.name }),
       })
       const data = await res.json()
       if (!data.success || !data.message) throw new Error(data.error || 'Could not send it. Try again.')
@@ -1591,7 +1613,14 @@ export default function UnifiedChatPage() {
 
                     {/* PHOTO / VIDEO */}
                     {(msg.type === 'image' || msg.type === 'video') && msg.proposalData?.mediaId && (
-                      <ChatMediaBubble kind={msg.type} data={msg.proposalData as MediaData} caption={msg.text} isMe={isMe} />
+                      <ChatMediaBubble
+                        kind={msg.type}
+                        data={msg.proposalData as MediaData}
+                        caption={msg.text}
+                        isMe={isMe}
+                        messageId={msg.id}
+                        onUnlocked={() => fetchMessages(false)}
+                      />
                     )}
 
                     {/* ACTIVITY CARD: deposit alerts, reminders, certificates and any other type */}
@@ -1821,6 +1850,63 @@ export default function UnifiedChatPage() {
                   <X size={14} />
                 </button>
               </p>
+            )}
+            {picked && (
+              <div className="mb-2 p-3 rounded-2xl border border-gray-200 bg-gray-50 space-y-2.5">
+                <div className="flex items-start gap-3">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden bg-black flex-shrink-0">
+                    {picked.file.type.startsWith('video/') ? (
+                      <video src={picked.url} muted playsInline className="w-full h-full object-cover" />
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={picked.url} alt="Selected" className="w-full h-full object-cover" />
+                    )}
+                  </div>
+                  <textarea
+                    value={pickedCaption}
+                    onChange={(e) => setPickedCaption(e.target.value)}
+                    maxLength={1000}
+                    rows={3}
+                    placeholder="Add a caption (optional)"
+                    className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-gray-200 bg-white text-base sm:text-sm resize-none focus:outline-none focus:border-[#C9A84C]"
+                  />
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-xs text-gray-700">
+                  <label className="flex items-center gap-1.5 cursor-pointer font-semibold">
+                    <input type="checkbox" checked={pickedLock} onChange={(e) => setPickedLock(e.target.checked)} className="accent-[#C9A84C]" />
+                    Pay to unlock
+                  </label>
+                  {pickedLock && (
+                    <label className="flex items-center gap-1">
+                      $
+                      <input
+                        type="number"
+                        min="1"
+                        max="500"
+                        step="0.01"
+                        inputMode="decimal"
+                        value={pickedPrice}
+                        onChange={(e) => setPickedPrice(e.target.value)}
+                        className="w-20 px-2 py-1 rounded-lg border border-gray-300 text-base sm:text-xs"
+                      />
+                    </label>
+                  )}
+                  <div className="ml-auto flex gap-2">
+                    <button type="button" onClick={cancelPicked} className="px-3 py-1.5 rounded-xl border border-gray-300 font-semibold cursor-pointer">
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendMedia}
+                      disabled={pickedLock && !(parseFloat(pickedPrice) >= 1)}
+                      className="px-3 py-1.5 rounded-xl bg-[#0F1C3F] text-white font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      Send
+                    </button>
+                  </div>
+                </div>
+                {pickedLock && <p className="text-[11px] text-gray-500">{activeRecipient.name} sees it blurred until they pay. The money goes to your wallet.</p>}
+              </div>
             )}
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
               {!activeRecipient.id.startsWith('guest_') && (

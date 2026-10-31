@@ -26,10 +26,14 @@ export async function GET(req: NextRequest) {
     take: 100,
   })
   const ids = posts.map((p) => p.id)
-  const [unlocked, counts] = await Promise.all([
+  const [unlocked, counts, reactions, comments, author] = await Promise.all([
     me && !mine ? prisma.postUnlock.findMany({ where: { buyerId: me, postId: { in: ids } }, select: { postId: true } }) : [],
     mine ? prisma.postUnlock.groupBy({ by: ['postId'], where: { postId: { in: ids } }, _count: true, _sum: { amount: true } }) : [],
+    prisma.postReaction.findMany({ where: { postId: { in: ids } }, select: { postId: true, userId: true, emoji: true } }),
+    prisma.postComment.groupBy({ by: ['postId'], where: { postId: { in: ids } }, _count: true }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
   ])
+  const commentCount = new Map(comments.map((c) => [c.postId, c._count]))
   const paid = new Set(unlocked.map((u) => u.postId))
   const stats = new Map(counts.map((c) => [c.postId, { unlocks: c._count, earned: Number(c._sum.amount ?? 0) }]))
 
@@ -37,6 +41,7 @@ export async function GET(req: NextRequest) {
     success: true,
     mine,
     signedIn: !!me,
+    author: { id: userId, name: author?.name || 'Member' },
     posts: posts.map((p) => {
       const price = p.price ? Number(p.price) : null
       const locked = !!price && !mine && !paid.has(p.id)
@@ -53,6 +58,9 @@ export async function GET(req: NextRequest) {
         unlocked: paid.has(p.id),
         pinned: !!p.pinnedAt,
         createdAt: p.createdAt,
+        reactions: reactions.filter((r) => r.postId === p.id).reduce<Record<string, number>>((all, r) => ({ ...all, [r.emoji]: (all[r.emoji] || 0) + 1 }), {}),
+        myReaction: reactions.find((r) => r.postId === p.id && r.userId === me)?.emoji || null,
+        comments: commentCount.get(p.id) || 0,
         ...(mine ? { stats: stats.get(p.id) || { unlocks: 0, earned: 0 } } : {}),
       }
     }),

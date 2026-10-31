@@ -20,9 +20,10 @@ import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { siteUrl } from '@/lib/site'
 import { recordInvitation } from '@/lib/invitations'
 import { moveWallet, walletRef } from '@/lib/wallet'
-import { UnlockError, postUrl, unlockPost } from '@/lib/posts'
+import { UnlockError, postUrl, refundToWallet, unlockPost } from '@/lib/posts'
+import { unlockChatMessage } from '@/lib/chatUnlock'
 
-export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF' | 'WALLET_TOPUP' | 'POST_UNLOCK'
+export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF' | 'WALLET_TOPUP' | 'POST_UNLOCK' | 'CHAT_UNLOCK'
 
 /** Platform service fees, in USD (set here, never by the browser) */
 export const FEES = {
@@ -207,6 +208,22 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       purpose: 'POST_UNLOCK',
       nextUrl: await postUrl(post.authorId, post.id),
       message: refunded ? 'You had already unlocked this post, so the payment went to your wallet.' : 'Post unlocked. Enjoy!',
+    }
+  },
+
+  async CHAT_UNLOCK({ userId, userName, amount, payload, paymentRef }) {
+    try {
+      const { msg, refunded } = await unlockChatMessage({ messageId: String(payload.messageId), buyerId: userId, buyerName: userName, source: 'CARD', paymentRef })
+      return {
+        purpose: 'CHAT_UNLOCK',
+        nextUrl: `/chat?recipientId=${encodeURIComponent(msg.senderId)}`,
+        message: refunded ? 'You had already unlocked this, so the payment went to your wallet.' : 'Unlocked. Enjoy!',
+      }
+    } catch (error) {
+      if (!(error instanceof UnlockError)) throw error
+      // Gone (or not theirs) after checkout started: the money goes to their wallet
+      await refundToWallet(userId, amount, 'Refund: that photo or video is no longer available')
+      return { purpose: 'CHAT_UNLOCK', nextUrl: '/wallet', message: "That's no longer available, so the payment went to your wallet." }
     }
   },
 

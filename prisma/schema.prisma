@@ -444,6 +444,45 @@ model ProfilePost {
   @@map("profile_posts")
 }
 
+/// One reaction per member per post (tap the same one again to remove it)
+model PostReaction {
+  postId    String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@id([postId, userId])
+  @@map("post_reactions")
+}
+
+/// A comment on a post; a reply has the comment it answers as parentId (one level)
+model PostComment {
+  id        String   @id @default(cuid())
+  postId    String
+  authorId  String
+  parentId  String?
+  text      String
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+  @@map("post_comments")
+}
+
+/// The recipient paid to see a locked photo or video sent in a chat
+model ChatUnlock {
+  id         String   @id @default(cuid())
+  messageId  String
+  buyerId    String
+  amount     Decimal  @db.Decimal(18, 2)
+  /// CARD | WALLET
+  source     String
+  paymentRef String?
+  createdAt  DateTime @default(now())
+
+  @@unique([messageId, buyerId])
+  @@map("chat_unlocks")
+}
+
 /// A visitor who asked not to get emails about this member's new posts
 model PostEmailOptOut {
   email     String
