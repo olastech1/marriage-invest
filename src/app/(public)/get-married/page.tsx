@@ -8,8 +8,8 @@ import { MARRIAGE_TYPES } from '@/types/marriage'
 
 // Must match FEES in src/lib/payments.ts (the server sets the real price)
 const OPTIONS = [
-  { id: 'both', label: 'Registration + certificate', amount: 1000, detail: 'Register your union and receive your Union Verify certificate.' },
-  { id: 'registration', label: 'Registration only', amount: 500, detail: 'Register your union now; add the certificate later.' },
+  { id: 'both', label: 'Full package: I pay', amount: 1000, detail: 'Registration and your Union Verify certificate, paid by you.' },
+  { id: 'split', label: 'Split 50-50', amount: 500, detail: 'You pay $500 now; your partner pays their $500 from their account. It unlocks when both are paid.' },
 ] as const
 
 type OptionId = (typeof OPTIONS)[number]['id']

@@ -217,7 +217,7 @@ export function TranslateLine({ translator, id, text }: { translator: ChatTransl
 }
 
 /** Header control: my language and auto-translate */
-export function TranslateSettings({ translator }: { translator: ChatTranslator }) {
+export function TranslateSettings({ translator, align = 'left' }: { translator: ChatTranslator; align?: 'left' | 'right' }) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLDivElement>(null)
 
@@ -243,7 +243,7 @@ export function TranslateSettings({ translator }: { translator: ChatTranslator }
         <span className="hidden sm:inline">{current?.code.split('-')[0].toUpperCase() || 'EN'}</span>
       </button>
       {open && (
-        <div className="absolute left-0 top-full mt-1.5 z-40 w-60 rounded-2xl border border-gray-200 bg-white shadow-xl p-3 space-y-3 text-xs text-gray-700 whitespace-normal">
+        <div className={`absolute ${align === 'right' ? 'right-0' : 'left-0'} top-full mt-2 z-40 w-60 rounded-2xl border border-gray-200 bg-white shadow-xl p-3 space-y-3 text-xs text-gray-700 whitespace-normal`}>
           <p className="font-bold text-[#0F1C3F] text-sm">Translate messages</p>
           <label className="block">
             <span className="text-[11px] text-gray-500">My language</span>

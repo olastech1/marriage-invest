@@ -6,6 +6,7 @@ import { escapeHtml, formatAccountNumber } from '@/lib/utils'
 import { isPartner } from '@/lib/partners'
 import { findMember, isEmail } from '@/lib/accountId'
 import { siteUrl } from '@/lib/site'
+import { recordInvitation } from '@/lib/invitations'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
   if (email === session.user.email?.toLowerCase()) {
     return NextResponse.json({ success: false, error: "That's your own email." }, { status: 400 })
   }
+  await recordInvitation(me, email)
   const inviter = session.user.name || 'A Union Verify member'
   const appUrl = siteUrl()
   const sent = await sendEmail({

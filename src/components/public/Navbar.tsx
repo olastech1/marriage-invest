@@ -11,16 +11,17 @@ interface NavItem {
   badge?: string
 }
 
+// Investing first; the union package and registry are optional extras for couples
 const primaryNavLinks: NavItem[] = [
-  { label: 'Get Married', href: '/get-married', badge: 'New' },
-  { label: 'Certificate', href: '/#certificate' },
-  { label: 'Wedding Registry', href: '/registry', badge: 'Gifts' },
-  { label: 'Opportunities', href: '/investments' },
+  { label: 'Investments', href: '/investments' },
   { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'Union Package', href: '/#certificate', badge: 'Couples' },
   { label: 'Community', href: '/community', badge: 'Impact' },
 ]
 
 const moreNavLinks: NavItem[] = [
+  { label: 'Register Your Union', href: '/get-married' },
+  { label: 'Wedding Registry', href: '/registry' },
   { label: 'Offer Documents', href: '/documents' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact Support', href: '/contact' },
@@ -28,11 +29,11 @@ const moreNavLinks: NavItem[] = [
 ]
 
 const allMobileLinks: NavItem[] = [
-  { label: 'Get Married', href: '/get-married', badge: 'New' },
-  { label: 'Union Certificate', href: '/#certificate' },
-  { label: 'Wedding Registry', href: '/registry', badge: 'Gifts' },
   { label: 'Investment Opportunities', href: '/investments' },
   { label: 'How It Works', href: '/#how-it-works' },
+  { label: 'Union Package', href: '/#certificate', badge: 'Couples' },
+  { label: 'Register Your Union', href: '/get-married' },
+  { label: 'Wedding Registry', href: '/registry' },
   { label: 'Community Fund', href: '/community', badge: 'Impact' },
   { label: 'Offer Documents', href: '/documents' },
   { label: 'About Us', href: '/about' },

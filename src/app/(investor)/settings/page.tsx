@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import SpouseLinkPanel from '@/components/investor/SpouseLinkPanel'
 import ProfilePhotoPicker from '@/components/investor/ProfilePhotoPicker'
+import VerificationPanel from '@/components/investor/VerificationPanel'
 import {
   User,
   CheckCircle2,
@@ -149,6 +150,9 @@ export default function InvestorSettingsPage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
         <ProfilePhotoPicker name={profile.name} avatarUrl={avatarUrl} onChange={setAvatarUrl} />
       </div>
+
+      {/* ── EMAIL & IDENTITY VERIFICATION ── */}
+      <VerificationPanel />
 
       {/* ── ACCOUNT ID & SPOUSE LINK ── */}
       <SpouseLinkPanel />

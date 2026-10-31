@@ -33,6 +33,7 @@ const CARD_LABELS: Record<string, string> = {
   reminder: 'Money request',
   invest_invite: 'Invitation to invest',
   investment: 'Investment',
+  invite_joined: 'Joined through your invite',
   withdrawal: 'Withdrawal',
   certificate: 'Certificate',
   spouse_request: 'Partner request',

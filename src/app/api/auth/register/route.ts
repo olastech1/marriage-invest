@@ -17,6 +17,9 @@ import { prisma } from '@/lib/db'
 import { buildThreadId } from '@/lib/chat'
 import { ensureAccountNumber } from '@/lib/accountId'
 import { linkPartners } from '@/lib/partners'
+import { createAuthToken } from '@/lib/authTokens'
+import { sendVerificationEmail } from '@/lib/email'
+import { welcomeInvitedMember } from '@/lib/invitations'
 
 // ---------------------------------------------------------------------------
 // Validation schema
@@ -95,6 +98,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     })
     // Their account ID, so other members can find them
     await ensureAccountNumber(user.id).catch(() => '')
+    // Ask them to confirm their email
+    await createAuthToken(user.id, 'verify_email', 24 * 60 * 60 * 1000)
+      .then((token) => sendVerificationEmail(user.email, token))
+      .catch((err) => console.error('[register] verification email failed', err))
 
     // Messages sent as a visitor with this email move into the new account
     const guestId = `guest_${normalizedEmail.replace(/[^a-z0-9]/g, '_')}`
@@ -109,6 +116,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         data: { senderId, recipientId, threadId: buildThreadId(senderId, recipientId || senderId) },
       })
     }
+
+    // Invited by email: show up in the inviter's chats
+    await welcomeInvitedMember(user).catch((err) => console.error('[register] invitations failed', err))
 
     // If a partner already registered your union with this email, link the two accounts
     const invitedBy = await prisma.marriageRegistration.findFirst({

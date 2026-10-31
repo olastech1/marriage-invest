@@ -194,7 +194,7 @@ export default function NotificationBellDropdown() {
                 className="text-[#0F1C3F] hover:text-[#C9A84C] flex items-center gap-1"
               >
                 <MessageSquareHeart size={13} className="text-[#C9A84C]" />
-                Couple Chat
+                Chat
               </Link>
               <Link
                 href="/dashboard"

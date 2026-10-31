@@ -397,6 +397,55 @@ model Partnership {
   @@map("partnerships")
 }
 
+/// One-time links for email verification and password resets (only a hash of the token is kept)
+model AuthToken {
+  id        String    @id @default(cuid())
+  userId    String
+  /// verify_email | reset_password
+  kind      String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, kind])
+  @@map("auth_tokens")
+}
+
+/// Identity verification: a photo of an ID document, reviewed by an admin
+model IdentityCheck {
+  id           String    @id @default(cuid())
+  userId       String
+  /// passport | national_id | drivers_license
+  documentType String
+  fullName     String
+  document     Bytes
+  mimeType     String
+  /// PENDING | APPROVED | REJECTED
+  status       String    @default("PENDING")
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([userId])
+  @@index([status])
+  @@map("identity_checks")
+}
+
+/// Someone a member invited by email, so they can be told when that person joins
+model Invitation {
+  id         String    @id @default(cuid())
+  inviterId  String
+  email      String
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@unique([inviterId, email])
+  @@index([email])
+  @@map("invitations")
+}
+
 /// People a member added to their chat list
 model Contact {
   id        String   @id @default(cuid())

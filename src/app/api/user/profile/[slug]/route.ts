@@ -9,7 +9,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
     const { slug } = await params
     const username = slug.toLowerCase().trim()
 
-    const user = await prisma.user.findUnique({ where: { username } })
+    // By username, or by the 8-digit account ID (members who haven't picked a username)
+    const user = /^\d{8}$/.test(username)
+      ? await prisma.user.findFirst({ where: { accountNumber: username, role: 'INVESTOR' } })
+      : await prisma.user.findUnique({ where: { username } })
     if (!user) {
       return NextResponse.json({ success: false, error: 'Member not found' }, { status: 404 })
     }
@@ -21,7 +24,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ slu
       profile: {
         userId: user.id,
         name: user.name,
-        username,
+        username: user.username || '',
+        accountNumber: user.accountNumber || '',
         avatar: user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase(),
         avatarUrl: user.avatarUrl || null,
         bio: user.bio || '',

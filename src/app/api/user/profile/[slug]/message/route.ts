@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { escapeHtml } from '@/lib/utils'
 import { sendEmail } from '@/lib/email'
 import { buildThreadId, createChatMessage } from '@/lib/chat'
+import { siteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +24,10 @@ export async function POST(
 
     const cleanSlug = slug.toLowerCase().trim()
 
-    // Find the member by username; never fall back to someone else
-    const targetUser = await prisma.user.findUnique({ where: { username: cleanSlug } })
+    // Find the member by username or account ID; never fall back to someone else
+    const targetUser = /^\d{8}$/.test(cleanSlug)
+      ? await prisma.user.findFirst({ where: { accountNumber: cleanSlug, role: 'INVESTOR' } })
+      : await prisma.user.findUnique({ where: { username: cleanSlug } })
     if (!targetUser || !targetUser.publicChatEnabled) {
       return NextResponse.json({ success: false, error: 'Member not found.' }, { status: 404 })
     }
@@ -95,11 +98,9 @@ export async function POST(
               <p style="margin: 0; font-size: 13px;"><strong>From:</strong> ${escapeHtml(cleanSenderName)}</p>
               <p style="margin: 4px 0 0; font-size: 13px;"><strong>Contact:</strong> ${escapeHtml(cleanSenderContact)}</p>
             </div>
-            <div style="background-color: #f1f5f9; border-left: 4px solid #C9A84C; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
-              <p style="margin: 0; font-style: italic; color: #0f172a; font-size: 14px;">"${escapeHtml(message)}"</p>
-            </div>
+            <p style="font-size: 14px; color: #0f172a; margin-bottom: 24px;">You have a new message. For your privacy, messages are only shown on Union Verify, not by email.</p>
             <div style="text-align: center;">
-              <a href="https://unionverify.com/chat?recipientId=${effectiveSenderId}" style="display: inline-block; background-color: #0F1C3F; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13px; padding: 12px 24px; border-radius: 10px;">
+              <a href="${siteUrl()}/chat?recipientId=${encodeURIComponent(effectiveSenderId)}" style="display: inline-block; background-color: #0F1C3F; color: #ffffff; text-decoration: none; font-weight: bold; font-size: 13px; padding: 12px 24px; border-radius: 10px;">
                 Open in Chat →
               </a>
             </div>
@@ -114,7 +115,7 @@ export async function POST(
       success: true,
       message: session?.user?.id
         ? `Message sent to ${targetName}.`
-        : `Message sent to ${targetName}. Replies will be emailed to you. Create a free account with this email to keep track of the conversation.`,
+        : `Message sent to ${targetName}. We'll email you when they reply. Create a free account with this email to read replies and keep the conversation.`,
       registerUrl: session?.user?.id ? null : `/register?email=${encodeURIComponent(String(senderEmail || '').trim())}`,
       chatUrl: `/chat?recipientId=${targetUserId}`,
       chatMsg,

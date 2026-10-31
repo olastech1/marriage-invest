@@ -4,8 +4,11 @@ import { FEES, PaymentsNotConfiguredError, startPayment } from '@/lib/payments'
 
 export const dynamic = 'force-dynamic'
 
+// The union package (registration + certificate) is $1,000: one partner pays it all,
+// or each pays half (the second half from the other partner's account)
 const OPTIONS = {
-  both: { amount: FEES.registration + FEES.certificate, title: 'Union registration and certificate' },
+  both: { amount: FEES.registration + FEES.certificate, title: 'Union package: registration and certificate' },
+  split: { amount: (FEES.registration + FEES.certificate) / 2, title: 'Union package: my half (50-50)' },
   registration: { amount: FEES.registration, title: 'Union registration' },
   certificate: { amount: FEES.certificate, title: 'Union certificate' },
 } as const

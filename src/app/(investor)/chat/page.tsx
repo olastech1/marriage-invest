@@ -72,7 +72,7 @@ export interface ChatMessage {
   createdAt?: string | Date
   read: boolean
   reactions?: Record<string, number | string[]>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite' | 'investment' | 'withdrawal'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite' | 'investment' | 'withdrawal' | 'invite_joined'
   proposalData?: {
     goalName?: string
     amount?: number
@@ -425,6 +425,15 @@ export default function UnifiedChatPage() {
         }
         lastMessageCountRef.current = data.messages.length
         setReciprocation(data.reciprocation || null)
+        // Fill in who this is (ID, profile, photo) when the chat was opened from a link
+        const r = data.recipient
+        if (r?.id) {
+          setActiveRecipient((prev) =>
+            prev.id === r.id && (!prev.accountNumber || prev.avatarUrl === undefined)
+              ? { ...prev, accountNumber: r.accountNumber || undefined, username: r.username || undefined, avatarUrl: r.avatarUrl ?? null }
+              : prev
+          )
+        }
         setMessages((prev) => {
           const serverIds = new Set(data.messages.map((m: any) => m.id))
           const now = Date.now()
@@ -751,6 +760,11 @@ export default function UnifiedChatPage() {
   // Translate messages from other people into my language
   const translator = useChatTranslator(messages, activeUserId)
 
+  // Their public profile: by username, or by account ID if they haven't picked one
+  const profileSlug = activeRecipient.username || activeRecipient.accountNumber || ''
+  const profileHref =
+    profileSlug && !activeRecipient.id.startsWith('guest_') && activeRecipient.id !== 'usr_admin' ? `/u/${encodeURIComponent(profileSlug)}` : ''
+
   // Partners (spouse, friend…) get the joint-vault tools in their chat
   const isChattingWithSpouse = partnerIds.includes(activeRecipient.id)
   const activeRelation = availableContacts.find((c) => c.id === activeRecipient.id)?.relationLabel || 'Partner'
@@ -993,6 +1007,13 @@ export default function UnifiedChatPage() {
                 <span className="text-[11px]">Chats</span>
               </button>
 
+              {/* Their photo and name open their profile */}
+              <Link
+                href={profileHref || '#'}
+                onClick={(e) => !profileHref && e.preventDefault()}
+                className="flex items-center gap-2 sm:gap-3 min-w-0"
+                aria-label={profileHref ? `View ${activeRecipient.name}'s profile` : undefined}
+              >
               <UserAvatar
                 name={activeRecipient.name}
                 src={activeRecipient.avatarUrl}
@@ -1013,33 +1034,22 @@ export default function UnifiedChatPage() {
                   {activeRecipient.accountNumber && (
                     <>
                       <span className="font-mono">ID {formatAccountNumber(activeRecipient.accountNumber)}</span>
-                      <span>·</span>
+                      {profileHref && <span>·</span>}
                     </>
                   )}
-                  {activeRecipient.username && (
-                    <span className="hidden sm:inline-flex items-center gap-1.5">
-                      <Link
-                        href={`/u/${activeRecipient.username}`}
-                        target="_blank"
-                        className="text-[#C9A84C] hover:underline"
-                      >
-                        Profile
-                      </Link>
-                      <span>·</span>
-                    </span>
-                  )}
-                  <button
-                    type="button"
-                    onClick={handleCopyPartnerInvite}
-                    className="text-purple-600 font-semibold hover:underline"
-                  >
-                    {copiedInvite ? 'Link copied' : 'Invite'}
-                  </button>
-                  <span>·</span>
-                  <TranslateSettings translator={translator} />
+                  {profileHref && <span className="text-[#C9A84C] font-semibold">View profile</span>}
                 </div>
               </div>
+              </Link>
             </div>
+
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* My language and auto-translate */}
+            {!activeRecipient.id.startsWith('guest_') && (
+              <span className="p-1.5 rounded-xl border border-gray-200 bg-white text-[11px] flex items-center">
+                <TranslateSettings translator={translator} align="right" />
+              </span>
+            )}
 
             {/* Member chat, not linked yet: ask to link as partners (any number of partners) */}
             {!isChattingWithSpouse &&
@@ -1052,6 +1062,7 @@ export default function UnifiedChatPage() {
                 userId={activeRecipient.id}
                 name={activeRecipient.name}
                 className="px-2.5 py-1.5 text-[11px] flex-shrink-0"
+                label="Link"
                 onDone={(r) => {
                   setNudgeBanner(r.text)
                   setTimeout(() => setNudgeBanner(''), 6000)
@@ -1094,6 +1105,7 @@ export default function UnifiedChatPage() {
                 </button>
               </div>
             )}
+            </div>
           </div>
 
           {/* Messages Stream */}
@@ -1429,6 +1441,8 @@ export default function UnifiedChatPage() {
                                     ? { label: 'Investment', Icon: TrendingUp, tone: 'border-indigo-200 bg-indigo-50/60 text-indigo-700' }
                                     : msg.type === 'withdrawal'
                                       ? { label: 'Withdrawal', Icon: Wallet, tone: 'border-sky-200 bg-sky-50/60 text-sky-700' }
+                                      : msg.type === 'invite_joined'
+                                        ? { label: 'Joined through your invite', Icon: UserCheck, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
                                       : { label: 'Update', Icon: Sparkles, tone: 'border-gray-200 bg-white text-gray-600' }
                       const amount = msg.depositData?.amount ?? msg.proposalData?.amount
                       return (

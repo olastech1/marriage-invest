@@ -18,8 +18,9 @@ import { escapeHtml } from '@/lib/utils'
 import { recordVaultDeposit } from '@/lib/vaultDeposits'
 import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { siteUrl } from '@/lib/site'
+import { recordInvitation } from '@/lib/invitations'
 
-export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE'
+export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF'
 
 /** Platform service fees, in USD (set here, never by the browser) */
 export const FEES = {
@@ -240,6 +241,8 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
   },
 
   async MARRIAGE_REGISTRATION({ userId, userName, amount, payload, paymentRef }) {
+    // 50-50: this is the first half; the package unlocks when the partner pays theirs
+    const split = payload.option === 'split'
     const includesCertificate = payload.option === 'both' || payload.option === 'certificate'
     const includesRegistration = payload.option === 'both' || payload.option === 'registration'
     const registration = await prisma.marriageRegistration.create({
@@ -250,7 +253,7 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
         partner1Email: payload.partner1Email,
         partner2Name: payload.partner2Name,
         partner2Email: payload.partner2Email,
-        details: payload.details || {},
+        details: { ...(payload.details || {}), ...(split ? { split: { firstPaidBy: userId, firstPaidAt: new Date().toISOString(), half: amount } } : {}) },
         registrationPaid: includesRegistration,
         certificatePaid: includesCertificate,
         certificateNumber: includesCertificate ? await uniqueNumber('UV-CERT') : null,
@@ -258,9 +261,31 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
     })
     await recordFee(userId, amount, paymentRef, `Union Verify registration ${registration.docketNumber}`)
     await linkOrInviteSpouse(userId, payload.partner1Name, payload.partner2Email)
-    const registeredText = `Our union is registered with Union Verify (docket ${registration.docketNumber})${includesCertificate ? ` and our certificate ${registration.certificateNumber} is ready` : ''}.`
+    const registeredText = split
+      ? `I paid my $${amount.toLocaleString()} half of our union package (docket ${registration.docketNumber}). Pay your half to unlock our registration and certificate.`
+      : `Our union is registered with Union Verify (docket ${registration.docketNumber})${includesCertificate ? ` and our certificate ${registration.certificateNumber} is ready` : ''}.`
     const partner = await prisma.user.findUnique({ where: { email: String(payload.partner2Email || '').toLowerCase() }, select: { id: true } })
     await postToCoupleChat(userId, userName, partner?.id, { type: 'certificate', text: registeredText })
+    if (split) {
+      for (const id of [userId, partner?.id]) {
+        await emailMember(id, {
+          subject: id === userId ? `Your half of the union package is paid (${registration.docketNumber})` : `${userName} paid their half of your union package`,
+          heading: id === userId ? 'Your half is paid' : 'Your half is waiting',
+          paragraphs: [
+            id === userId
+              ? `You paid $${amount.toLocaleString()}. When ${payload.partner2Name} pays their $${amount.toLocaleString()}, your registration and certificate unlock.`
+              : `${userName} paid $${amount.toLocaleString()} toward your union package (registration and certificate). Pay your $${amount.toLocaleString()} half to unlock it.`,
+          ],
+          ctaLabel: id === userId ? 'View the package' : `Pay my $${amount.toLocaleString()}`,
+          ctaPath: '/certificate',
+        })
+      }
+      return {
+        purpose: 'MARRIAGE_REGISTRATION',
+        nextUrl: '/certificate',
+        message: `Your half is paid. The package unlocks when ${payload.partner2Name} pays theirs.`,
+      }
+    }
     for (const id of [userId, partner?.id]) {
       await emailMember(id, {
         subject: `Your union is registered (${registration.docketNumber})`,
@@ -279,6 +304,39 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       nextUrl: '/certificate',
       message: `Your union is registered with Union Verify (docket ${registration.docketNumber}).`,
     }
+  },
+
+  // The partner pays the second half of a 50-50 union package: it unlocks
+  async UNION_SECOND_HALF({ userId, userName, amount, payload, paymentRef }) {
+    const registration = await prisma.marriageRegistration.findUnique({ where: { id: String(payload.registrationId || '') } })
+    if (!registration) throw new Error('Registration not found')
+    const details = (registration.details || {}) as Record<string, unknown>
+    if (!registration.registrationPaid) {
+      await prisma.marriageRegistration.update({
+        where: { id: registration.id },
+        data: {
+          registrationPaid: true,
+          certificatePaid: true,
+          certificateNumber: registration.certificateNumber || (await uniqueNumber('UV-CERT')),
+          details: { ...details, split: { ...((details.split as Record<string, unknown>) || {}), secondPaidBy: userId, secondPaidAt: new Date().toISOString() } },
+        },
+      })
+    }
+    await recordFee(userId, amount, paymentRef, `Union Verify package (second half) ${registration.docketNumber}`)
+    await postToCoupleChat(userId, userName, registration.userId, {
+      type: 'certificate',
+      text: `I paid my half. Our union is registered and our certificate is ready (docket ${registration.docketNumber}).`,
+    })
+    for (const id of [registration.userId, userId]) {
+      await emailMember(id, {
+        subject: 'Your union package is unlocked',
+        heading: 'Registration and certificate ready',
+        paragraphs: [`Both halves are paid. ${registration.partner1Name} and ${registration.partner2Name} are registered (docket ${registration.docketNumber}) and the certificate is ready.`],
+        ctaLabel: 'View certificate',
+        ctaPath: '/certificate',
+      })
+    }
+    return { purpose: 'UNION_SECOND_HALF', nextUrl: '/certificate', message: 'Both halves are paid. Your certificate is ready.' }
   },
 
   async CERTIFICATE({ userId, userName, amount, payload, paymentRef }) {
@@ -345,6 +403,7 @@ async function linkOrInviteSpouse(userId: string, inviterName: string, partnerEm
     await linkPartners(userId, partner.id, 'spouse')
     return
   }
+  await recordInvitation(userId, email)
   const appUrl = siteUrl()
   await sendEmail({
     to: email,

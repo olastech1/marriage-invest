@@ -6,6 +6,7 @@ import { isPartner } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
+import { recordInvitation } from '@/lib/invitations'
 
 export const dynamic = 'force-dynamic'
 
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest, { params }: Params) {
       .catch(() => {})
   }
 
+  // Not a member yet: they show up in my chats when they join
+  if (!recipient) await recordInvitation(me, email)
   const emailed = await sendEmail({
     to: email,
     subject: `${myName} invited you to invest in ${opportunity.title}`,

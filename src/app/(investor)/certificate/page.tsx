@@ -15,6 +15,8 @@ interface Registration {
   certificateNumber: string | null
   unionType: string
   weddingDate: string
+  /** 50-50 package: each partner pays half */
+  split: { half: number; waitingForPartner: boolean; owedByMe: boolean } | null
 }
 
 export default function CertificatePage() {
@@ -72,6 +74,47 @@ export default function CertificatePage() {
     month: 'long',
     day: 'numeric',
   })
+
+  // 50-50 package waiting for a half
+  if (registration.split?.waitingForPartner) {
+    const half = `$${registration.split.half.toLocaleString()}`
+    return (
+      <div className="max-w-xl rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+        <h1 className="text-xl font-bold text-[#0F1C3F]">Union package</h1>
+        <p className="text-sm text-gray-600">
+          {registration.partner1Name} and {registration.partner2Name} are splitting the package (registration and certificate) 50-50: {half} each.
+        </p>
+        <ul className="text-sm space-y-1.5">
+          <li className="flex justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2">
+            <span>First half</span>
+            <span className="font-bold text-emerald-700">Paid</span>
+          </li>
+          <li className="flex justify-between rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+            <span>Second half</span>
+            <span className="font-bold text-amber-700">{registration.split.owedByMe ? 'Yours to pay' : 'Waiting for your partner'}</span>
+          </li>
+        </ul>
+        {error && (
+          <p className="text-xs text-rose-700 flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" /> {error}
+          </p>
+        )}
+        {registration.split.owedByMe ? (
+          <button
+            onClick={handlePay}
+            disabled={paying}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white text-sm font-bold disabled:opacity-50 cursor-pointer"
+          >
+            {paying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+            {paying ? 'Opening secure payment…' : `Pay my ${half}`}
+          </button>
+        ) : (
+          <p className="text-xs text-gray-500">We emailed your partner. The package unlocks as soon as they pay their half.</p>
+        )}
+        <p className="text-[11px] text-gray-400">Payments are processed by Stripe.</p>
+      </div>
+    )
+  }
 
   if (!registration.certificatePaid) {
     return (

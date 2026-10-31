@@ -19,6 +19,7 @@ import {
   LogOut,
   X,
   ExternalLink,
+  BadgeCheck,
 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,7 @@ export const ADMIN_NAV_GROUPS: { title: string | null; items: AdminNavItem[] }[]
     title: 'Members & money',
     items: [
       { label: 'Investors', href: '/admin/investors', icon: Users },
+      { label: 'Verifications', href: '/admin/verifications', icon: BadgeCheck },
       { label: 'Withdrawals', href: '/admin/withdrawals', icon: ArrowDownToLine },
       { label: 'Transactions', href: '/admin/transactions', icon: CreditCard },
     ],

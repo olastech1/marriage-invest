@@ -28,6 +28,7 @@ interface PublicProfile {
   username: string
   avatar: string
   avatarUrl?: string | null
+  accountNumber?: string
   bio: string
   identityVerified: boolean
   memberSince: string
@@ -252,7 +253,9 @@ export default function UserPublicProfilePage() {
           {/* Name & details */}
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{primaryName}</h1>
-            <p className="text-xs text-gray-400 mt-1">@{profile.username}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {profile.username ? `@${profile.username}` : profile.accountNumber ? `ID ${profile.accountNumber.slice(0, 4)} ${profile.accountNumber.slice(4)}` : ''}
+            </p>
             {profile.bio && (
               <p className="text-xs text-gray-300 max-w-sm mx-auto mt-3 leading-relaxed whitespace-pre-line">
                 {profile.bio}
@@ -325,7 +328,7 @@ export default function UserPublicProfilePage() {
               {!previewAsVisitor && (
                 <p className="text-[11px] text-gray-400">
                   Have an account?{' '}
-                  <Link href={`/login?callbackUrl=${encodeURIComponent(`/u/${profile.username}`)}`} className="font-bold text-[#C9A84C] hover:underline">
+                  <Link href={`/login?callbackUrl=${encodeURIComponent(`/u/${profile.username || profile.accountNumber}`)}`} className="font-bold text-[#C9A84C] hover:underline">
                     Sign in
                   </Link>{' '}
                   to chat in the app, or{' '}

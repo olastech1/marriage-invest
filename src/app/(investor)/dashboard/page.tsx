@@ -4,29 +4,26 @@ import { getReciprocationStatus } from '@/lib/reciprocation'
 import { getIncomingSpouseRequests } from '@/lib/chat'
 import { getPartnerIds, withdrawalApproverId } from '@/lib/partners'
 import { getSettings } from '@/lib/settings'
-import { formatAnnualRate } from '@/lib/utils'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Decimal } from '@prisma/client/runtime/library'
-import DashboardStatsPanel, { type DashboardStats } from '@/components/investor/DashboardStats'
 import AccountRatingCard from '@/components/investor/AccountRatingCard'
 import UrgentNotificationCenter from '@/components/investor/UrgentNotificationCenter'
 import SpouseRequestBanner from '@/components/investor/SpouseRequestBanner'
 import MyAccountId from '@/components/investor/MyAccountId'
+import VerifyEmailBanner from '@/components/investor/VerifyEmailBanner'
 import { ensureAccountNumber } from '@/lib/accountId'
 import { computeAccountRating, isDemoTransaction, isDemoInvestment } from '@/lib/rating'
 import {
   Bell,
-  Calendar,
   CheckCircle,
   AlertCircle,
   Info,
   AlertTriangle,
   ArrowRight,
   PiggyBank,
-  HeartHandshake,
+  TrendingUp,
   Award,
-  MessageSquareHeart,
   Sparkles,
   Lock,
 } from 'lucide-react'
@@ -38,12 +35,6 @@ const USD = (n: Decimal | number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
     typeof n === 'number' ? n : Number(n),
   )
-
-const pct = (funded: Decimal, target: Decimal) => {
-  const t = Number(target)
-  if (t === 0) return 0
-  return Math.min(100, Math.round((Number(funded) / t) * 100))
-}
 
 const fmtDate = (d: Date | null) =>
   d ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d) : '—'
@@ -94,7 +85,6 @@ export default async function DashboardPage() {
     transactions,
     allCompletedTransactions,
     notifications,
-    activeOpportunities,
     allDocuments,
     userAcknowledgments,
     marriageAudit,
@@ -105,7 +95,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { identityVerified: true, accountNumber: true },
+      select: { identityVerified: true, accountNumber: true, email: true, emailVerified: true },
     }),
     prisma.investment.findMany({
       where: { userId },
@@ -125,11 +115,6 @@ export default async function DashboardPage() {
       where: { userId },
       orderBy: { createdAt: 'desc' },
       take: 30,
-    }),
-    prisma.investmentOpportunity.findMany({
-      where: { status: 'ACTIVE' },
-      take: 3,
-      orderBy: { createdAt: 'desc' },
     }),
     prisma.document.findMany({
       select: { id: true, name: true, type: true, version: true },
@@ -169,24 +154,6 @@ export default async function DashboardPage() {
     .filter((i) => i.status === 'ACTIVE' || i.status === 'MATURED')
     .reduce((s, i) => s + Number(i.amount), 0)
 
-  const activeInvestmentsCount = realInvestments.filter((i) => i.status === 'ACTIVE').length
-
-  const totalDistributions = realCompletedTransactions
-    .filter((t) => t.type === 'DISTRIBUTION')
-    .reduce((s, t) => s + Number(t.netAmount), 0)
-
-  // fetch real pending count separately
-  const pendingTransactionsList = await prisma.transaction.findMany({
-    where: { userId, status: 'PENDING' },
-  })
-  const pendingTransactions = pendingTransactionsList.filter((t) => !isDemoTransaction(t)).length
-
-  const stats: DashboardStats = {
-    totalInvested,
-    activeInvestments: activeInvestmentsCount,
-    totalDistributions,
-    pendingTransactions,
-  }
 
   // Filter recent transactions for table (real transactions only)
   const realRecentTransactions = transactions.filter((t) => !isDemoTransaction(t)).slice(0, 5)
@@ -208,13 +175,8 @@ export default async function DashboardPage() {
     realInvestedAmount: totalInvested,
   })
 
-  // ── upcoming maturities (next 90 days, real investments only) ─────────
-  const now = new Date()
-  const in90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
-  const upcomingMaturities = realInvestments.filter(
-    (i) => i.status === 'ACTIVE' && i.maturityDate && i.maturityDate > now && i.maturityDate < in90,
-  )
 
+  const now = new Date()
   const unreadCount = notifications.filter((n) => !n.read).length
   const accountId = userRecord?.accountNumber || (await ensureAccountNumber(userId))
 
@@ -267,6 +229,9 @@ export default async function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* ── Email not confirmed yet ── */}
+      {userRecord && !userRecord.emailVerified && <VerifyEmailBanner email={userRecord.email} />}
 
       {/* ── Someone asked to link as spouses ───────────────────────── */}
       <SpouseRequestBanner requests={spouseRequests} />
@@ -354,126 +319,72 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ── Stats ───────────────────────────────────────────────────── */}
-      <DashboardStatsPanel stats={stats} />
+      {/* ── Three things you can do: save, invest, union package ── */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Link
+          href="/save"
+          className="rounded-2xl bg-gradient-to-br from-[#0F1C3F] to-[#1a2f64] p-5 text-white shadow-md border border-[#C9A84C]/30 flex flex-col justify-between gap-4 hover:shadow-lg transition-shadow"
+        >
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C]">Joint savings</span>
+              <PiggyBank className="w-5 h-5 text-[#C9A84C]" />
+            </div>
+            <h3 className="text-base font-bold">
+              {reciprocation.partnerIds.length
+                ? `${reciprocation.partnerIds.length} joint vault${reciprocation.partnerIds.length > 1 ? 's' : ''}`
+                : 'Save with someone'}
+            </h3>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {reciprocation.partnerIds.length
+                ? `One vault with each partner, ${settings.vaultApy}% APY (variable, not guaranteed).`
+                : 'Link a partner, family member or friend to open a joint vault together.'}
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#C9A84C]">
+            {reciprocation.partnerIds.length ? 'Open vaults' : 'Get started'} <ArrowRight size={13} />
+          </span>
+        </Link>
+
+        <Link
+          href="/portfolio"
+          className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Investing</span>
+              <TrendingUp className="w-5 h-5 text-[#C9A84C]" />
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">Your portfolio</h3>
+            <p className="text-xs text-gray-500 leading-relaxed">Holdings, maturity dates, distributions and open opportunities.</p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F]">
+            View portfolio <ArrowRight size={13} />
+          </span>
+        </Link>
+
+        <Link
+          href={hasMarriageCovenant && marriageAudit ? '/certificate' : '/get-married'}
+          className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between gap-4"
+        >
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] bg-[#C9A84C]/10 px-2 py-0.5 rounded-full">Optional · couples</span>
+              <Award className="w-5 h-5 text-[#C9A84C]" />
+            </div>
+            <h3 className="text-base font-bold text-[#0F1C3F]">Union package</h3>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Register your union and get your Union Verify certificate: $1,000, or split 50-50 at $500 each.
+            </p>
+          </div>
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F]">
+            {marriageAudit ? 'View certificate' : 'Unlock it'} <ArrowRight size={13} />
+          </span>
+        </Link>
+      </div>
 
       {/* ── Account Rating ──────────────────────────────────────────── */}
       <AccountRatingCard rating={accountRating} />
-
-      {/* ── Joint Savings Banner ──────────────────────────────────── */}
-      <div className="rounded-2xl bg-gradient-to-r from-[#0F1C3F] via-[#1a2f64] to-[#0F1C3F] p-5 sm:p-6 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-5 border border-[#C9A84C]/30 relative overflow-hidden">
-        <div className="space-y-1.5 z-10">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/40 text-[#C9A84C] text-xs font-bold uppercase tracking-wider">
-            <PiggyBank className="w-3.5 h-3.5" />
-            Joint savings · {settings.vaultApy}% APY (variable, not guaranteed)
-          </div>
-          <h2 className="text-lg sm:text-xl font-bold text-white">
-            Save together with your partner
-          </h2>
-          <p className="text-xs text-slate-300 max-w-xl leading-relaxed">
-            Both of you deposit into one joint savings balance. When one partner deposits, the other reciprocates, and joint withdrawals need both of you to agree.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 z-10 w-full md:w-auto">
-          <Link
-            href="/save"
-            className="w-full md:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#C9A84C] px-5 py-2.5 text-xs sm:text-sm font-bold text-[#0F1C3F] shadow-sm hover:bg-[#d4b460] transition-colors"
-          >
-            Go to Save
-            <ArrowRight size={15} />
-          </Link>
-        </div>
-      </div>
-
-      {/* ── Quick actions: chat, registration, certificate ─────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Card 1: Spouse chat */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full">
-                Chat
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
-                <MessageSquareHeart className="w-4 h-4 text-[#C9A84C]" />
-              </div>
-            </div>
-            <h3 className="text-base font-bold text-[#0F1C3F]">
-              Partner Chat
-            </h3>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Message {spouseName} and plan your deposits together. Deposit updates also appear here.
-            </p>
-          </div>
-          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-end">
-            <Link
-              href={reciprocation.partnerIds.length === 1 ? '/chat?thread=spouse' : '/chat'}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
-            >
-              Open Chat <ArrowRight size={13} />
-            </Link>
-          </div>
-        </div>
-
-        {/* Card 2: Get Married (Never Married) */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#C9A84C] bg-[#C9A84C]/10 px-2.5 py-0.5 rounded-full">
-                Optional
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
-                <HeartHandshake className="w-4 h-4 text-[#C9A84C]" />
-              </div>
-            </div>
-            <h3 className="text-base font-bold text-[#0F1C3F]">
-              Register Your Union · $500
-            </h3>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Married or making it official? Register your union online. Saving and investing together work without it.
-            </p>
-          </div>
-          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400">Reg: $500</span>
-            <Link
-              href="/get-married"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
-            >
-              Start Reg <ArrowRight size={13} />
-            </Link>
-          </div>
-        </div>
-
-        {/* Card 3: Certificate & Issuance */}
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:border-[#C9A84C] transition-all flex flex-col justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-50 px-2.5 py-0.5 rounded-full">
-                Certificate
-              </span>
-              <div className="w-8 h-8 rounded-lg bg-[#0F1C3F]/5 text-[#0F1C3F] flex items-center justify-center">
-                <Award className="w-4 h-4 text-[#C9A84C]" />
-              </div>
-            </div>
-            <h3 className="text-base font-bold text-[#0F1C3F]">
-              Union Certificate · $500
-            </h3>
-            <p className="text-xs text-gray-500 leading-relaxed">
-              Co-sign with your partner, then get your Union Verify certificate.
-            </p>
-          </div>
-          <div className="pt-4 mt-2 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs font-semibold text-gray-400">Cert: $500</span>
-            <Link
-              href="/certificate"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0F1C3F] hover:text-[#C9A84C] transition-colors"
-            >
-              Certificate <ArrowRight size={13} />
-            </Link>
-          </div>
-        </div>
-      </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Recent Transactions ─────────────────────────────────── */}
@@ -563,116 +474,6 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* ── Active Portfolio ─────────────────────────────────────── */}
-        <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-            <h2 className="font-semibold text-slate-900">Active Investments</h2>
-            <Link href="/portfolio" className="flex items-center gap-1 text-xs font-medium text-[#C9A84C] hover:underline">
-              Full portfolio <ArrowRight size={12} />
-            </Link>
-          </div>
-          {investments.filter((i) => i.status === 'ACTIVE').length === 0 ? (
-            <div className="px-5 py-8 text-center">
-              <p className="text-sm text-slate-400">No active investments yet.</p>
-              <Link href="/save" className="mt-2 inline-block text-xs font-medium text-[#C9A84C] hover:underline">
-                Explore opportunities →
-              </Link>
-            </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {investments
-                .filter((i) => i.status === 'ACTIVE')
-                .slice(0, 4)
-                .map((inv) => (
-                  <li key={inv.id} className="px-5 py-4">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-slate-900">{inv.opportunity.title}</p>
-                        <p className="text-xs text-slate-500">Ref: {inv.referenceNumber}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-[#0F1C3F]">{USD(inv.amount)}</p>
-                        <p className="text-xs text-slate-400">Matures {fmtDate(inv.maturityDate)}</p>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-            </ul>
-          )}
-        </div>
-
-        {/* ── Upcoming Maturities & Funding Progress ───────────────── */}
-        <div className="space-y-6">
-          {/* Maturities */}
-          <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-            <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-              <Calendar size={16} className="text-slate-500" />
-              <h2 className="font-semibold text-slate-900">Upcoming Maturities (90 days)</h2>
-            </div>
-            {upcomingMaturities.length === 0 ? (
-              <p className="px-5 py-6 text-center text-sm text-slate-400">No maturities in the next 90 days.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {upcomingMaturities.map((inv) => {
-                  const days = Math.ceil(
-                    (inv.maturityDate!.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-                  )
-                  return (
-                    <li key={inv.id} className="flex items-center justify-between px-5 py-3.5">
-                      <div>
-                        <p className="text-sm font-medium text-slate-800">{inv.opportunity.title}</p>
-                        <p className="text-xs text-slate-500">{USD(inv.amount)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs font-semibold text-[#C9A84C]">{days} days</p>
-                        <p className="text-xs text-slate-400">{fmtDate(inv.maturityDate)}</p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-
-          {/* Funding progress for active opportunities */}
-          {activeOpportunities.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 px-5 py-4">
-                <h2 className="font-semibold text-slate-900">Open Opportunities</h2>
-              </div>
-              <ul className="divide-y divide-slate-100">
-                {activeOpportunities.map((opp) => {
-                  const progress = pct(opp.fundedAmount, opp.targetAmount)
-                  return (
-                    <li key={opp.id} className="px-5 py-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium text-slate-800 truncate pr-2">{opp.title}</span>
-                        <span className="flex-shrink-0 text-xs font-semibold text-[#0F1C3F]">
-                          {formatAnnualRate(opp.annualReturnRate)} p.a. target
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
-                          <div
-                            className="h-full rounded-full bg-[#C9A84C] transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                        <span className="flex-shrink-0 text-xs text-slate-500">{progress}%</span>
-                      </div>
-                      <div className="mt-1 flex justify-between text-xs text-slate-400">
-                        <span>{USD(opp.fundedAmount)} raised</span>
-                        <span>{USD(opp.targetAmount)} target</span>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   )
 }

@@ -141,7 +141,7 @@ export default function UrgentNotificationCenter({
             title={`Chat with ${partnerName}`}
           >
             <MessageSquareHeart size={13} />
-            Couple Chat
+            Chat
           </Link>
           <button
             onClick={() => setActiveTab(activeTab === 'URGENT' ? 'ALL' : 'URGENT')}

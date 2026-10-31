@@ -51,16 +51,15 @@ async function findGuestEmail(threadId: string): Promise<string | null> {
   return null
 }
 
-async function emailVisitorReply(to: string, fromName: string, text: string): Promise<boolean> {
+/** Tell a visitor they have a reply; the message itself is only on the site */
+async function emailVisitorReply(to: string, fromName: string): Promise<boolean> {
   const appUrl = siteUrl()
   return sendEmail({
     to,
     subject: `${fromName} replied to your message on Union Verify`,
-    html: `<p>${escapeHtml(fromName)} replied:</p>
-<blockquote style="border-left:3px solid #C9A84C;margin:0;padding:8px 12px;color:#0f172a">${escapeHtml(text)}</blockquote>
-<p>To keep track of the whole conversation and reply in the app,
-<a href="${appUrl}/register?email=${encodeURIComponent(to)}">create a free Union Verify account</a> with this email address.
-Your earlier messages will appear in your account.</p>`,
+    html: `<p>${escapeHtml(fromName)} replied to your message. Messages are only shown on Union Verify, not by email.</p>
+<p><a href="${appUrl}/register?email=${encodeURIComponent(to)}">Create a free account</a> with this email address to read it and reply.
+Your earlier messages will be in your account.</p>`,
   }).catch(() => false)
 }
 
@@ -313,6 +312,9 @@ export async function GET(req: NextRequest) {
         name: recipientName,
         email: recipientUser?.email || `${recipientId}@unionverify.com`,
         avatar: initials(recipientName),
+        username: recipientUser?.username || null,
+        accountNumber: recipientUser?.accountNumber || null,
+        avatarUrl: recipientUser?.avatarUrl || null,
       },
     })
   } catch (err: any) {
@@ -401,7 +403,7 @@ export async function POST(req: Request) {
     // Visitors have no account: email them the reply (they gave their address with their message)
     if (effectiveRecipientId.startsWith('guest_')) {
       const guestEmail = await findGuestEmail(buildThreadId(sender.id, effectiveRecipientId))
-      const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name, text || '') : false
+      const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name) : false
       return NextResponse.json({ success: true, message: newMsg, emailed })
     }
 
@@ -418,7 +420,13 @@ export async function POST(req: Request) {
             ? `${sender.name} proposed a $${Number(proposalData?.amount || 0).toLocaleString()} plan${plan ? ` for "${plan}"` : ''}`
             : `New message from ${sender.name}`,
         heading: type === 'proposal' ? 'New savings proposal' : `${sender.name} sent you a message`,
-        paragraphs: [newMsg.text.slice(0, 500)],
+        // Chats stay on the site: the email only says there is something to read
+        paragraphs: [
+          type === 'proposal'
+            ? `${sender.name} sent you a savings proposal. Open the chat to see it and answer.`
+            : `You have a new message from ${sender.name} on Union Verify. Open the chat to read it.`,
+          'For your privacy, messages are only shown on the site, not by email.',
+        ],
         ctaLabel: type === 'proposal' ? 'Review proposal' : 'Reply in chat',
         ctaPath: `/chat?recipientId=${encodeURIComponent(sender.id)}&name=${encodeURIComponent(sender.name)}`,
       })

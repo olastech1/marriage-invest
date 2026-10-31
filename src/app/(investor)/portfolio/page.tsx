@@ -13,6 +13,12 @@ export default async function PortfolioPage() {
   const userId = session?.user?.id
   if (!userId) redirect('/login')
 
+  const openOpportunities = await prisma.investmentOpportunity.findMany({
+    where: { status: 'ACTIVE' },
+    take: 4,
+    orderBy: { createdAt: 'desc' },
+  })
+
   const allInvestments = await prisma.investment.findMany({
     where: { userId },
     include: {
@@ -44,6 +50,15 @@ export default async function PortfolioPage() {
     return sum + distSum
   }, 0)
 
+  // Active investments maturing in the next 90 days
+  const now = new Date()
+  const in90 = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000)
+  const upcomingMaturities = investments.filter(
+    (i) => i.status === 'ACTIVE' && i.maturityDate && i.maturityDate > now && i.maturityDate < in90,
+  )
+  const percentFunded = (funded: unknown, target: unknown) =>
+    Number(target) > 0 ? Math.min(100, Math.round((Number(funded) / Number(target)) * 100)) : 0
+
   return (
     <div className="space-y-8">
       {/* Page Title & Summary */}
@@ -55,10 +70,10 @@ export default async function PortfolioPage() {
           </p>
         </div>
         <Link
-          href="/save"
+          href="/solo"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#C9A84C] text-[#0F1C3F] font-bold text-xs hover:bg-[#d4b460] shadow-sm transition-all"
         >
-          Go to Save →
+          Browse investments →
         </Link>
       </div>
 
@@ -209,6 +224,70 @@ export default async function PortfolioPage() {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Maturing soon */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-[#0F1C3F]">Maturing in the next 90 days</h2>
+          </div>
+          {upcomingMaturities.length === 0 ? (
+            <p className="px-6 py-6 text-center text-sm text-gray-400">Nothing matures in the next 90 days.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {upcomingMaturities.map((inv) => (
+                <li key={inv.id} className="flex items-center justify-between px-6 py-3.5">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{inv.opportunity.title}</p>
+                    <p className="text-xs text-gray-500">{formatCurrency(Number(inv.amount))}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-semibold text-[#C9A84C]">
+                      {Math.ceil((inv.maturityDate!.getTime() - now.getTime()) / 86_400_000)} days
+                    </p>
+                    <p className="text-xs text-gray-400">{formatDate(inv.maturityDate!)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* Open opportunities */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 className="font-semibold text-[#0F1C3F]">Open opportunities</h2>
+            <Link href="/solo" className="text-xs font-medium text-[#C9A84C] hover:underline">
+              See all →
+            </Link>
+          </div>
+          {openOpportunities.length === 0 ? (
+            <p className="px-6 py-6 text-center text-sm text-gray-400">No opportunities are open right now.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {openOpportunities.map((opp) => {
+                const progress = percentFunded(opp.fundedAmount, opp.targetAmount)
+                return (
+                  <li key={opp.id} className="px-6 py-4">
+                    <Link href={`/investments/${opp.slug}`} className="block">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="font-medium text-gray-800 truncate pr-2">{opp.title}</span>
+                        <span className="flex-shrink-0 text-xs font-semibold text-[#0F1C3F]">{formatAnnualRate(opp.annualReturnRate)} p.a. target</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                          <div className="h-full rounded-full bg-[#C9A84C]" style={{ width: `${progress}%` }} />
+                        </div>
+                        <span className="flex-shrink-0 text-xs text-gray-500">{progress}% funded</span>
+                      </div>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   )
