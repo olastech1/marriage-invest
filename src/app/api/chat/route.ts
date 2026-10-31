@@ -77,6 +77,7 @@ type Conversation = {
   otherUsername: string | null
   otherAccountNumber: string | null
   otherAvatarUrl: string | null
+  otherVerified: boolean
   kind: 'spouse' | 'member' | 'visitor'
   /** A linked partner (any relationship) */
   isSpouse: boolean
@@ -111,10 +112,10 @@ async function buildConversations(currentUserId: string, partnerLinks: PartnerLi
     if (otherId && !otherId.startsWith('guest_')) otherIds.add(otherId)
   }
   for (const l of partnerLinks) otherIds.add(l.id)
-  const members = new Map<string, { name: string; username: string | null; accountNumber: string | null; avatarUrl: string | null }>()
+  const members = new Map<string, { name: string; username: string | null; accountNumber: string | null; avatarUrl: string | null; identityVerified: boolean }>()
   for (const u of await prisma.user.findMany({
     where: { id: { in: [...otherIds] } },
-    select: { id: true, name: true, username: true, accountNumber: true, avatarUrl: true },
+    select: { id: true, name: true, username: true, accountNumber: true, avatarUrl: true, identityVerified: true },
   })) {
     members.set(u.id.toLowerCase(), u)
   }
@@ -140,6 +141,7 @@ async function buildConversations(currentUserId: string, partnerLinks: PartnerLi
         otherUsername: other?.username || null,
         otherAccountNumber: other?.accountNumber || null,
         otherAvatarUrl: other?.avatarUrl || null,
+        otherVerified: !!other?.identityVerified,
         kind: relationOf(otherId) ? 'spouse' : isVisitor ? 'visitor' : 'member',
         isSpouse: !!relationOf(otherId),
         relationLabel: relationOf(otherId),
@@ -172,6 +174,7 @@ async function buildConversations(currentUserId: string, partnerLinks: PartnerLi
       otherUsername: other?.username || null,
       otherAccountNumber: other?.accountNumber || null,
       otherAvatarUrl: other?.avatarUrl || null,
+        otherVerified: !!other?.identityVerified,
       kind: relationOf(p.id) ? 'spouse' : 'member',
       isSpouse: !!relationOf(p.id),
       relationLabel: relationOf(p.id),
@@ -315,6 +318,7 @@ export async function GET(req: NextRequest) {
         username: recipientUser?.username || null,
         accountNumber: recipientUser?.accountNumber || null,
         avatarUrl: recipientUser?.avatarUrl || null,
+        verified: !!recipientUser?.identityVerified,
       },
     })
   } catch (err: any) {

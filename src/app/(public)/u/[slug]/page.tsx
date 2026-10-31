@@ -1,11 +1,11 @@
 'use client'
 
+import VerifiedTick from '@/components/VerifiedTick'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import Link from 'next/link'
 import {
-  ShieldCheck,
   MessageSquare,
   MessageCircle,
   Mail,
@@ -228,12 +228,6 @@ export default function UserPublicProfilePage() {
 
         {/* Profile card */}
         <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-5">
-          {profile.identityVerified && (
-            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/50 text-[#C9A84C] text-[11px] font-bold uppercase tracking-wider shadow-sm">
-              <ShieldCheck size={14} className="text-[#C9A84C]" />
-              <span>Identity Verified</span>
-            </div>
-          )}
 
           {/* Avatars */}
           <div className="flex items-center justify-center my-2">
@@ -252,7 +246,10 @@ export default function UserPublicProfilePage() {
 
           {/* Name & details */}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{primaryName}</h1>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight inline-flex items-center justify-center gap-2">
+              <span>{primaryName}</span>
+              {profile.identityVerified && <VerifiedTick className="w-6 h-6 sm:w-7 sm:h-7" />}
+            </h1>
             <p className="text-xs text-gray-400 mt-1">
               {profile.username ? `@${profile.username}` : profile.accountNumber ? `ID ${profile.accountNumber.slice(0, 4)} ${profile.accountNumber.slice(4)}` : ''}
             </p>

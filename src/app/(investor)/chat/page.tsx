@@ -10,6 +10,7 @@ import FindMember from '@/components/investor/FindMember'
 import LinkPartnerButton from '@/components/investor/LinkPartnerButton'
 import MyAccountId from '@/components/investor/MyAccountId'
 import UserAvatar from '@/components/investor/UserAvatar'
+import VerifiedTick from '@/components/VerifiedTick'
 import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
 import { TranslateLine, TranslateSettings, useChatTranslator } from '@/components/investor/ChatTranslator'
 import {
@@ -45,6 +46,8 @@ export interface ChatUser {
   username?: string
   accountNumber?: string
   avatarUrl?: string | null
+  /** Identity verified: blue tick */
+  verified?: boolean
   email?: string
   role?: string
   bio?: string
@@ -103,6 +106,7 @@ export interface ConversationItem {
   otherUsername?: string | null
   otherAccountNumber?: string | null
   otherAvatarUrl?: string | null
+  otherVerified?: boolean
   relationLabel?: string | null
   kind?: 'spouse' | 'member' | 'visitor'
   guestEmail?: string | null
@@ -200,6 +204,7 @@ export default function UnifiedChatPage() {
             username: c.otherUsername || undefined,
             accountNumber: c.otherAccountNumber || undefined,
             avatarUrl: c.otherAvatarUrl || null,
+            verified: !!c.otherVerified,
             relationLabel: c.relationLabel || null,
             role: c.kind === 'spouse' ? 'Spouse' : c.kind === 'visitor' ? 'Visitor' : 'Member',
             bio: c.lastMessage?.text.slice(0, 80),
@@ -256,7 +261,7 @@ export default function UnifiedChatPage() {
         // Fill in their details (account ID, profile) once the list has them
         setActiveRecipient((prev) =>
           prev.id.toLowerCase() === matched.id.toLowerCase() &&
-          (prev.accountNumber !== matched.accountNumber || prev.username !== matched.username || prev.avatarUrl !== matched.avatarUrl)
+          (prev.accountNumber !== matched.accountNumber || prev.username !== matched.username || prev.avatarUrl !== matched.avatarUrl || prev.verified !== matched.verified)
             ? matched
             : prev
         )
@@ -429,8 +434,8 @@ export default function UnifiedChatPage() {
         const r = data.recipient
         if (r?.id) {
           setActiveRecipient((prev) =>
-            prev.id === r.id && (!prev.accountNumber || prev.avatarUrl === undefined)
-              ? { ...prev, accountNumber: r.accountNumber || undefined, username: r.username || undefined, avatarUrl: r.avatarUrl ?? null }
+            prev.id === r.id && (!prev.accountNumber || prev.avatarUrl === undefined || prev.verified !== !!r.verified)
+              ? { ...prev, accountNumber: r.accountNumber || undefined, username: r.username || undefined, avatarUrl: r.avatarUrl ?? null, verified: !!r.verified }
               : prev
           )
         }
@@ -929,6 +934,7 @@ export default function UnifiedChatPage() {
                         <span className={`text-[13px] font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
                           {contact.name}
                         </span>
+                        {contact.verified && <VerifiedTick className="w-3.5 h-3.5" />}
                         {isSpouse && (
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
                             isSelected ? 'bg-[#C9A84C] text-[#0F1C3F]' : 'bg-rose-50 text-rose-700 border border-rose-200'
@@ -1026,6 +1032,7 @@ export default function UnifiedChatPage() {
                   <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
                     {activeRecipient.name}
                   </h3>
+                  {activeRecipient.verified && <VerifiedTick className="w-4 h-4" />}
                   {isChattingWithSpouse && (
                     <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">({activeRelation})</span>
                   )}
