@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Linkified } from '@/components/investor/LinkPreview'
+import { ChatMediaBubble, uploadChatMedia, type MediaData } from '@/components/investor/ChatMedia'
 import {
   MessageSquareHeart,
   Minimize2,
@@ -13,6 +14,7 @@ import {
   Volume2,
   VolumeX,
   ExternalLink,
+  ImagePlus,
 } from 'lucide-react'
 
 interface FloatingMessage {
@@ -23,6 +25,8 @@ interface FloatingMessage {
   type?: string
   amount?: number
   isReciprocalMatch?: boolean
+  /** A photo or video */
+  media?: MediaData
 }
 
 /** Label for each card type; plain text messages have none */
@@ -49,7 +53,11 @@ export function FloatingChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const [messages, setMessages] = useState<FloatingMessage[]>([])
-  const prevCountRef = useRef(0)
+  // The newest message seen, to spot new ones (the server sends only the latest page)
+  const lastIdRef = useRef('')
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [upload, setUpload] = useState<number | null>(null)
+  const [uploadError, setUploadError] = useState('')
   // Confirmed messages we sent recently (id -> sent time), kept until a poll returns them
   const recentlySentRef = useRef<Map<string, number>>(new Map())
 
@@ -84,18 +92,19 @@ export function FloatingChatWidget() {
           type: m.type,
           amount: m.depositData?.amount || m.proposalData?.amount,
           isReciprocalMatch: !!m.depositData?.isReciprocalMatch,
+          media: (m.type === 'image' || m.type === 'video') && m.proposalData?.mediaId ? m.proposalData : undefined,
         }))
 
-        if (formatted.length > prevCountRef.current && prevCountRef.current > 0) {
-          const latest = formatted[formatted.length - 1]
-          if (latest && latest.sender === 'partner') {
+        const latest = formatted[formatted.length - 1]
+        if (latest && lastIdRef.current && latest.id !== lastIdRef.current) {
+          if (latest.sender === 'partner') {
             playChime()
             if (!isOpen) {
               setUnreadCount((c) => c + 1)
             }
           }
         }
-        prevCountRef.current = formatted.length
+        lastIdRef.current = latest?.id || ''
 
         // Preserve any optimistic messages not yet confirmed by the server
         setMessages((prev) => {
@@ -232,6 +241,31 @@ export function FloatingChatWidget() {
     }
   }
 
+  // A photo or video for my partner
+  async function handlePickMedia(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !partner) return
+    setUploadError('')
+    setUpload(0)
+    try {
+      const { mediaId } = await uploadChatMedia(file, { recipientId: partner.id }, setUpload)
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'media', mediaId, recipientId: partner.id, recipientName: partner.name }),
+      })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.error || 'Could not send it. Try again.')
+      recentlySentRef.current.set(data.message.id, Date.now())
+      fetchLiveMessages()
+    } catch (err) {
+      setUploadError((err as Error).message || 'Could not send it. Try again.')
+    } finally {
+      setUpload(null)
+    }
+  }
+
   function handleOpenWidget() {
     setIsOpen(true)
     setUnreadCount(0)
@@ -321,6 +355,9 @@ export function FloatingChatWidget() {
                   key={m.id}
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                 >
+                  {m.media && (m.type === 'image' || m.type === 'video') ? (
+                    <ChatMediaBubble kind={m.type} data={m.media} caption={m.text} isMe={isMe} />
+                  ) : (
                   <div
                     className={`p-3 rounded-2xl max-w-[85%] leading-relaxed shadow-xs ${
                       isMe
@@ -351,6 +388,7 @@ export function FloatingChatWidget() {
                       </div>
                     )}
                   </div>
+                  )}
                   <div className="flex items-center gap-1 px-1 mt-0.5 text-[9px] text-gray-400">
                     <span>{m.time}</span>
                     {isMe && <Check className="w-3 h-3 text-[#C9A84C]" />}
@@ -359,14 +397,33 @@ export function FloatingChatWidget() {
               )
             })}
 
+            {upload !== null && (
+              <p className="text-right text-[11px] font-semibold text-[#0F1C3F]">Sending… {Math.round(upload * 100)}%</p>
+            )}
             <div ref={messagesEndRef} />
           </div>
+          {uploadError && <p className="px-3 pt-2 text-[11px] text-rose-700 bg-white">{uploadError}</p>}
 
           {/* Message Input Bar */}
           <form
             onSubmit={handleSendMessage}
             className="p-3 bg-white border-t border-gray-100 flex items-center gap-2 flex-shrink-0"
           >
+            {partner && (
+              <>
+                <input ref={fileRef} type="file" accept="image/*,video/*" className="hidden" onChange={handlePickMedia} />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={upload !== null}
+                  className="p-2.5 rounded-xl border border-gray-200 text-[#0F1C3F] hover:bg-gray-50 disabled:opacity-40"
+                  title="Send a photo or video"
+                  aria-label="Send a photo or video"
+                >
+                  <ImagePlus className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
             <input
               type="text"
               value={inputText}

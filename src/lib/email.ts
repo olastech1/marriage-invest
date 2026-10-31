@@ -611,6 +611,9 @@ export async function sendActivityEmail({
   paragraphs,
   ctaLabel,
   ctaPath,
+  secondaryCta,
+  image,
+  unsubscribeUrl,
 }: {
   to: string
   subject: string
@@ -618,11 +621,28 @@ export async function sendActivityEmail({
   paragraphs: string[]
   ctaLabel?: string
   ctaPath?: string
+  /** A second, lighter button next to the main one */
+  secondaryCta?: { label: string; path: string }
+  /** A picture under the text (an absolute https URL), linking to `href` (an app path) */
+  image?: { src: string; href: string; alt: string }
+  /** A link to stop these emails (for people who aren't members) */
+  unsubscribeUrl?: string
 }): Promise<boolean> {
+  const app = APP_URL.replace(/\/$/, '')
   const body = `
     <h2>${escapeText(heading)}</h2>
     ${paragraphs.map((p) => `<p>${escapeText(p)}</p>`).join('')}
-    ${ctaLabel && ctaPath ? `<p style="text-align:center;margin-top:24px"><a class="btn" href="${APP_URL.replace(/\/$/, '')}${ctaPath}">${escapeText(ctaLabel)}</a></p>` : ''}
+    ${image ? `<p style="margin:16px 0"><a href="${app}${image.href}"><img src="${image.src}" alt="${escapeText(image.alt)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border-radius:12px;border:0"></a></p>` : ''}
+    ${
+      ctaLabel && ctaPath
+        ? `<p style="text-align:center;margin-top:24px"><a class="btn" href="${app}${ctaPath}">${escapeText(ctaLabel)}</a>${
+            secondaryCta
+              ? ` &nbsp; <a href="${app}${secondaryCta.path}" style="display:inline-block;padding:12px 22px;border-radius:10px;border:1px solid #0F1C3F;color:#0F1C3F;text-decoration:none;font-weight:700;font-size:14px">${escapeText(secondaryCta.label)}</a>`
+              : ''
+          }</p>`
+        : ''
+    }
+    ${unsubscribeUrl ? `<p style="font-size:12px;color:#64748b;margin-top:24px">Don't want these emails? <a href="${unsubscribeUrl}">Unsubscribe</a>.</p>` : ''}
   `
   return sendEmail({ to, subject, html: baseTemplate(body, heading) })
 }

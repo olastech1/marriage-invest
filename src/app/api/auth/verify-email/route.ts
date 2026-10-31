@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { createAuthToken, sentRecently, consumeAuthToken } from '@/lib/authTokens'
 import { sendVerificationEmail } from '@/lib/email'
+import { claimByVerifiedEmail } from '@/lib/guestChats'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
   if (!userId) {
     return NextResponse.json({ success: false, error: 'This link has expired or was already used. Send a new one from your dashboard.' }, { status: 400 })
   }
-  await prisma.user.update({ where: { id: userId }, data: { emailVerified: new Date() } })
+  const user = await prisma.user.update({ where: { id: userId }, data: { emailVerified: new Date() }, select: { id: true, email: true, createdAt: true } })
+  // Chats they started as a visitor with this email move into the account
+  await claimByVerifiedEmail(user).catch((err) => console.error('[verify-email] visitor chat move failed', err))
   return NextResponse.json({ success: true, message: 'Your email is verified.' })
 }

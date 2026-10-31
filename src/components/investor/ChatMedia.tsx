@@ -47,12 +47,14 @@ function videoSize(file: File): Promise<{ width: number; height: number; preview
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const v = document.createElement('video')
+    let settled = false
     const done = (width = 0, height = 0, preview: string | null = null) => {
-      clearTimeout(timer)
+      if (settled) return
+      settled = true
       URL.revokeObjectURL(url)
       resolve({ width, height, preview })
     }
-    const timer = setTimeout(() => done(v.videoWidth, v.videoHeight), 5000)
+    setTimeout(() => done(v.videoWidth, v.videoHeight), 5000)
     v.preload = 'auto'
     v.muted = true
     v.playsInline = true
@@ -106,7 +108,10 @@ export async function uploadChatMedia(
 /** A photo or video in a chat bubble; tap a photo to see it full screen */
 export function ChatMediaBubble({ kind, data, caption, isMe }: { kind: 'image' | 'video'; data: MediaData; caption?: string; isMe: boolean }) {
   const [open, setOpen] = useState(false)
-  const src = mediaUrl(data.mediaId)
+  const [failed, setFailed] = useState(false)
+  // Bumped to try loading again
+  const [attempt, setAttempt] = useState(0)
+  const src = `${mediaUrl(data.mediaId)}${attempt ? `?r=${attempt}` : ''}`
   // Keep the space while it loads, so the chat doesn't jump
   const ratio = data.width && data.height ? `${data.width} / ${data.height}` : kind === 'video' ? '16 / 9' : '4 / 3'
 
@@ -120,13 +125,33 @@ export function ChatMediaBubble({ kind, data, caption, isMe }: { kind: 'image' |
   return (
     <div className={`rounded-2xl overflow-hidden shadow-xs border ${isMe ? 'bg-[#0F1C3F] border-[#0F1C3F] rounded-tr-none' : 'bg-white border-gray-200 rounded-tl-none'}`}>
       <div className="bg-gray-100 w-[260px] sm:w-[320px] max-h-[420px] flex items-center justify-center" style={{ aspectRatio: ratio }}>
-        {kind === 'image' ? (
+        {failed ? (
+          // Couldn't load, or this browser can't play the format (e.g. an iPhone video on Android)
+          <div className="p-4 text-center space-y-2 text-xs text-gray-600">
+            <p>{kind === 'video' ? "This video can't play here." : "This photo didn't load."}</p>
+            <div className="flex justify-center gap-3 font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  setFailed(false)
+                  setAttempt((n) => n + 1)
+                }}
+                className="text-[#0F1C3F] underline cursor-pointer"
+              >
+                Try again
+              </button>
+              <a href={src} target="_blank" rel="noopener noreferrer" download className="text-[#0F1C3F] underline">
+                {kind === 'video' ? 'Download video' : 'Open photo'}
+              </a>
+            </div>
+          </div>
+        ) : kind === 'image' ? (
           <button type="button" onClick={() => setOpen(true)} className="w-full h-full cursor-zoom-in" aria-label="Open photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={caption || 'Photo'} loading="lazy" decoding="async" className="w-full h-full object-cover" />
+            <img src={src} alt={caption || 'Photo'} loading="lazy" decoding="async" onError={() => setFailed(true)} className="w-full h-full object-cover" />
           </button>
         ) : (
-          <video src={`${src}#t=0.1`} controls playsInline preload="metadata" className="w-full h-full object-contain bg-black" />
+          <video src={`${src}#t=0.1`} controls playsInline preload="metadata" onError={() => setFailed(true)} className="w-full h-full object-contain bg-black" />
         )}
       </div>
       {caption && (

@@ -444,6 +444,16 @@ model ProfilePost {
   @@map("profile_posts")
 }
 
+/// A visitor who asked not to get emails about this member's new posts
+model PostEmailOptOut {
+  email     String
+  authorId  String
+  createdAt DateTime @default(now())
+
+  @@id([email, authorId])
+  @@map("post_email_opt_outs")
+}
+
 /// A member who paid to see a locked post (once per post)
 model PostUnlock {
   id         String   @id @default(cuid())

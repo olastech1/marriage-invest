@@ -5,6 +5,7 @@ import { escapeHtml } from '@/lib/utils'
 import { sendEmail } from '@/lib/email'
 import { buildThreadId, createChatMessage } from '@/lib/chat'
 import { siteUrl } from '@/lib/site'
+import { guestClaimToken } from '@/lib/guestChats'
 
 export const dynamic = 'force-dynamic'
 
@@ -116,7 +117,9 @@ export async function POST(
       message: session?.user?.id
         ? `Message sent to ${targetName}.`
         : `Message sent to ${targetName}. We'll email you when they reply. Create a free account with this email to read replies and keep the conversation.`,
-      registerUrl: session?.user?.id ? null : `/register?email=${encodeURIComponent(String(senderEmail || '').trim())}`,
+      registerUrl: session?.user?.id
+        ? null
+        : `/register?email=${encodeURIComponent(String(senderEmail || '').trim())}&claim=${guestClaimToken(effectiveSenderId, targetUserId)}`,
       chatUrl: `/chat?recipientId=${targetUserId}`,
       chatMsg,
     })

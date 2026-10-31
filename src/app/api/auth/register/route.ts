@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/db'
-import { buildThreadId } from '@/lib/chat'
+import { claimWithToken } from '@/lib/guestChats'
 import { ensureAccountNumber } from '@/lib/accountId'
 import { linkPartners } from '@/lib/partners'
 import { createAuthToken } from '@/lib/authTokens'
@@ -103,19 +103,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       .then((token) => sendVerificationEmail(user.email, token))
       .catch((err) => console.error('[register] verification email failed', err))
 
-    // Messages sent as a visitor with this email move into the new account
-    const guestId = `guest_${normalizedEmail.replace(/[^a-z0-9]/g, '_')}`
-    const guestMessages = await prisma.chatMessage.findMany({
-      where: { OR: [{ senderId: guestId }, { recipientId: guestId }] },
-    })
-    for (const m of guestMessages) {
-      const senderId = m.senderId === guestId ? user.id : m.senderId
-      const recipientId = m.recipientId === guestId ? user.id : m.recipientId
-      await prisma.chatMessage.update({
-        where: { id: m.id },
-        data: { senderId, recipientId, threadId: buildThreadId(senderId, recipientId || senderId) },
-      })
-    }
+    // Signed up from a visitor conversation's link: it moves into the new account
+    // (other visitor chats with this email move once the email is confirmed)
+    await claimWithToken(String((body as { claim?: unknown })?.claim ?? ''), user.id).catch((err) => console.error('[register] visitor chat move failed', err))
 
     // Came from a member's invite link: count it as their invite
     const inviteCode = String((body as { invite?: unknown })?.invite ?? '')

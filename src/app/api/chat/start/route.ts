@@ -7,6 +7,7 @@ import { isPartner } from '@/lib/partners'
 import { ensureAccountNumber, findMember, isEmail } from '@/lib/accountId'
 import { siteUrl } from '@/lib/site'
 import { recordInvitation } from '@/lib/invitations'
+import { guestClaimToken, guestIdFor } from '@/lib/guestChats'
 
 export const dynamic = 'force-dynamic'
 
@@ -67,7 +68,8 @@ export async function POST(req: NextRequest) {
   }
   const appUrl = siteUrl()
   // ?invite= lets a WhatsApp invite count as mine too when they sign up
-  const inviteUrl = `${appUrl}/register?email=${encodeURIComponent(email)}&invite=${await ensureAccountNumber(me)}`
+  // The pass moves a visitor chat they had with me (if any) into their new account
+  const inviteUrl = `${appUrl}/register?email=${encodeURIComponent(email)}&invite=${await ensureAccountNumber(me)}&claim=${guestClaimToken(guestIdFor(email), me)}`
   if (!body.send) return NextResponse.json({ success: true, invite: true, email, inviteUrl })
 
   // Keep invites personal, not bulk mail

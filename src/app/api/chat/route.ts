@@ -16,6 +16,7 @@ import { RELATIONS, getPartnerLinks, type PartnerLink } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
+import { guestClaimToken } from '@/lib/guestChats'
 
 /** Messages sent when a chat opens; older ones load as the member scrolls up */
 const PAGE_SIZE = 60
@@ -55,13 +56,13 @@ async function findGuestEmail(threadId: string): Promise<string | null> {
 }
 
 /** Tell a visitor they have a reply; the message itself is only on the site */
-async function emailVisitorReply(to: string, fromName: string): Promise<boolean> {
+async function emailVisitorReply(to: string, fromName: string, claim: string): Promise<boolean> {
   const appUrl = siteUrl()
   return sendEmail({
     to,
     subject: `${fromName} replied to your message on Union Verify`,
     html: `<p>${escapeHtml(fromName)} replied to your message. Messages are only shown on Union Verify, not by email.</p>
-<p><a href="${appUrl}/register?email=${encodeURIComponent(to)}">Create a free account</a> with this email address to read it and reply.
+<p><a href="${appUrl}/register?email=${encodeURIComponent(to)}&claim=${claim}">Create a free account</a> to read it and reply.
 Your earlier messages will be in your account.</p>`,
   }).catch(() => false)
 }
@@ -447,7 +448,7 @@ export async function POST(req: Request) {
     // Visitors have no account: email them the reply (they gave their address with their message)
     if (effectiveRecipientId.startsWith('guest_')) {
       const guestEmail = await findGuestEmail(buildThreadId(sender.id, effectiveRecipientId))
-      const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name) : false
+      const emailed = guestEmail ? await emailVisitorReply(guestEmail, sender.name, guestClaimToken(effectiveRecipientId, sender.id)) : false
       return NextResponse.json({ success: true, message: newMsg, emailed })
     }
 

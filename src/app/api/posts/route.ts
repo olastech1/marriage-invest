@@ -1,10 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse, after } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { MAX_POST_PRICE, MIN_POST_PRICE, postThread } from '@/lib/posts'
+import { tellAboutPost } from '@/lib/postEmails'
 
 export const dynamic = 'force-dynamic'
+// Time to email partners and visitors after a post
+export const maxDuration = 60
 
 // ---------------------------------------------------------------------------
 // GET /api/posts?userId=<id>  a member's posts, pinned first. Anyone can look;
@@ -106,5 +109,12 @@ export async function POST(req: NextRequest) {
       price: rawPrice !== null ? new Prisma.Decimal(rawPrice) : null,
     },
   })
+  // Partners and visitors who messaged me hear about it, after the answer is sent
+  const author = { id: me, name: session.user.name || 'A member' }
+  after(() =>
+    tellAboutPost(author, { id: post.id, caption, mediaId, mediaKind: media?.kind || null, price: rawPrice }).catch((err) =>
+      console.error('[posts] post emails failed', err),
+    ),
+  )
   return NextResponse.json({ success: true, id: post.id })
 }

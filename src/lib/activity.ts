@@ -16,6 +16,8 @@ export interface ActivityEmail {
   paragraphs: string[]
   ctaLabel?: string
   ctaPath?: string
+  secondaryCta?: { label: string; path: string }
+  image?: { src: string; href: string; alt: string }
 }
 
 /** Email a member by id (no-op if they have no account/email). */

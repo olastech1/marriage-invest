@@ -173,6 +173,8 @@ function RegisterForm() {
           password: fields.password,
           // From a member's invite link (shared on WhatsApp): their account ID
           invite: searchParams.get('invite') || undefined,
+          // From a visitor conversation: move it into the new account
+          claim: searchParams.get('claim') || undefined,
         }),
       })
 
