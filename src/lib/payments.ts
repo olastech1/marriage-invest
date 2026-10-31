@@ -20,8 +20,9 @@ import { emailMember, postToCoupleChat } from '@/lib/activity'
 import { siteUrl } from '@/lib/site'
 import { recordInvitation } from '@/lib/invitations'
 import { moveWallet, walletRef } from '@/lib/wallet'
+import { UnlockError, postUrl, unlockPost } from '@/lib/posts'
 
-export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF' | 'WALLET_TOPUP'
+export type PaymentPurpose = 'VAULT_DEPOSIT' | 'INVESTMENT' | 'MARRIAGE_REGISTRATION' | 'CERTIFICATE' | 'UNION_SECOND_HALF' | 'WALLET_TOPUP' | 'POST_UNLOCK'
 
 /** Platform service fees, in USD (set here, never by the browser) */
 export const FEES = {
@@ -189,6 +190,24 @@ const HANDLERS: Record<PaymentPurpose, (input: HandlerInput) => Promise<FulfillR
       })
     })
     return { purpose: 'WALLET_TOPUP', nextUrl: '/wallet', message: `$${amount.toLocaleString()} was added to your wallet.` }
+  },
+
+  async POST_UNLOCK({ userId, userName, amount, payload, paymentRef }) {
+    const outcome = await unlockPost({ postId: String(payload.postId), buyerId: userId, buyerName: userName, source: 'CARD', paymentRef }).catch(
+      async (error) => {
+        if (!(error instanceof UnlockError)) throw error
+        // The post was removed (or is theirs) after checkout started: the money goes to their wallet
+        await prisma.$transaction((tx) => moveWallet(tx, { userId, kind: 'CASH', amount, reason: 'Refund: that post is no longer available', reference: `TXN-${walletRef('REF')}` }))
+        return null
+      },
+    )
+    if (!outcome) return { purpose: 'POST_UNLOCK', nextUrl: '/wallet', message: 'That post is no longer available, so the payment went to your wallet.' }
+    const { post, refunded } = outcome
+    return {
+      purpose: 'POST_UNLOCK',
+      nextUrl: await postUrl(post.authorId, post.id),
+      message: refunded ? 'You had already unlocked this post, so the payment went to your wallet.' : 'Post unlocked. Enjoy!',
+    }
   },
 
   async MARRIAGE_REGISTRATION({ userId, userName, amount, payload, paymentRef }) {

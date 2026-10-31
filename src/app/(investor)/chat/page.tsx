@@ -662,7 +662,7 @@ export default function UnifiedChatPage() {
     setUpload({ kind: file.type.startsWith('video/') ? 'video' : 'image', progress: 0 })
     setTimeout(() => scrollToBottom(true), 40)
     try {
-      const mediaId = await uploadChatMedia(file, recipient.id, (progress) => setUpload((u) => (u ? { ...u, progress } : u)))
+      const { mediaId } = await uploadChatMedia(file, { recipientId: recipient.id }, (progress) => setUpload((u) => (u ? { ...u, progress } : u)))
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -76,7 +76,7 @@ function Card({ icon, title, message, nextUrl }: { icon: 'loading' | 'done' | 'e
           href={nextUrl}
           className="inline-block mt-2 px-5 py-2.5 rounded-xl bg-[#0F1C3F] text-white text-sm font-bold hover:bg-[#1a2f64]"
         >
-          {NEXT_LABEL[nextUrl.split('?')[0]] || 'Continue'}
+          {NEXT_LABEL[nextUrl.split(/[?#]/)[0]] || (nextUrl.startsWith('/u/') ? 'See the post' : 'Continue')}
         </Link>
       )}
     </div>

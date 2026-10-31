@@ -10,8 +10,23 @@ const MAX_SIDE = 1600
 
 export const mediaUrl = (id: string) => `/api/chat/media/${encodeURIComponent(id)}`
 
+/** A tiny blurred-looking JPEG of a picture or video frame (shown on locked posts) */
+function tinyPreview(source: CanvasImageSource, width: number, height: number): string | null {
+  try {
+    const w = 24
+    const h = Math.max(1, Math.round((height / width) * w))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    canvas.getContext('2d')!.drawImage(source, 0, 0, w, h)
+    return canvas.toDataURL('image/jpeg', 0.5)
+  } catch {
+    return null
+  }
+}
+
 /** A photo, made smaller on the phone first so it sends and loads fast */
-async function preparePhoto(file: File): Promise<{ blob: Blob; width: number; height: number }> {
+async function preparePhoto(file: File): Promise<{ blob: Blob; width: number; height: number; preview: string | null }> {
   const bitmap = await createImageBitmap(file).catch(() => null)
   if (!bitmap) throw new Error("That photo couldn't be opened. Try a JPG or PNG.")
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
@@ -24,47 +39,51 @@ async function preparePhoto(file: File): Promise<{ blob: Blob; width: number; he
   bitmap.close()
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.82))
   if (!blob) throw new Error("That photo couldn't be prepared.")
-  return { blob, width, height }
+  return { blob, width, height, preview: tinyPreview(canvas, width, height) }
 }
 
-/** A video's width and height, so its space is kept while it loads */
-function videoSize(file: File): Promise<{ width: number; height: number }> {
+/** A video's width and height (so its space is kept while it loads) and a first-frame preview */
+function videoSize(file: File): Promise<{ width: number; height: number; preview: string | null }> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file)
     const v = document.createElement('video')
-    const done = (width = 0, height = 0) => {
+    const done = (width = 0, height = 0, preview: string | null = null) => {
+      clearTimeout(timer)
       URL.revokeObjectURL(url)
-      resolve({ width, height })
+      resolve({ width, height, preview })
     }
-    const timer = setTimeout(() => done(), 4000)
-    v.preload = 'metadata'
-    v.onloadedmetadata = () => {
-      clearTimeout(timer)
-      done(v.videoWidth, v.videoHeight)
+    const timer = setTimeout(() => done(v.videoWidth, v.videoHeight), 5000)
+    v.preload = 'auto'
+    v.muted = true
+    v.playsInline = true
+    v.onloadeddata = () => {
+      v.currentTime = Math.min(0.5, (v.duration || 1) / 2)
     }
-    v.onerror = () => {
-      clearTimeout(timer)
-      done()
-    }
+    v.onseeked = () => done(v.videoWidth, v.videoHeight, tinyPreview(v, v.videoWidth || 16, v.videoHeight || 9))
+    v.onerror = () => done()
     v.src = url
   })
 }
 
 /**
- * Upload a photo or video for the chat with `recipientId`, in pieces.
- * Returns the mediaId to send with the message.
+ * Upload a photo or video, in pieces: for the chat with `recipientId`, or for a profile post.
+ * Returns the mediaId to send with the message or post, and a tiny preview.
  */
-export async function uploadChatMedia(file: File, recipientId: string, onProgress: (fraction: number) => void): Promise<string> {
+export async function uploadChatMedia(
+  file: File,
+  target: { recipientId: string } | { forPost: true },
+  onProgress: (fraction: number) => void,
+): Promise<{ mediaId: string; preview: string | null; kind: 'image' | 'video' }> {
   const isVideo = file.type.startsWith('video/')
   if (!isVideo && !file.type.startsWith('image/')) throw new Error('Choose a photo or a video.')
   if (isVideo && file.size > MAX_VIDEO_BYTES) throw new Error('That video is too large. Send one up to 25 MB (about a minute).')
 
-  const { blob, width, height } = isVideo ? { blob: file as Blob, ...(await videoSize(file)) } : await preparePhoto(file)
+  const { blob, width, height, preview } = isVideo ? { blob: file as Blob, ...(await videoSize(file)) } : await preparePhoto(file)
 
   const start = await fetch('/api/chat/media', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ recipientId, kind: isVideo ? 'video' : 'image', size: blob.size, width, height }),
+    body: JSON.stringify({ ...target, kind: isVideo ? 'video' : 'image', size: blob.size, width, height }),
   }).then((r) => r.json())
   if (!start.success) throw new Error(start.error || 'Could not start the upload.')
 
@@ -81,7 +100,7 @@ export async function uploadChatMedia(file: File, recipientId: string, onProgres
     }
     onProgress((i + 1) / start.partCount)
   }
-  return start.mediaId
+  return { mediaId: start.mediaId, preview, kind: isVideo ? 'video' : 'image' }
 }
 
 /** A photo or video in a chat bubble; tap a photo to see it full screen */

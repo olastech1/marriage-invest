@@ -1,6 +1,7 @@
 'use client'
 
 import VerifiedTick from '@/components/VerifiedTick'
+import ProfilePosts from '@/components/investor/ProfilePosts'
 import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -338,6 +339,9 @@ export default function UserPublicProfilePage() {
             </div>
           )}
         </div>
+
+        {/* Posts: photos, videos and updates (some locked until paid for) */}
+        <ProfilePosts userId={profile.userId} slug={slug} ownerView={viewer === 'owner'} />
 
         {/* Contact & socials (only what the member chose to share) */}
         {hasContact && (

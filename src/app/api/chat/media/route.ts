@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildThreadId } from '@/lib/chat'
+import { postThread } from '@/lib/posts'
 import { DAILY_MEDIA_BYTES, MAX_IMAGE_BYTES, MAX_VIDEO_BYTES, MEDIA_PART_SIZE } from '@/lib/chatMedia'
 
 export const dynamic = 'force-dynamic'
 
 // ---------------------------------------------------------------------------
-// POST /api/chat/media  { recipientId, kind: image|video, size, width?, height? }
+// POST /api/chat/media  { recipientId | forPost: true, kind: image|video, size, width?, height? }
 // Start an upload. The browser then sends each piece to PUT /api/chat/media/[id]?part=n
-// and finally posts the chat message with the returned mediaId.
+// and finally posts the chat message (or the profile post) with the returned mediaId.
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -17,13 +18,14 @@ export async function POST(req: NextRequest) {
   if (!me) return NextResponse.json({ success: false, error: 'Please sign in.' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
+  const forPost = body.forPost === true
   const recipientId = String(body.recipientId || '')
   const kind = body.kind === 'video' ? 'video' : body.kind === 'image' ? 'image' : null
   const size = Math.floor(Number(body.size))
   const dim = (v: unknown) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Math.min(Math.round(Number(v)), 20000) : null)
 
-  if (!recipientId || recipientId === me) return NextResponse.json({ success: false, error: 'Open a chat first.' }, { status: 400 })
-  if (recipientId.startsWith('guest_')) {
+  if (!forPost && (!recipientId || recipientId === me)) return NextResponse.json({ success: false, error: 'Open a chat first.' }, { status: 400 })
+  if (!forPost && recipientId.startsWith('guest_')) {
     return NextResponse.json({ success: false, error: "Visitors without an account can't see photos or videos." }, { status: 400 })
   }
   if (!kind) return NextResponse.json({ success: false, error: 'Send a photo or a video.' }, { status: 400 })
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
   const media = await prisma.chatMedia.create({
     data: {
       ownerId: me,
-      threadId: buildThreadId(me, recipientId),
+      threadId: forPost ? postThread(me) : buildThreadId(me, recipientId),
       kind,
       mimeType: '',
       size,

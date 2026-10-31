@@ -385,9 +385,11 @@ model Avatar {
   @@map("avatars")
 }
 
-/// A photo or video sent in a chat. The file is kept in pieces (ChatMediaPart)
-/// so each upload and download stays under the server's request size limit.
-/// Only the two people in the thread can open it (/api/chat/media/[id]).
+/// A photo or video sent in a chat or posted to a profile. The file is kept in
+/// pieces (ChatMediaPart) so each upload and download stays under the server's
+/// request size limit. threadId is the chat's thread, or "post:<ownerId>" for a
+/// profile post. Chat media opens only for the two people in the thread; post
+/// media follows the post (free, or paid for) — see /api/chat/media/[id].
 model ChatMedia {
   id        String   @id @default(cuid())
   ownerId   String
@@ -415,6 +417,47 @@ model ChatMediaPart {
 
   @@id([mediaId, index])
   @@map("chat_media_parts")
+}
+
+/// A post on a member's profile: a caption with an optional photo or video.
+/// With a price, the photo or video stays locked until a member pays to see it;
+/// the caption is always shown. Pinned posts show first (newest pin first).
+model ProfilePost {
+  id        String    @id @default(cuid())
+  authorId  String
+  caption   String    @default("")
+  /// The photo or video (chat_media, threadId "post:<authorId>")
+  mediaId   String?
+  /// image | video
+  mediaKind String?
+  width     Int?
+  height    Int?
+  /// A tiny blurred picture shown on a locked post
+  preview   String?
+  /// USD to unlock; null for a free post
+  price     Decimal?  @db.Decimal(18, 2)
+  pinnedAt  DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([authorId, createdAt])
+  @@map("profile_posts")
+}
+
+/// A member who paid to see a locked post (once per post)
+model PostUnlock {
+  id         String   @id @default(cuid())
+  postId     String
+  buyerId    String
+  amount     Decimal  @db.Decimal(18, 2)
+  /// CARD | WALLET
+  source     String
+  paymentRef String?
+  createdAt  DateTime @default(now())
+
+  @@unique([postId, buyerId])
+  @@index([buyerId])
+  @@map("post_unlocks")
 }
 
 /// Two members linked as partners (spouse, friend, family…). A member can have any
