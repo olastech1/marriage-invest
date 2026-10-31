@@ -105,10 +105,33 @@ function tinyPreview(source: CanvasImageSource, width: number, height: number): 
   }
 }
 
+/** HEIC/HEIF (the "high efficiency" photos many phones take), by name, type or first bytes */
+async function isHeic(file: File) {
+  if (/heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)) return true
+  const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+  const brand = String.fromCharCode(...head.slice(4, 12))
+  return /^ftyp(heic|heix|hevc|heim|heis|mif1|msf1)/.test(brand)
+}
+
+/** Open a photo for resizing; HEIC is converted to JPG first (most browsers can't read it) */
+async function openPhoto(file: File): Promise<ImageBitmap | null> {
+  const direct = await createImageBitmap(file).catch(() => null)
+  if (direct) return direct
+  if (!(await isHeic(file))) return null
+  const { default: heic2any } = await import('heic2any')
+  const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.9 }).catch(() => null)
+  const jpeg = Array.isArray(converted) ? converted[0] : converted
+  return jpeg ? createImageBitmap(jpeg).catch(() => null) : null
+}
+
 /** A photo, made smaller on the phone first so it sends and loads fast */
 async function preparePhoto(file: File): Promise<{ blob: Blob; width: number; height: number; preview: string | null }> {
-  const bitmap = await createImageBitmap(file).catch(() => null)
-  if (!bitmap) throw new Error("That photo couldn't be opened. Try a JPG or PNG.")
+  const bitmap = await openPhoto(file)
+  if (!bitmap) {
+    // Couldn't resize it here: a normal JPG/PNG/WebP still goes as it is (the server checks the type)
+    if (/^image\/(jpeg|png|webp)$/.test(file.type) && file.size <= 5 * 1024 * 1024) return { blob: file, width: 0, height: 0, preview: null }
+    throw new Error("That photo couldn't be opened. Try a different photo, or take a screenshot of it and send that.")
+  }
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const width = Math.round(bitmap.width * scale)
   const height = Math.round(bitmap.height * scale)
