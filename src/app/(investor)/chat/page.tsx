@@ -13,6 +13,8 @@ import UserAvatar from '@/components/investor/UserAvatar'
 import VerifiedTick from '@/components/VerifiedTick'
 import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
 import { TranslateLine, TranslateSettings, useChatTranslator } from '@/components/investor/ChatTranslator'
+import { ChatMediaBubble, uploadChatMedia, type MediaData } from '@/components/investor/ChatMedia'
+import { readChatCache, writeChatCache } from '@/lib/chatCache'
 import {
   Heart,
   Send,
@@ -35,6 +37,7 @@ import {
   Users,
   TrendingUp,
   Wallet,
+  ImagePlus,
 } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -75,7 +78,7 @@ export interface ChatMessage {
   createdAt?: string | Date
   read: boolean
   reactions?: Record<string, number | string[]>
-  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite' | 'investment' | 'withdrawal' | 'invite_joined'
+  type?: 'text' | 'proposal' | 'love_note' | 'voice_memo' | 'certificate' | 'system_reminder' | 'reminder' | 'deposit_alert' | 'social_inquiry' | 'spouse_request' | 'invest_invite' | 'investment' | 'withdrawal' | 'invite_joined' | 'image' | 'video'
   proposalData?: {
     goalName?: string
     amount?: number
@@ -188,11 +191,7 @@ export default function UnifiedChatPage() {
   const activeThreadId = getThreadId(activeUserId, activeRecipient.id)
 
   // The chat list (kept fresh by the poll below)
-  const fetchConversations = useCallback(async () => {
-    try {
-      const res = await fetch('/api/chat?list=true')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.conversations)) {
+  const applyConversations = useCallback((data: { conversations: ConversationItem[]; spouseId?: string; partnerIds?: string[] }) => {
         const list: ConversationItem[] = data.conversations
         setConversations(list)
         setSpouseId(data.spouseId || '')
@@ -215,11 +214,33 @@ export default function UnifiedChatPage() {
             lastFromMe: c.lastMessage?.fromMe,
           })),
         )
+  }, [])
+
+  // The chat list from this device straight away, then the latest from the server
+  const [cachedListFor, setCachedListFor] = useState('')
+  if (activeUserId && cachedListFor !== activeUserId) {
+    setCachedListFor(activeUserId)
+    const cached = readChatCache<{ conversations: ConversationItem[]; spouseId?: string; partnerIds?: string[] }>(activeUserId, 'list')
+    if (cached?.conversations && !conversations.length) applyConversations(cached)
+  }
+
+  const listInFlight = useRef(false)
+  const fetchConversations = useCallback(async () => {
+    if (listInFlight.current) return
+    listInFlight.current = true
+    try {
+      const res = await fetch('/api/chat?list=true')
+      const data = await res.json()
+      if (data.success && Array.isArray(data.conversations)) {
+        applyConversations(data)
+        writeChatCache(activeUserId, 'list', { conversations: data.conversations, spouseId: data.spouseId, partnerIds: data.partnerIds })
       }
     } catch (err) {
       console.warn('Failed to fetch conversations:', err)
+    } finally {
+      listInFlight.current = false
     }
-  }, [activeUserId])
+  }, [activeUserId, applyConversations])
 
   const fetchSpouseRequests = useCallback(async () => {
     try {
@@ -363,7 +384,20 @@ export default function UnifiedChatPage() {
 
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const broadcastChannelRef = useRef<BroadcastChannel | null>(null)
-  const lastMessageCountRef = useRef<number>(0)
+  // The newest message from the server, to spot new ones (chime, scroll)
+  const lastMessageIdRef = useRef('')
+  // The chat on screen, so a slow answer for another chat is ignored
+  const currentThreadRef = useRef('')
+  const messagesInFlight = useRef(false)
+  // Older messages exist above the first one shown (load on scroll up)
+  const [hasMore, setHasMore] = useState(false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  // The chat whose messages came from the server at least once (until then: cached copy or loading)
+  const [loadedThread, setLoadedThread] = useState('')
+  // A photo or video on its way
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [upload, setUpload] = useState<{ kind: 'image' | 'video'; progress: number } | null>(null)
+  const [uploadError, setUploadError] = useState('')
   // Messages we sent recently (id -> sent time). Kept on screen until a poll returns them,
   // so a stale poll response can't make a just-sent message vanish.
   const recentlySentRef = useRef<Map<string, number>>(new Map())
@@ -406,21 +440,37 @@ export default function UnifiedChatPage() {
     }
   }, [])
 
-  // Fetch messages for the active thread
+  // Switching chats: show this chat's copy from the device at once (or nothing), then fetch
+  const [shownThread, setShownThread] = useState('')
+  const threadKey = activeRecipient.id ? activeThreadId : ''
+  if (shownThread !== threadKey) {
+    setShownThread(threadKey)
+    setMessages((threadKey && readChatCache<ChatMessage[]>(activeUserId, `thread:${threadKey}`)) || [])
+    setHasMore(false)
+    setUploadError('')
+  }
+  useEffect(() => {
+    currentThreadRef.current = threadKey
+    lastMessageIdRef.current = ''
+    scrollToBottom(false)
+  }, [threadKey, scrollToBottom])
+
+  // Fetch the newest messages for the active thread
   const fetchMessages = useCallback(async (isInitial = false) => {
-    if (!activeRecipient.id) {
-      setMessages([])
-      return
-    }
+    if (!activeRecipient.id) return
+    if (messagesInFlight.current && !isInitial) return
+    messagesInFlight.current = true
+    const thread = activeThreadId
     try {
       const res = await fetch(
         `/api/chat?thread=${encodeURIComponent(activeThreadId)}&recipientId=${encodeURIComponent(activeRecipient.id)}`
       )
       const data = await res.json()
+      if (thread !== currentThreadRef.current) return
       if (data.success && Array.isArray(data.messages)) {
-        if (!isInitial && data.messages.length > lastMessageCountRef.current) {
-          const latest = data.messages[data.messages.length - 1]
-          if (latest && latest.senderId !== activeUserId) {
+        const latest = data.messages[data.messages.length - 1]
+        if (!isInitial && lastMessageIdRef.current && latest && latest.id !== lastMessageIdRef.current) {
+          if (latest.senderId !== activeUserId) {
             playNotificationChime()
           }
           // Bring new messages into view unless the user scrolled up to read history
@@ -428,7 +478,7 @@ export default function UnifiedChatPage() {
           const nearBottom = !el || el.scrollHeight - el.scrollTop - el.clientHeight < 200
           if (nearBottom) setTimeout(() => scrollToBottom(true), 60)
         }
-        lastMessageCountRef.current = data.messages.length
+        lastMessageIdRef.current = latest?.id || ''
         setReciprocation(data.reciprocation || null)
         // Fill in who this is (ID, profile, photo) when the chat was opened from a link
         const r = data.recipient
@@ -441,9 +491,15 @@ export default function UnifiedChatPage() {
         }
         setMessages((prev) => {
           const serverIds = new Set(data.messages.map((m: any) => m.id))
+          const firstAt = data.messages[0]?.createdAt ? new Date(data.messages[0].createdAt).getTime() : null
+          // Older messages loaded by scrolling up stay on screen
+          const older =
+            firstAt == null
+              ? []
+              : prev.filter((p) => !serverIds.has(p.id) && p.threadId === thread && !p.id.startsWith('opt-') && p.createdAt && new Date(p.createdAt).getTime() < firstAt)
           const now = Date.now()
           const pending = prev.filter((p) => {
-            if (serverIds.has(p.id)) return false
+            if (serverIds.has(p.id) || older.includes(p)) return false
             if (p.senderId !== activeUserId || p.recipientId !== activeRecipient.id) return false
             if (p.id.startsWith('opt-')) {
               return !data.messages.some((m: any) => m.text === p.text && m.senderId === activeUserId)
@@ -451,16 +507,51 @@ export default function UnifiedChatPage() {
             const sentAt = recentlySentRef.current.get(p.id)
             return !!sentAt && now - sentAt < 60_000
           })
-          return [...data.messages, ...pending]
+          return [...older, ...data.messages, ...pending]
         })
         if (isInitial) {
+          setHasMore(!!data.hasMore)
+          setLoadedThread(thread)
           setTimeout(() => scrollToBottom(false), 80)
         }
+        writeChatCache(activeUserId, `thread:${thread}`, data.messages)
       }
     } catch (err) {
       console.warn('Failed to sync chat messages:', err)
+    } finally {
+      messagesInFlight.current = false
     }
   }, [activeThreadId, activeRecipient.id, activeUserId, playNotificationChime, scrollToBottom])
+
+  // Scrolled to the top: fetch the page of messages before the first one shown
+  const loadOlder = useCallback(async () => {
+    const first = messages.find((m) => !m.id.startsWith('opt-') && m.createdAt)
+    if (!first?.createdAt || !hasMore || loadingOlder || !activeRecipient.id) return
+    const thread = activeThreadId
+    setLoadingOlder(true)
+    const el = messagesContainerRef.current
+    const heightBefore = el?.scrollHeight || 0
+    try {
+      const res = await fetch(
+        `/api/chat?recipientId=${encodeURIComponent(activeRecipient.id)}&before=${encodeURIComponent(new Date(first.createdAt).toISOString())}`
+      )
+      const data = await res.json()
+      if (thread !== currentThreadRef.current || !data.success || !Array.isArray(data.messages)) return
+      setMessages((prev) => {
+        const have = new Set(prev.map((m) => m.id))
+        return [...data.messages.filter((m: ChatMessage) => !have.has(m.id)), ...prev]
+      })
+      setHasMore(!!data.hasMore)
+      // Keep the message being read in the same place
+      requestAnimationFrame(() => {
+        if (el) el.scrollTop += el.scrollHeight - heightBefore
+      })
+    } catch {
+      // Try again on the next scroll
+    } finally {
+      setLoadingOlder(false)
+    }
+  }, [messages, hasMore, loadingOlder, activeRecipient.id, activeThreadId])
 
   // Initial setup + polling interval + BroadcastChannel
   useEffect(() => {
@@ -468,11 +559,20 @@ export default function UnifiedChatPage() {
     fetchSpouseRequests()
     fetchMessages(true)
 
-    // Poll for new messages every 2s
+    // New messages every 2s and the chat list every 4s, only while the app is on screen
+    let ticks = 0
     const pollInterval = setInterval(() => {
+      if (document.hidden) return
+      fetchMessages(false)
+      if (++ticks % 2 === 0) fetchConversations()
+    }, 2000)
+    // Back to the app: catch up at once
+    const onVisible = () => {
+      if (document.hidden) return
       fetchMessages(false)
       fetchConversations()
-    }, 2000)
+    }
+    document.addEventListener('visibilitychange', onVisible)
 
     // Cross-tab real-time sync
     let bc: BroadcastChannel | null = null
@@ -487,6 +587,7 @@ export default function UnifiedChatPage() {
 
     return () => {
       clearInterval(pollInterval)
+      document.removeEventListener('visibilitychange', onVisible)
       if (bc) bc.close()
     }
   }, [fetchConversations, fetchSpouseRequests, fetchMessages])
@@ -522,7 +623,6 @@ export default function UnifiedChatPage() {
     }
 
     setMessages((prev) => [...prev, optimisticMsg])
-    lastMessageCountRef.current += 1
     setTimeout(() => scrollToBottom(true), 40)
 
     try {
@@ -549,6 +649,38 @@ export default function UnifiedChatPage() {
       }
     } catch (err) {
       console.error('Failed to send message:', err)
+    }
+  }
+
+  // A photo or video from the phone: upload it in pieces, then send it as a message
+  const handlePickMedia = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !activeRecipient.id) return
+    const recipient = activeRecipient
+    setUploadError('')
+    setUpload({ kind: file.type.startsWith('video/') ? 'video' : 'image', progress: 0 })
+    setTimeout(() => scrollToBottom(true), 40)
+    try {
+      const mediaId = await uploadChatMedia(file, recipient.id, (progress) => setUpload((u) => (u ? { ...u, progress } : u)))
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'media', mediaId, recipientId: recipient.id, recipientName: recipient.name }),
+      })
+      const data = await res.json()
+      if (!data.success || !data.message) throw new Error(data.error || 'Could not send it. Try again.')
+      rememberSent(data.message.id)
+      if (data.message.threadId === currentThreadRef.current) {
+        setMessages((prev) => (prev.some((m) => m.id === data.message.id) ? prev : [...prev, data.message]))
+        setTimeout(() => scrollToBottom(true), 60)
+      }
+      broadcastChannelRef.current?.postMessage({ type: 'NEW_MESSAGE' })
+      fetchConversations()
+    } catch (err) {
+      setUploadError((err as Error).message || 'Could not send it. Try again.')
+    } finally {
+      setUpload(null)
     }
   }
 
@@ -1118,6 +1250,9 @@ export default function UnifiedChatPage() {
           {/* Messages Stream */}
           <div
             ref={messagesContainerRef}
+            onScroll={(e) => {
+              if (e.currentTarget.scrollTop < 120) loadOlder()
+            }}
             className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 sm:p-6 space-y-3 sm:space-y-4 bg-gray-50/50"
           >
             {/* Spouse: what's owed each way, with the matching action */}
@@ -1250,8 +1385,31 @@ export default function UnifiedChatPage() {
               </div>
             </div>
 
+            {/* Earlier messages */}
+            {hasMore && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={loadOlder}
+                  disabled={loadingOlder}
+                  className="px-3 py-1.5 rounded-full bg-white border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#C9A84C] cursor-pointer disabled:opacity-60"
+                >
+                  {loadingOlder ? 'Loading…' : 'Load earlier messages'}
+                </button>
+              </div>
+            )}
+
+            {/* First open of this chat on this device */}
+            {messages.length === 0 && loadedThread !== activeThreadId && (
+              <div className="space-y-3 py-2" aria-label="Loading messages">
+                {['w-40', 'w-56 ml-auto', 'w-32', 'w-48 ml-auto'].map((w, i) => (
+                  <div key={i} className={`h-9 rounded-2xl bg-gray-200/70 animate-pulse ${w}`} />
+                ))}
+              </div>
+            )}
+
             {/* Empty State */}
-            {messages.length === 0 && (
+            {messages.length === 0 && loadedThread === activeThreadId && (
               <div className="py-10 text-center space-y-3">
                 <div className="w-12 h-12 rounded-2xl bg-[#0F1C3F]/5 border border-[#0F1C3F]/10 flex items-center justify-center mx-auto text-[#C9A84C]">
                   <MessageSquare className="w-6 h-6 text-[#C9A84C]" />
@@ -1431,8 +1589,13 @@ export default function UnifiedChatPage() {
                       </div>
                     )}
 
+                    {/* PHOTO / VIDEO */}
+                    {(msg.type === 'image' || msg.type === 'video') && msg.proposalData?.mediaId && (
+                      <ChatMediaBubble kind={msg.type} data={msg.proposalData as MediaData} caption={msg.text} isMe={isMe} />
+                    )}
+
                     {/* ACTIVITY CARD: deposit alerts, reminders, certificates and any other type */}
-                    {msg.type && msg.type !== 'text' && msg.type !== 'love_note' && !(msg.type === 'proposal' && msg.proposalData) && (() => {
+                    {msg.type && msg.type !== 'text' && msg.type !== 'love_note' && msg.type !== 'image' && msg.type !== 'video' && !(msg.type === 'proposal' && msg.proposalData) && (() => {
                       const kind =
                         msg.type === 'deposit_alert'
                           ? { label: msg.depositData?.isReciprocalMatch ? 'Reciprocated' : 'Vault Deposit', Icon: PiggyBank, tone: 'border-emerald-200 bg-emerald-50/60 text-emerald-700' }
@@ -1633,11 +1796,48 @@ export default function UnifiedChatPage() {
                 </div>
               )
             })}
+
+            {/* A photo or video on its way */}
+            {upload && (
+              <div className="flex justify-end">
+                <div className="w-[220px] p-3 rounded-2xl rounded-tr-none bg-[#0F1C3F] text-white text-xs space-y-2 shadow-xs">
+                  <p className="font-semibold">
+                    Sending {upload.kind === 'video' ? 'video' : 'photo'}… {Math.round(upload.progress * 100)}%
+                  </p>
+                  <div className="h-1.5 rounded-full bg-white/20 overflow-hidden">
+                    <div className="h-full bg-[#C9A84C] transition-all" style={{ width: `${Math.max(5, upload.progress * 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Message Input Box */}
           <div className="p-3 sm:p-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-gray-100 bg-white flex-shrink-0">
+            {uploadError && (
+              <p className="mb-2 text-xs text-rose-700 flex items-center justify-between gap-2">
+                <span>{uploadError}</span>
+                <button type="button" onClick={() => setUploadError('')} className="text-rose-500 hover:text-rose-800" aria-label="Dismiss">
+                  <X size={14} />
+                </button>
+              </p>
+            )}
             <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+              {!activeRecipient.id.startsWith('guest_') && (
+                <>
+                  <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handlePickMedia} />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={!!upload}
+                    aria-label="Send a photo or video"
+                    title="Send a photo or video"
+                    className="p-3 rounded-xl border border-gray-200 text-[#0F1C3F] hover:bg-gray-50 disabled:opacity-40 cursor-pointer flex items-center justify-center flex-shrink-0"
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                  </button>
+                </>
+              )}
               <input
                 type="text"
                 value={inputText}

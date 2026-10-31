@@ -17,6 +17,9 @@ import { sendEmail } from '@/lib/email'
 import { escapeHtml } from '@/lib/utils'
 import { siteUrl } from '@/lib/site'
 
+/** Messages sent when a chat opens; older ones load as the member scrolls up */
+const PAGE_SIZE = 60
+
 const DEMO_NAMES: Record<string, string> = {
   usr_jane_doe: 'Jane Doe',
   usr_marcus_vance: 'Marcus Vance',
@@ -67,6 +70,11 @@ function initials(name?: string | null) {
   return (name || 'UV').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
+/** The chat list line for a message: photos and videos get a label, plus any caption */
+function previewText(msg: { type: string; text: string }) {
+  const label = msg.type === 'image' ? '📷 Photo' : msg.type === 'video' ? '🎥 Video' : ''
+  return label ? (msg.text ? `${label} · ${msg.text}` : label) : msg.text
+}
 
 type Conversation = {
   threadId: string
@@ -101,6 +109,7 @@ async function buildConversations(currentUserId: string, partnerLinks: PartnerLi
       where: { OR: [{ senderId: currentUserId }, { recipientId: currentUserId }] },
       orderBy: { createdAt: 'desc' },
       take: 1000,
+      select: { threadId: true, type: true, senderId: true, senderName: true, recipientId: true, recipientName: true, text: true, createdAt: true, read: true, proposalData: true },
     }),
     prisma.contact.findMany({ where: { ownerId: currentUserId } }).catch(() => []),
   ])
@@ -131,7 +140,7 @@ async function buildConversations(currentUserId: string, partnerLinks: PartnerLi
       const other = isVisitor ? null : await member(otherId)
       convo = {
         threadId: msg.threadId,
-        lastMessage: { text: msg.text, createdAt: msg.createdAt, fromMe: msg.senderId === currentUserId },
+        lastMessage: { text: previewText(msg), createdAt: msg.createdAt, fromMe: msg.senderId === currentUserId },
         otherUserId: otherId,
         otherUserName:
           other?.name ||
@@ -274,18 +283,25 @@ export async function GET(req: NextRequest) {
 
     const threadId = buildThreadId(currentUserId, recipientId)
 
-    const messages = await chatDb.chatMessage.findMany({
-      where: { threadId },
-      orderBy: { createdAt: 'asc' },
+    // The newest page, or the page before ?before=<ISO time> when scrolling up
+    const before = searchParams.get('before')
+    const beforeDate = before && !Number.isNaN(Date.parse(before)) ? new Date(before) : null
+    const page = await chatDb.chatMessage.findMany({
+      where: { threadId, ...(beforeDate ? { createdAt: { lt: beforeDate } } : {}) },
+      orderBy: { createdAt: 'desc' },
+      take: PAGE_SIZE + 1,
     })
+    const hasMore = page.length > PAGE_SIZE
+    const messages = page.slice(0, PAGE_SIZE).reverse()
 
-    // Mark messages addressed to me as read
-    for (const msg of messages) {
-      if (!peek && !msg.read && msg.recipientId === currentUserId) {
-        await chatDb.chatMessage.update({ where: { id: msg.id }, data: { read: true } })
-        msg.read = true
-      }
+    // Mark everything addressed to me as read, in one go
+    if (!peek && !beforeDate && messages.some((m) => !m.read && m.recipientId === currentUserId)) {
+      await chatDb.chatMessage.updateMany({ where: { threadId, recipientId: currentUserId, read: false }, data: { read: true } })
+      for (const m of messages) if (m.recipientId === currentUserId) m.read = true
     }
+
+    // Older messages only: no need to recompute the rest
+    if (beforeDate) return NextResponse.json({ success: true, threadId, messages, hasMore })
 
     const recipientUser = await lookupUser(recipientId)
     const lastFromRecipient = [...messages].reverse().find((m) => m.senderId === recipientId)
@@ -295,6 +311,7 @@ export async function GET(req: NextRequest) {
       success: true,
       threadId,
       messages,
+      hasMore,
       currentUser,
       spouseId,
       partnerIds,
@@ -338,8 +355,9 @@ export async function POST(req: Request) {
 
     // Members can only post these; system cards (deposits, requests, spouse links…)
     // are created by the server, never by the browser
+    const isMedia = body.type === 'media' && typeof body.mediaId === 'string'
     const type: 'text' | 'love_note' | 'proposal' = ['text', 'love_note', 'proposal'].includes(body.type) ? body.type : 'text'
-    const text = String(body.text || '').slice(0, 4000)
+    const text = String(body.text || '').slice(0, isMedia ? 1000 : 4000)
     const proposalAmount = Math.round(Number(body.proposalData?.amount) * 100) / 100
     const proposalData =
       type === 'proposal'
@@ -354,7 +372,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: 'Enter an amount for the proposal.' }, { status: 400 })
     }
 
-    if (!text.trim() && !proposalData && !loveNoteTitle) {
+    if (!text.trim() && !proposalData && !loveNoteTitle && !isMedia) {
       return NextResponse.json({ success: false, error: 'Message content cannot be empty' }, { status: 400 })
     }
 
@@ -378,6 +396,22 @@ export async function POST(req: Request) {
     const effectiveRecipientName =
       recipientName || (await lookupUser(effectiveRecipientId))?.name || DEMO_NAMES[effectiveRecipientId] || 'Member'
 
+    // A photo or video: the upload must be mine, for this chat, fully uploaded, and not sent before
+    let media: { kind: string; data: Record<string, unknown> } | null = null
+    if (isMedia) {
+      const row = await prisma.chatMedia.findUnique({ where: { id: body.mediaId } })
+      const parts = row ? await prisma.chatMediaPart.count({ where: { mediaId: row.id } }) : 0
+      if (!row || row.ownerId !== sender.id || row.threadId !== buildThreadId(sender.id, effectiveRecipientId) || !row.mimeType || parts !== row.partCount) {
+        return NextResponse.json({ success: false, error: 'The upload did not finish. Try sending it again.' }, { status: 400 })
+      }
+      const claimed = await prisma.chatMedia.updateMany({ where: { id: row.id, complete: false }, data: { complete: true } })
+      if (!claimed.count) return NextResponse.json({ success: false, error: 'This file was already sent.' }, { status: 409 })
+      media = {
+        kind: row.kind,
+        data: { mediaId: row.id, mimeType: row.mimeType, width: row.width, height: row.height, size: row.size },
+      }
+    }
+
     const now = new Date()
     const formattedTime = new Intl.DateTimeFormat('en-US', {
       hour: 'numeric',
@@ -392,12 +426,18 @@ export async function POST(req: Request) {
         senderName: sender.name,
         recipientId: effectiveRecipientId,
         recipientName: effectiveRecipientName,
-        text: text.trim() ? text.trim() : (proposalData ? `Proposed deposit for ${proposalData.goalName}` : (loveNoteTitle || 'Love note')),
+        text: text.trim()
+          ? text.trim()
+          : media
+            ? ''
+            : proposalData
+              ? `Proposed deposit for ${proposalData.goalName}`
+              : loveNoteTitle || 'Love note',
         timestamp: formattedTime,
         createdAt: now,
         read: false,
-        type,
-        proposalData: proposalData ? { ...proposalData, proposedBy: sender.name } : undefined,
+        type: media ? media.kind : type,
+        proposalData: media ? media.data : proposalData ? { ...proposalData, proposedBy: sender.name } : undefined,
         loveNoteTitle: loveNoteTitle ? String(loveNoteTitle).slice(0, 80) : undefined,
         voiceDuration,
         reactions: {},
@@ -428,7 +468,9 @@ export async function POST(req: Request) {
         paragraphs: [
           type === 'proposal'
             ? `${sender.name} sent you a savings proposal. Open the chat to see it and answer.`
-            : `You have a new message from ${sender.name} on Union Verify. Open the chat to read it.`,
+            : media
+              ? `${sender.name} sent you a ${media.kind === 'video' ? 'video' : 'photo'} on Union Verify. Open the chat to see it.`
+              : `You have a new message from ${sender.name} on Union Verify. Open the chat to read it.`,
           'For your privacy, messages are only shown on the site, not by email.',
         ],
         ctaLabel: type === 'proposal' ? 'Review proposal' : 'Reply in chat',
@@ -442,7 +484,7 @@ export async function POST(req: Request) {
         data: {
           userId: effectiveRecipientId,
           title: `New message from ${sender.name}`,
-          message: text ? text.slice(0, 100) : 'You received a new message.',
+          message: text ? text.slice(0, 100) : media ? (media.kind === 'video' ? 'Sent you a video' : 'Sent you a photo') : 'You received a new message.',
           type: 'INFO',
           link: `/chat?recipientId=${encodeURIComponent(sender.id)}&name=${encodeURIComponent(sender.name)}`,
         },

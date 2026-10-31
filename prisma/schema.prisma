@@ -385,6 +385,38 @@ model Avatar {
   @@map("avatars")
 }
 
+/// A photo or video sent in a chat. The file is kept in pieces (ChatMediaPart)
+/// so each upload and download stays under the server's request size limit.
+/// Only the two people in the thread can open it (/api/chat/media/[id]).
+model ChatMedia {
+  id        String   @id @default(cuid())
+  ownerId   String
+  threadId  String
+  /// image | video
+  kind      String
+  mimeType  String
+  size      Int
+  partSize  Int
+  partCount Int
+  width     Int?
+  height    Int?
+  /// All parts uploaded and checked
+  complete  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([ownerId, createdAt])
+  @@map("chat_media")
+}
+
+model ChatMediaPart {
+  mediaId String
+  index   Int
+  data    Bytes
+
+  @@id([mediaId, index])
+  @@map("chat_media_parts")
+}
+
 /// Two members linked as partners (spouse, friend, family…). A member can have any
 /// number; each pair has its own joint vault, chat, reciprocation and approvals.
 /// userAId is the smaller id, so a pair is stored once.

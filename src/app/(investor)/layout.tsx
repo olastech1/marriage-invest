@@ -26,6 +26,7 @@ import { FloatingChatWidget } from '@/components/investor/FloatingChatWidget'
 import NotificationBellDropdown from '@/components/investor/NotificationBellDropdown'
 import UserAvatar from '@/components/investor/UserAvatar'
 import AccountMenu from '@/components/investor/AccountMenu'
+import { clearChatCache } from '@/lib/chatCache'
 
 // ---------------------------------------------------------------------------
 // Navigation (every item stays inside the member area)
@@ -173,7 +174,7 @@ function Sidebar({
           </div>
         </div>
         <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
+          onClick={() => (clearChatCache(), signOut({ callbackUrl: '/login' }))}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
         >
           <LogOut size={16} />

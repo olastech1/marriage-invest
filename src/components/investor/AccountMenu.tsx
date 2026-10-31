@@ -6,6 +6,7 @@ import { signOut } from 'next-auth/react'
 import { Check, LogOut, Plus, Settings, X } from 'lucide-react'
 import UserAvatar from '@/components/investor/UserAvatar'
 import { formatAccountNumber } from '@/lib/utils'
+import { clearChatCache } from '@/lib/chatCache'
 
 export type DeviceAccount = { id: string; name: string; email: string; avatarUrl: string | null; accountNumber: string | null }
 
@@ -77,6 +78,7 @@ export default function AccountMenu({
 
   const signOutAll = async () => {
     await post({ action: 'signout-all' }).catch(() => null)
+    clearChatCache()
     signOut({ callbackUrl: '/login' })
   }
 
@@ -142,7 +144,7 @@ export default function AccountMenu({
             </Link>
             <button
               type="button"
-              onClick={() => signOut({ callbackUrl: '/login' })}
+              onClick={() => (clearChatCache(), signOut({ callbackUrl: '/login' }))}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-gray-500" /> Sign out{accounts.length > 0 ? ` of ${user.name?.split(' ')[0] || 'this account'}` : ''}
