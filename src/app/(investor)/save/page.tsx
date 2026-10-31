@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { PiggyBank, Bell, AlertTriangle, CheckCircle2, CreditCard, RefreshCw } from 'lucide-react'
+import { PiggyBank, Bell, AlertTriangle, CheckCircle2, CreditCard, RefreshCw, Plus, Clock } from 'lucide-react'
 import UserAvatar from '@/components/investor/UserAvatar'
 
 interface DepositItem {
@@ -52,6 +52,15 @@ function SavePageContent() {
 
   // One joint vault per partner: ?partner=<id> picks which one is shown
   const [partnerId, setPartnerId] = useState(searchParams.get('partner') || '')
+  // Partner requests not accepted yet: their vault opens once they accept
+  const [waiting, setWaiting] = useState<{ toUserId: string; toName: string }[]>([])
+
+  useEffect(() => {
+    fetch('/api/spouse')
+      .then((r) => r.json())
+      .then((data) => data.success && setWaiting(data.outgoing || []))
+      .catch(() => {})
+  }, [])
 
   const load = useCallback(async () => {
     const [rec, set] = await Promise.all([
@@ -148,26 +157,46 @@ function SavePageContent() {
         </p>
       </div>
 
-      {/* One vault per partner */}
-      {(reciprocation?.partners?.length || 0) > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-          {reciprocation!.partners.map((p) => {
-            const selected = p.id === reciprocation!.partnerId
-            return (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => choosePartner(p.id)}
-                className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap cursor-pointer ${
-                  selected ? 'bg-[#0F1C3F] text-white border-[#0F1C3F]' : 'bg-white text-[#0F1C3F] border-gray-200 hover:border-[#C9A84C]'
-                }`}
+      {/* One vault per partner: switch between them here */}
+      {hasSpouse && (
+        <div>
+          <p className="text-xs font-semibold text-gray-500 mb-2">Your vaults</p>
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {reciprocation!.partners.map((p) => {
+              const selected = p.id === reciprocation!.partnerId
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => choosePartner(p.id)}
+                  aria-pressed={selected}
+                  className={`flex items-center gap-2 pl-1.5 pr-3 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap cursor-pointer ${
+                    selected ? 'bg-[#0F1C3F] text-white border-[#0F1C3F]' : 'bg-white text-[#0F1C3F] border-gray-200 hover:border-[#C9A84C]'
+                  }`}
+                >
+                  <UserAvatar name={p.name} src={p.avatarUrl} className="w-6 h-6 text-[9px]" />
+                  <span>{p.name.split(' ')[0]}</span>
+                  <span className={`font-medium ${selected ? 'text-white/60' : 'text-gray-400'}`}>{p.relationLabel}</span>
+                </button>
+              )
+            })}
+            {waiting.map((w) => (
+              <span
+                key={w.toUserId}
+                title={`Opens when ${w.toName} accepts your request`}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-gray-300 text-xs font-semibold text-gray-400 whitespace-nowrap"
               >
-                <UserAvatar name={p.name} src={p.avatarUrl} className="w-6 h-6 text-[9px]" />
-                <span>{p.name.split(' ')[0]}</span>
-                <span className={`font-medium ${selected ? 'text-white/60' : 'text-gray-400'}`}>{p.relationLabel}</span>
-              </button>
-            )
-          })}
+                <Clock className="w-3.5 h-3.5" />
+                {w.toName.split(' ')[0]} · waiting
+              </span>
+            ))}
+            <Link
+              href="/settings#spouse"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-[#C9A84C] text-xs font-bold text-[#0F1C3F] whitespace-nowrap hover:bg-amber-50"
+            >
+              <Plus className="w-3.5 h-3.5" /> New vault
+            </Link>
+          </div>
         </div>
       )}
 
