@@ -375,6 +375,19 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+/// Accounts signed in on one device (phone/browser), for switching without a
+/// password. deviceHash is a hash of the device's secret "uv-device" cookie.
+model DeviceAccount {
+  deviceHash String
+  userId     String
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
+
+  @@id([deviceHash, userId])
+  @@index([userId])
+  @@map("device_accounts")
+}
+
 /// Profile photos (small JPEG/PNG/WebP), served by /api/avatar/[userId]
 model Avatar {
   userId    String   @id

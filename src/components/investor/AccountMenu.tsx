@@ -8,7 +8,7 @@ import UserAvatar from '@/components/investor/UserAvatar'
 import { formatAccountNumber } from '@/lib/utils'
 import { clearChatCache } from '@/lib/chatCache'
 
-export type DeviceAccount = { id: string; name: string; email: string; avatarUrl: string | null; accountNumber: string | null }
+export type DeviceAccount = { id: string; name: string; email: string; avatarUrl: string | null; accountNumber: string | null; unread?: number }
 
 async function post(body: Record<string, string>) {
   const res = await fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
@@ -24,6 +24,23 @@ export async function switchAccount(userId: string, next = '/dashboard'): Promis
   return null
 }
 
+/** Sign out of the current account and take it off this device (it needs the password next time) */
+export async function signOutCurrent() {
+  await post({ action: 'signout' }).catch(() => null)
+  clearChatCache()
+  signOut({ callbackUrl: '/login' })
+}
+
+/** Unread chats, as a small red count */
+function Count({ n }: { n?: number }) {
+  if (!n) return null
+  return (
+    <span className="min-w-5 h-5 px-1.5 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+      {n > 99 ? '99+' : n}
+    </span>
+  )
+}
+
 /** The photo in the top bar: who's signed in, other accounts on this device, add / sign out */
 export default function AccountMenu({
   user,
@@ -36,12 +53,26 @@ export default function AccountMenu({
   const [error, setError] = useState('')
   const box = useRef<HTMLDivElement>(null)
 
+  const [myUnread, setMyUnread] = useState(0)
+
+  // On every page: keeps this account on the device's list, and fetches unread counts
+  useEffect(() => {
+    const load = () =>
+      fetch('/api/accounts')
+        .then((res) => res.json())
+        .then((data) => {
+          setAccounts(data.accounts || [])
+          setMyUnread(data.currentUnread || 0)
+        })
+        .catch(() => {})
+    load()
+    const timer = setInterval(() => !document.hidden && load(), 60_000)
+    return () => clearInterval(timer)
+  }, [open])
+  const othersUnread = accounts.reduce((sum, a) => sum + (a.unread || 0), 0)
+
   useEffect(() => {
     if (!open) return
-    fetch('/api/accounts')
-      .then((res) => res.json())
-      .then((data) => setAccounts(data.accounts || []))
-      .catch(() => {})
     const close = (e: MouseEvent) => {
       if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
     }
@@ -84,8 +115,10 @@ export default function AccountMenu({
 
   return (
     <div ref={box} className="relative">
-      <button type="button" onClick={() => setOpen((o) => !o)} className="flex rounded-full cursor-pointer" aria-label="Account menu" aria-expanded={open}>
+      <button type="button" onClick={() => setOpen((o) => !o)} className="relative flex rounded-full cursor-pointer" aria-label="Account menu" aria-expanded={open}>
         <UserAvatar name={user.name} src={user.avatarUrl} className="h-8 w-8 text-xs" />
+        {/* Messages waiting in my other accounts */}
+        {othersUnread > 0 && <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-600 border-2 border-white" aria-label="Unread messages in your other accounts" />}
       </button>
 
       {open && (
@@ -97,7 +130,10 @@ export default function AccountMenu({
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
               {user.accountNumber && <p className="text-[11px] font-mono text-gray-400">ID {formatAccountNumber(user.accountNumber)}</p>}
             </div>
-            <Check className="w-4 h-4 text-emerald-600 ml-auto flex-shrink-0" aria-label="Signed in" />
+            <span className="ml-auto flex items-center gap-2 flex-shrink-0">
+              <Count n={myUnread} />
+              <Check className="w-4 h-4 text-emerald-600" aria-label="Signed in" />
+            </span>
           </div>
 
           {accounts.length > 0 && (
@@ -115,6 +151,9 @@ export default function AccountMenu({
                     <span className="min-w-0">
                       <span className="block text-sm font-semibold text-[#0F1C3F] truncate">{busy === a.id ? 'Switching…' : a.name}</span>
                       <span className="block text-[11px] text-gray-500 truncate">{a.email}</span>
+                    </span>
+                    <span className="ml-auto">
+                      <Count n={a.unread} />
                     </span>
                   </button>
                   <button
@@ -144,7 +183,7 @@ export default function AccountMenu({
             </Link>
             <button
               type="button"
-              onClick={() => (clearChatCache(), signOut({ callbackUrl: '/login' }))}
+              onClick={signOutCurrent}
               className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-gray-500" /> Sign out{accounts.length > 0 ? ` of ${user.name?.split(' ')[0] || 'this account'}` : ''}
