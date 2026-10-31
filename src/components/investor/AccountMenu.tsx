@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { signOut } from 'next-auth/react'
-import { Check, LogOut, Plus, Settings, X } from 'lucide-react'
+import { signOut, useSession } from 'next-auth/react'
+import { Check, LogOut, Pencil, Plus, Settings, X } from 'lucide-react'
 import UserAvatar from '@/components/investor/UserAvatar'
 import { formatAccountNumber } from '@/lib/utils'
 import { clearChatCache } from '@/lib/chatCache'
@@ -54,6 +54,23 @@ export default function AccountMenu({
   const box = useRef<HTMLDivElement>(null)
 
   const [myUnread, setMyUnread] = useState(0)
+  // Editing my name in place
+  const { update: updateSession } = useSession()
+  const [editing, setEditing] = useState(false)
+  const [newName, setNewName] = useState('')
+
+  const saveName = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy('name')
+    setError('')
+    const res = await fetch('/api/user/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName }) })
+    const data = await res.json().catch(() => ({}))
+    setBusy('')
+    if (!res.ok || data.success === false) return setError(data.error || 'Could not save your name.')
+    setEditing(false)
+    // The top bar, this menu and chat use the new name at once
+    await updateSession()
+  }
 
   // On every page: keeps this account on the device's list, and fetches unread counts
   useEffect(() => {
@@ -126,7 +143,39 @@ export default function AccountMenu({
           <div className="p-4 flex items-center gap-3 border-b border-gray-100">
             <UserAvatar name={user.name} src={user.avatarUrl} className="h-11 w-11 text-sm" />
             <div className="min-w-0">
-              <p className="text-sm font-bold text-[#0F1C3F] truncate">{user.name || 'Member'}</p>
+              {editing ? (
+                <form onSubmit={saveName} className="flex items-center gap-1.5">
+                  <input
+                    autoFocus
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    maxLength={80}
+                    aria-label="Your name"
+                    className="min-w-0 flex-1 px-2 py-1 rounded-lg border border-gray-300 text-base sm:text-sm focus:outline-none focus:border-[#C9A84C]"
+                  />
+                  <button type="submit" disabled={busy === 'name' || newName.trim().length < 2} className="px-2 py-1 rounded-lg bg-[#0F1C3F] text-white text-xs font-bold disabled:opacity-50 cursor-pointer">
+                    {busy === 'name' ? '…' : 'Save'}
+                  </button>
+                  <button type="button" onClick={() => setEditing(false)} className="p-1 text-gray-400 hover:text-gray-700 cursor-pointer" aria-label="Cancel">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </form>
+              ) : (
+                <p className="text-sm font-bold text-[#0F1C3F] truncate flex items-center gap-1.5">
+                  <span className="truncate">{user.name || 'Member'}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNewName(user.name || '')
+                      setEditing(true)
+                    }}
+                    className="p-0.5 text-gray-400 hover:text-[#0F1C3F] cursor-pointer flex-shrink-0"
+                    aria-label="Edit your name"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                </p>
+              )}
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
               {user.accountNumber && <p className="text-[11px] font-mono text-gray-400">ID {formatAccountNumber(user.accountNumber)}</p>}
             </div>

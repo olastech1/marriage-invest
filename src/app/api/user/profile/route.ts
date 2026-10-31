@@ -88,7 +88,11 @@ export async function PATCH(req: NextRequest) {
     const { name, phone, bio, socials, publicChatEnabled, showPhone, showEmail, partnerSeesEmail, partnerSeesPhone, username } = body
 
     const data: Record<string, unknown> = {}
-    if (name) data.name = String(name).slice(0, 80)
+    if (name !== undefined) {
+      const clean = String(name).trim().replace(/\s+/g, ' ').slice(0, 80)
+      if (clean.length < 2) return NextResponse.json({ success: false, error: 'Enter your name (at least 2 letters).' }, { status: 400 })
+      data.name = clean
+    }
     if (phone !== undefined) data.phone = String(phone).slice(0, 25)
     if (bio !== undefined) data.bio = String(bio).slice(0, 500)
     if (socials !== undefined) data.socials = socials

@@ -1,10 +1,10 @@
 import crypto from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { decode, encode } from 'next-auth/jwt'
+import { decode } from 'next-auth/jwt'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { isAdminEmail } from '@/lib/accounts'
+import { DEVICE_COOKIE as DEVICE, deviceHash as hash, sessionCookieName, startSession } from '@/lib/sessions'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,15 +24,11 @@ export const dynamic = 'force-dynamic'
 // POST /api/accounts { action: 'signout-all' }       take every account off this device
 // ---------------------------------------------------------------------------
 
-const DEVICE = 'uv-device'
 /** Kept-session cookies from the earlier version (moved into device_accounts) */
 const OLD_KEPT = 'uv-account.'
-const SESSION_DAYS = 30
 const FORGET_AFTER_DAYS = 180
 
-const sessionCookieName = (req: NextRequest) => `${req.nextUrl.protocol === 'https:' ? '__Secure-' : ''}authjs.session-token`
 const secret = () => process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || ''
-const hash = (value: string) => crypto.createHash('sha256').update(`uv-device:${value}`).digest('hex')
 
 type Store = Awaited<ReturnType<typeof cookies>>
 
@@ -142,25 +138,9 @@ export async function POST(req: NextRequest) {
     if (me) await link(d.hash, me)
     await link(d.hash, userId)
 
-    // A fresh session for the chosen account, the same as signing in (see the jwt callback in lib/auth)
-    const maxAge = SESSION_DAYS * 24 * 3600
-    const token = await encode({
-      secret: secret(),
-      salt,
-      maxAge,
-      token: {
-        sub: user.id,
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role === 'ADMIN' && isAdminEmail(user.email) ? 'ADMIN' : 'INVESTOR',
-        emailVerified: user.emailVerified,
-        twoFactorEnabled: user.twoFactorEnabled,
-      },
-    })
+    // A fresh session for the chosen account, the same as signing in
     const res = NextResponse.json({ success: true })
-    for (const c of store.getAll()) if (c.name.startsWith(`${salt}.`)) clearCookie(res, req, c.name)
-    setCookie(res, req, salt, token, maxAge)
+    await startSession(req, res, user)
     return res
   }
 

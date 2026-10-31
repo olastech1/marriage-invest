@@ -71,7 +71,8 @@ export async function ensureSystemAccount(email: string): Promise<void> {
   const passwordHash = await bcrypt.hash(account.password, 12)
   await prisma.user.upsert({
     where: { email },
-    update: { passwordHash, role: account.role },
+    // A new password from the environment signs the old sessions out
+    update: { passwordHash, role: account.role, ...(existing && !passwordMatches ? { passwordChangedAt: new Date() } : {}) },
     create: {
       id: account.id,
       email,
@@ -83,6 +84,8 @@ export async function ensureSystemAccount(email: string): Promise<void> {
       emailVerified: new Date(),
     },
   })
+  // And it needs the new password on every device
+  if (existing && !passwordMatches) await prisma.deviceAccount.deleteMany({ where: { userId: existing.id } })
 }
 
 /** Only the configured ADMIN_EMAIL may hold the admin role. */

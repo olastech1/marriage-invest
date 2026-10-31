@@ -106,6 +106,8 @@ model User {
   name               String
   phone              String?
   passwordHash       String
+  /// When the password last changed: sessions and saved device sign-ins from before it stop working
+  passwordChangedAt DateTime?
   role               UserRole  @default(INVESTOR)
   twoFactorEnabled   Boolean   @default(false)
   twoFactorSecret    String?

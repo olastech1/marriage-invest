@@ -5,6 +5,8 @@ import Link from 'next/link'
 import SpouseLinkPanel from '@/components/investor/SpouseLinkPanel'
 import ProfilePhotoPicker from '@/components/investor/ProfilePhotoPicker'
 import VerificationPanel from '@/components/investor/VerificationPanel'
+import ChangePassword from '@/components/investor/ChangePassword'
+import { useSession } from 'next-auth/react'
 import {
   User,
   CheckCircle2,
@@ -23,6 +25,7 @@ interface SpouseInfo {
 }
 
 export default function InvestorSettingsPage() {
+  const { update: updateSession } = useSession()
   const [activeTab, setActiveTab] = useState<'bio' | 'profile'>('bio')
 
   const [profile, setProfile] = useState({
@@ -132,6 +135,8 @@ export default function InvestorSettingsPage() {
       const data = await res.json()
       if (!res.ok || data.success === false) throw new Error(data.error || 'Failed to update profile')
       setStatusMsg('Settings saved.')
+      // Show a new name everywhere (top bar, menu, chat) straight away
+      updateSession()
       setTimeout(() => setStatusMsg(''), 4000)
       // Pick up the cleaned username and the public bio link
       loadProfile()
@@ -510,6 +515,8 @@ export default function InvestorSettingsPage() {
               </div>
             </form>
           </div>
+
+          <ChangePassword />
 
           <div className="pt-6 border-t border-gray-100">
             <div className="flex items-center justify-between mb-4">

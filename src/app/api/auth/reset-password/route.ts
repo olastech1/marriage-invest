@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { prisma } from '@/lib/db'
 import { consumeAuthToken } from '@/lib/authTokens'
+import { passwordChanged } from '@/lib/sessions'
 
 export const dynamic = 'force-dynamic'
 
@@ -30,6 +31,8 @@ export async function POST(req: NextRequest) {
     data: { passwordHash: await bcrypt.hash(parsed.data, 12), emailVerified: new Date() },
   })
   await prisma.authToken.deleteMany({ where: { userId, kind: 'reset_password', usedAt: null } })
+  // Signed out everywhere; every device needs the new password
+  await passwordChanged(userId)
   await prisma.auditLog.create({ data: { userId, action: 'PASSWORD_RESET', entity: 'User', entityId: userId } }).catch(() => {})
   return NextResponse.json({ success: true, message: 'Password changed. You can sign in now.' })
 }

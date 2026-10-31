@@ -108,6 +108,26 @@ const config: NextAuthConfig = {
         token.role = user.role as UserRole
         token.emailVerified = user.emailVerified
         token.twoFactorEnabled = user.twoFactorEnabled
+        token.authAt = Date.now()
+        return token
+      }
+      if (!token.id) return token
+      // Keep the session up to date with the account (a new name shows at once), and
+      // end it if the account is gone or its password changed after this sign-in
+      const fresh = await prisma.user
+        .findUnique({
+          where: { id: token.id as string },
+          select: { name: true, email: true, role: true, emailVerified: true, twoFactorEnabled: true, passwordChangedAt: true },
+        })
+        .catch(() => undefined)
+      if (fresh === null) return null
+      if (fresh) {
+        const signedInAt = Number(token.authAt) || Number(token.iat || 0) * 1000
+        if (fresh.passwordChangedAt && fresh.passwordChangedAt.getTime() > signedInAt) return null
+        token.name = fresh.name
+        token.role = fresh.role === 'ADMIN' && isAdminEmail(fresh.email) ? 'ADMIN' : 'INVESTOR'
+        token.emailVerified = fresh.emailVerified
+        token.twoFactorEnabled = fresh.twoFactorEnabled
       }
       return token
     },
