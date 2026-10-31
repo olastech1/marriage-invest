@@ -1,5 +1,6 @@
 'use client'
 
+import RelationPicker, { relationKey } from '@/components/investor/RelationPicker'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, MessageSquare, PiggyBank } from 'lucide-react'
@@ -63,7 +64,7 @@ export default function SpouseLinkPanel() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-[#0F1C3F] truncate">{p.name}</p>
                     <p className="text-[11px] text-gray-500">
-                      {p.relationLabel}
+                      <RelationPicker partnerId={p.id} partnerName={p.name} relation={relationKey(p.relation)} onChanged={load} className="text-[#0F1C3F]" />
                       {p.accountNumber && <span className="font-mono"> · ID {formatAccountNumber(p.accountNumber)}</span>}
                     </p>
                     {(p.shared?.email || p.shared?.phone) && (

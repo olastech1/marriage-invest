@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildThreadId, createChatMessage, getIncomingSpouseRequests } from '@/lib/chat'
-import { RELATIONS, cleanRelation, getPartners, isPartner, linkPartners } from '@/lib/partners'
+import { RELATIONS, cleanRelation, getPartners, isPartner, linkPartners, pairKey } from '@/lib/partners'
 import { sendEmail } from '@/lib/email'
 import { emailMember } from '@/lib/activity'
 import { escapeHtml } from '@/lib/utils'
@@ -239,6 +239,45 @@ export async function POST(req: NextRequest) {
   }
 
   if (body.action === 'accept') return acceptRequest(me, myName, String(body.messageId || ''))
+
+  // What we are to each other changed (friend → spouse, …): either partner can update it
+  if (body.action === 'relation') {
+    const partnerId = String(body.partnerId || '')
+    if (!(body.relation in RELATIONS)) return NextResponse.json({ success: false, error: 'Pick a relationship.' }, { status: 400 })
+    const relation = cleanRelation(body.relation)
+    if (!partnerId || !(await isPartner(me, partnerId))) {
+      return NextResponse.json({ success: false, error: 'You are not linked with this member.' }, { status: 404 })
+    }
+    const current = await prisma.partnership.findUnique({ where: { userAId_userBId: pairKey(me, partnerId) }, select: { relation: true } })
+    if (current?.relation === relation) return NextResponse.json({ success: true, relation, label: RELATIONS[relation] })
+    await linkPartners(me, partnerId, relation)
+    // Both see the change in their chat, and the other person is notified
+    const partner = await prisma.user.findUnique({ where: { id: partnerId }, select: { name: true } })
+    await createChatMessage({
+      data: {
+        threadId: buildThreadId(me, partnerId),
+        senderId: 'system_union_verify',
+        senderName: 'Union Verify',
+        recipientId: partnerId,
+        recipientName: partner?.name || 'Member',
+        text: `${myName} changed your relationship to ${RELATIONS[relation]}.`,
+        timestamp: new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date()),
+        type: 'text',
+      },
+    }).catch(() => {})
+    await prisma.notification
+      .create({
+        data: {
+          userId: partnerId,
+          title: `${myName} changed your relationship to ${RELATIONS[relation]}`,
+          message: 'You can change it too, from your chat or Settings.',
+          type: 'INFO',
+          link: `/chat?recipientId=${encodeURIComponent(me)}`,
+        },
+      })
+      .catch(() => {})
+    return NextResponse.json({ success: true, relation, label: RELATIONS[relation] })
+  }
 
   return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 })
 }

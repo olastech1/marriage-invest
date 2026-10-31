@@ -11,6 +11,7 @@ import LinkPartnerButton from '@/components/investor/LinkPartnerButton'
 import MyAccountId from '@/components/investor/MyAccountId'
 import UserAvatar from '@/components/investor/UserAvatar'
 import VerifiedTick from '@/components/VerifiedTick'
+import RelationPicker, { relationKey } from '@/components/investor/RelationPicker'
 import { Linkified, LinkPreviewCard, findLinks } from '@/components/investor/LinkPreview'
 import { TranslateLine, TranslateSettings, useChatTranslator } from '@/components/investor/ChatTranslator'
 import { ChatMediaBubble, uploadChatMedia, type MediaData } from '@/components/investor/ChatMedia'
@@ -1187,9 +1188,6 @@ export default function UnifiedChatPage() {
                     {activeRecipient.name}
                   </h3>
                   {activeRecipient.verified && <VerifiedTick className="w-4 h-4" />}
-                  {isChattingWithSpouse && (
-                    <span className="text-[10px] text-[#C9A84C] font-semibold hidden sm:inline">({activeRelation})</span>
-                  )}
                 </div>
                 <div className="flex items-center gap-1.5 text-[10px] text-gray-400 whitespace-nowrap">
                   {activeRecipient.accountNumber && (
@@ -1202,6 +1200,16 @@ export default function UnifiedChatPage() {
                 </div>
               </div>
               </Link>
+              {/* What they are to me, tappable to change (outside the profile link) */}
+              {isChattingWithSpouse && (
+                <RelationPicker
+                  partnerId={activeRecipient.id}
+                  partnerName={activeRecipient.name}
+                  relation={relationKey(activeRelation)}
+                  onChanged={() => fetchConversations()}
+                  className="px-2 py-1 rounded-full bg-[#C9A84C]/10 border border-[#C9A84C]/40 text-[10px] text-[#8a6d1f] flex-shrink-0"
+                />
+              )}
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
