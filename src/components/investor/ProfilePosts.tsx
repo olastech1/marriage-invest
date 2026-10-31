@@ -41,7 +41,18 @@ const usd = (n: number) => `$${n.toLocaleString(undefined, { minimumFractionDigi
 const when = (d: string) => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: new Date(d).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
 
 /** Posts on a member's profile: the owner posts and pins; locked posts open once paid for */
-export default function ProfilePosts({ userId, slug, ownerView }: { userId: string; slug: string; ownerView: boolean }) {
+export default function ProfilePosts({
+  userId,
+  slug,
+  ownerView,
+  onCount,
+}: {
+  userId: string
+  slug: string
+  ownerView: boolean
+  /** How many posts there are (the profile header shows it) */
+  onCount?: (n: number) => void
+}) {
   const [posts, setPosts] = useState<Post[] | null>(null)
   const [mine, setMine] = useState(false)
   const [signedIn, setSignedIn] = useState(false)
@@ -56,11 +67,12 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
         .then((data) => {
           if (!data?.success) return setPosts((p) => p || [])
           setPosts(data.posts)
+          onCount?.(data.posts.length)
           setMine(data.mine)
           setSignedIn(data.signedIn)
           setAuthor(data.author)
         }),
-    [userId],
+    [userId, onCount],
   )
 
   useEffect(() => {
@@ -68,13 +80,17 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
       .then((r) => r.json())
       .catch(() => null)
       .then((data) => {
-        if (!data?.success) return setPosts([])
+        if (!data?.success) {
+          onCount?.(0)
+          return setPosts([])
+        }
         setPosts(data.posts)
+        onCount?.(data.posts.length)
         setMine(data.mine)
         setSignedIn(data.signedIn)
         setAuthor(data.author)
       })
-  }, [userId])
+  }, [userId, onCount])
 
   // Back from paying: go to that post
   const scrolled = useRef(false)
@@ -90,7 +106,6 @@ export default function ProfilePosts({ userId, slug, ownerView }: { userId: stri
 
   return (
     <div className="space-y-3">
-      <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] block">Posts</span>
       {owner && <Composer onPosted={load} />}
       {note && <p className={`text-xs ${note.ok ? 'text-emerald-300' : 'text-rose-300'}`}>{note.text}</p>}
       {posts.length === 0 && <p className="text-xs text-gray-400">No posts yet. Share a photo, a video or an update.</p>}

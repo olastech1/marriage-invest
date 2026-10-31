@@ -71,6 +71,8 @@ export default function UserPublicProfilePage() {
   // Who is looking: the owner, another signed-in member, or a visitor without an account
   const { data: session, status: sessionStatus } = useSession()
   const [previewAsVisitor, setPreviewAsVisitor] = useState(false)
+  const [tab, setTab] = useState<'posts' | 'about'>('posts')
+  const [postCount, setPostCount] = useState<number | null>(null)
 
   useEffect(() => {
     if (!slug) return
@@ -185,132 +187,62 @@ export default function UserPublicProfilePage() {
       <div className="absolute top-1/3 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-lg z-10 space-y-6">
-        {/* Top bar */}
-        <div className="flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-6 h-6 rounded-full bg-[#C9A84C]/20 border border-[#C9A84C]/50 flex items-center justify-center">
-              <span className="text-[10px] text-[#C9A84C] font-black">UV</span>
-            </div>
-            <span className="text-xs font-bold text-gray-300 group-hover:text-white transition-colors">
-              Union <span className="text-[#C9A84C]">Verify</span>
-            </span>
-          </Link>
-
-          <button
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/15 text-xs text-gray-200 border border-white/15 transition-all shadow-sm active:scale-95"
-            title="Copy profile link"
-          >
-            {copiedLink ? (
-              <>
-                <Check size={12} className="text-emerald-400" />
-                <span className="text-[11px] text-emerald-300 font-bold">Link Copied</span>
-              </>
-            ) : (
-              <>
-                <Share2 size={12} className="text-[#C9A84C]" />
-                <span className="text-[11px] font-semibold">Share Profile</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Owner: say whose view this is */}
-        {isOwner && (
+        {/* Previewing my own profile as visitors see it */}
+        {isOwner && previewAsVisitor && (
           <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl bg-[#C9A84C]/15 border border-[#C9A84C]/40 text-xs text-[#f3e2b3]">
-            <span>{previewAsVisitor ? "You're seeing your profile as visitors do." : 'This is your public profile. Only what you chose to share is shown.'}</span>
-            {previewAsVisitor && (
-              <button type="button" onClick={() => setPreviewAsVisitor(false)} className="font-bold text-white underline flex-shrink-0 cursor-pointer">
-                Back
-              </button>
-            )}
+            <span>You&apos;re seeing your profile as visitors do.</span>
+            <button type="button" onClick={() => setPreviewAsVisitor(false)} className="font-bold text-white underline flex-shrink-0 cursor-pointer">
+              Back
+            </button>
           </div>
         )}
 
-        {/* Profile card */}
-        <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 p-6 sm:p-8 shadow-2xl relative overflow-hidden text-center space-y-5">
-
-          {/* Avatars */}
-          <div className="flex items-center justify-center my-2">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] p-0.5 shadow-xl">
+        {/* Header: photo, name, numbers, bio, actions */}
+        <div className="rounded-3xl bg-white/10 backdrop-blur-xl border border-white/20 p-5 sm:p-6 shadow-2xl space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] p-0.5 shadow-xl flex-shrink-0">
               {profile.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- small photo from our own API
                 <img src={profile.avatarUrl} alt={`${primaryName}'s photo`} className="w-full h-full rounded-full object-cover bg-[#0F1C3F]" />
               ) : (
-                <div className="w-full h-full rounded-full bg-[#0F1C3F] flex items-center justify-center font-bold text-2xl text-white">
+                <div translate="no" className="w-full h-full rounded-full bg-[#0F1C3F] flex items-center justify-center font-bold text-2xl text-white">
                   {profile.avatar || primaryName.slice(0, 2).toUpperCase()}
                 </div>
               )}
             </div>
-
-          </div>
-
-          {/* Name & details */}
-          <div>
-            <h1 translate="no" className="text-2xl sm:text-3xl font-black text-white tracking-tight inline-flex items-center justify-center gap-2">
-              <span>{primaryName}</span>
-              {profile.identityVerified && <VerifiedTick className="w-6 h-6 sm:w-7 sm:h-7" />}
-            </h1>
-            <p className="text-xs text-gray-400 mt-1">
-              {profile.username ? `@${profile.username}` : profile.accountNumber ? `ID ${profile.accountNumber.slice(0, 4)} ${profile.accountNumber.slice(4)}` : ''}
-            </p>
-            {profile.bio && (
-              <p className="text-xs text-gray-300 max-w-sm mx-auto mt-3 leading-relaxed whitespace-pre-line">
-                {profile.bio}
+            <div className="min-w-0 flex-1">
+              <h1 translate="no" className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-1.5 min-w-0">
+                <span className="truncate">{primaryName}</span>
+                {profile.identityVerified && <VerifiedTick className="w-5 h-5 sm:w-6 sm:h-6" />}
+              </h1>
+              <p translate="no" className="text-xs text-gray-400 truncate">
+                {profile.username ? `@${profile.username}` : profile.accountNumber ? `ID ${profile.accountNumber.slice(0, 4)} ${profile.accountNumber.slice(4)}` : ''}
               </p>
-            )}
-            <p className="text-[11px] text-gray-400 mt-3">Member since {profile.memberSince}</p>
+              <div className="flex gap-5 mt-2 text-xs">
+                <span>
+                  <strong className="text-white text-sm">{postCount ?? '–'}</strong> <span className="text-gray-400">{postCount === 1 ? 'post' : 'posts'}</span>
+                </span>
+                <span className="text-gray-400">Joined {profile.memberSince}</span>
+              </div>
+            </div>
           </div>
 
-          {/* Owner: this is what visitors see; edit or share it */}
-          {viewer === 'owner' && (
-            <div className="space-y-2 pt-1">
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href="/settings"
-                  className="py-3.5 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] text-[#0F1C3F] font-black text-sm shadow-xl shadow-[#C9A84C]/20 flex items-center justify-center gap-2"
-                >
-                  <Pencil className="w-4 h-4" />
-                  Edit profile
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  className="py-3.5 rounded-2xl bg-white/10 border border-white/20 text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
-                  {copiedLink ? 'Link copied' : 'Share link'}
-                </button>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPreviewAsVisitor(true)}
-                className="w-full py-2 text-xs font-semibold text-gray-300 hover:text-white flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5" /> See it as a visitor
-              </button>
-            </div>
-          )}
+          {profile.bio && <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-line">{profile.bio}</p>}
 
-          {/* Signed-in member: chat in the app */}
-          {viewer === 'member' && profile.publicChatEnabled && (
-            <div className="space-y-2 pt-1">
+          {/* Owner: edit or share; members and visitors: message or share */}
+          <div className="flex gap-2">
+            {viewer === 'owner' ? (
+              <Link href="/settings" className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm flex items-center justify-center gap-1.5">
+                <Pencil className="w-4 h-4" /> Edit profile
+              </Link>
+            ) : viewer === 'member' && profile.publicChatEnabled ? (
               <Link
                 href={`/chat?recipientId=${encodeURIComponent(profile.userId)}&name=${encodeURIComponent(primaryName)}`}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] hover:from-[#d4b460] hover:to-[#d4b460] text-[#0F1C3F] font-black text-sm sm:text-base shadow-xl shadow-[#C9A84C]/20 transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm flex items-center justify-center gap-1.5"
               >
-                <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
-                <span>Message {firstName}</span>
+                <MessageSquare className="w-4 h-4" /> Message
               </Link>
-              <p className="text-[11px] text-gray-400">
-                Signed in as {session?.user?.name}. Opens your chat with {firstName}.
-              </p>
-            </div>
-          )}
-
-          {/* Visitor without an account (or signed out): leave a message by email */}
-          {viewer === 'visitor' && profile.publicChatEnabled && (
-            <div className="space-y-2 pt-1">
+            ) : viewer === 'visitor' && profile.publicChatEnabled ? (
               <button
                 type="button"
                 onClick={() => {
@@ -318,35 +250,72 @@ export default function UserPublicProfilePage() {
                   setMsgSentSuccess(false)
                   setMsgError(null)
                 }}
-                className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#C9A84C] via-[#e2c77d] to-[#C9A84C] hover:from-[#d4b460] hover:to-[#d4b460] text-[#0F1C3F] font-black text-sm sm:text-base shadow-xl shadow-[#C9A84C]/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-2.5 rounded-xl bg-[#C9A84C] hover:bg-[#d4b460] text-[#0F1C3F] font-bold text-sm flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <MessageSquare className="w-5 h-5 fill-[#0F1C3F]" />
-                <span>Message {firstName}</span>
+                <MessageSquare className="w-4 h-4" /> Message
               </button>
-              {!previewAsVisitor && (
-                <p className="text-[11px] text-gray-400">
-                  Have an account?{' '}
-                  <Link href={`/login?callbackUrl=${encodeURIComponent(`/u/${profile.username || profile.accountNumber}`)}`} className="font-bold text-[#C9A84C] hover:underline">
-                    Sign in
-                  </Link>{' '}
-                  to chat in the app, or{' '}
-                  <Link href="/register" className="font-bold text-[#C9A84C] hover:underline">
-                    create a free account
-                  </Link>
-                  .
-                </p>
-              )}
-            </div>
+            ) : null}
+            <button
+              type="button"
+              onClick={handleCopyLink}
+              className="flex-1 py-2.5 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              {copiedLink ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4" />}
+              {copiedLink ? 'Copied' : 'Share'}
+            </button>
+            {viewer === 'owner' && (
+              <button
+                type="button"
+                onClick={() => setPreviewAsVisitor(true)}
+                className="px-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/20 text-white cursor-pointer"
+                aria-label="See it as a visitor"
+                title="See it as a visitor"
+              >
+                <Eye className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          {viewer === 'visitor' && profile.publicChatEnabled && !previewAsVisitor && (
+            <p className="text-[11px] text-gray-400">
+              Have an account?{' '}
+              <Link href={`/login?callbackUrl=${encodeURIComponent(`/u/${profile.username || profile.accountNumber}`)}`} className="font-bold text-[#C9A84C] hover:underline">
+                Sign in
+              </Link>{' '}
+              to chat in the app.
+            </p>
           )}
         </div>
 
-        {/* Posts: photos, videos and updates (some locked until paid for) */}
-        <ProfilePosts userId={profile.userId} slug={slug} ownerView={viewer === 'owner'} />
+        {/* Tabs */}
+        <div className="flex border-b border-white/10">
+          {(['posts', 'about'] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className={`flex-1 py-2.5 text-sm font-bold border-b-2 -mb-px cursor-pointer ${tab === t ? 'border-[#C9A84C] text-white' : 'border-transparent text-gray-400 hover:text-gray-200'}`}
+            >
+              {t === 'posts' ? 'Posts' : 'About'}
+            </button>
+          ))}
+        </div>
 
+        {/* Posts stay loaded when switching tabs */}
+        <div className={tab === 'posts' ? '' : 'hidden'}>
+          <ProfilePosts userId={profile.userId} slug={slug} ownerView={viewer === 'owner'} onCount={setPostCount} />
+          {postCount === 0 && viewer !== 'owner' && <p className="py-10 text-center text-sm text-gray-400">No posts yet.</p>}
+        </div>
+
+        {tab === 'about' && (
+          <div className="space-y-3">
+            <div className="rounded-3xl bg-white/5 border border-white/10 p-5 space-y-2 text-sm">
+              {profile.bio ? <p className="text-gray-200 whitespace-pre-line">{profile.bio}</p> : <p className="text-gray-400">No bio yet.</p>}
+              <p className="text-xs text-gray-400">Joined {profile.memberSince}</p>
+              {profile.identityVerified && <p className="text-xs text-gray-300 flex items-center gap-1.5"><VerifiedTick className="w-4 h-4" /> Identity verified</p>}
+            </div>
         {/* Contact & socials (only what the member chose to share) */}
-        {hasContact && (
+            {hasContact && (
           <div className="rounded-3xl bg-white/5 border border-white/10 p-5 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-[#C9A84C] block">Contact</span>
 
             {(email || phone || whatsappDigits) && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -469,7 +438,8 @@ export default function UserPublicProfilePage() {
             )}
           </div>
         )}
-
+          </div>
+        )}
 
         <div className="text-center pt-4">
           <p className="text-[10px] text-gray-500">
