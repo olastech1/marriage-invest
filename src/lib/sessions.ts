@@ -10,6 +10,7 @@ import { encode } from 'next-auth/jwt'
 import type { User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { isAdminEmail } from '@/lib/accounts'
+import { forgetSessionAccount } from '@/lib/auth'
 
 const SESSION_DAYS = 30
 
@@ -55,5 +56,6 @@ export async function startSession(req: NextRequest, res: NextResponse, user: Pa
  */
 export async function passwordChanged(userId: string) {
   await prisma.user.update({ where: { id: userId }, data: { passwordChangedAt: new Date() } })
+  forgetSessionAccount(userId)
   await prisma.deviceAccount.deleteMany({ where: { userId } })
 }

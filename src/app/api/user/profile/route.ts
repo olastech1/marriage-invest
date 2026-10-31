@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { auth, forgetSessionAccount } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getPartnerIds } from '@/lib/partners'
 import { ensureAccountNumber } from '@/lib/accountId'
@@ -110,6 +110,8 @@ export async function PATCH(req: NextRequest) {
 
     if (Object.keys(data).length > 0) {
       await prisma.user.update({ where: { id: currentUserId }, data })
+    // A new name shows in the session on the next page
+    forgetSessionAccount(currentUserId)
     }
 
     return NextResponse.json({ success: true, message: 'Saved.' })

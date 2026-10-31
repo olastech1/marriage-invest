@@ -52,6 +52,36 @@ for (const key of ['AUTH_URL', 'NEXTAUTH_URL'] as const) {
 }
 
 // ---------------------------------------------------------------------------
+// The account behind a session, re-read at most every 30 seconds per server
+// copy (every page load checks it; this keeps that off the database)
+// ---------------------------------------------------------------------------
+const ACCOUNT_CACHE_MS = 30_000
+type SessionAccount = { name: string; email: string; role: UserRole; emailVerified: Date | null; twoFactorEnabled: boolean; passwordChangedAt: Date | null }
+const accountCache = new Map<string, { at: number; value: SessionAccount | null }>()
+
+async function sessionAccount(id: string): Promise<SessionAccount | null | undefined> {
+  const hit = accountCache.get(id)
+  if (hit && Date.now() - hit.at < ACCOUNT_CACHE_MS) return hit.value
+  const value = await prisma.user
+    .findUnique({
+      where: { id },
+      select: { name: true, email: true, role: true, emailVerified: true, twoFactorEnabled: true, passwordChangedAt: true },
+    })
+    .catch(() => undefined)
+  // A failed read isn't kept (undefined: keep the session as it is this time)
+  if (value !== undefined) {
+    if (accountCache.size > 5000) accountCache.delete(accountCache.keys().next().value as string)
+    accountCache.set(id, { at: Date.now(), value })
+  }
+  return value
+}
+
+/** The account changed (name, password…): read it again on the next page */
+export function forgetSessionAccount(id: string) {
+  accountCache.delete(id)
+}
+
+// ---------------------------------------------------------------------------
 // NextAuth configuration
 // ---------------------------------------------------------------------------
 const config: NextAuthConfig = {
@@ -114,12 +144,7 @@ const config: NextAuthConfig = {
       if (!token.id) return token
       // Keep the session up to date with the account (a new name shows at once), and
       // end it if the account is gone or its password changed after this sign-in
-      const fresh = await prisma.user
-        .findUnique({
-          where: { id: token.id as string },
-          select: { name: true, email: true, role: true, emailVerified: true, twoFactorEnabled: true, passwordChangedAt: true },
-        })
-        .catch(() => undefined)
+      const fresh = await sessionAccount(token.id as string)
       if (fresh === null) return null
       if (fresh) {
         const signedInAt = Number(token.authAt) || Number(token.iat || 0) * 1000
