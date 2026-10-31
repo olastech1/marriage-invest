@@ -32,14 +32,20 @@ interface NotificationItem {
   metadata?: unknown
 }
 
+// The chat with the partner a notification is about, else the chat list
+const chatHref = (n: NotificationItem) => {
+  const id = (n.metadata as { partnerId?: unknown } | null)?.partnerId
+  return typeof id === 'string' && id
+    ? `/chat?recipientId=${encodeURIComponent(id)}${n.partnerName ? `&name=${encodeURIComponent(n.partnerName)}` : ''}`
+    : '/chat'
+}
+
 interface Props {
   initialNotifications: NotificationItem[]
-  partnerName?: string
 }
 
 export default function UrgentNotificationCenter({
   initialNotifications,
-  partnerName = 'your partner',
 }: Props) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications || [])
   const [attendingIds, setAttendingIds] = useState<Record<string, boolean>>({})
@@ -136,9 +142,9 @@ export default function UrgentNotificationCenter({
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <Link
-            href="/chat?thread=spouse"
+            href="/chat"
             className="rounded-lg bg-[#C9A84C]/20 border border-[#C9A84C]/40 px-3 py-1.5 text-xs font-bold text-[#C9A84C] hover:bg-[#C9A84C]/30 transition-colors flex items-center gap-1.5"
-            title={`Chat with ${partnerName}`}
+            title="Your chats"
           >
             <MessageSquareHeart size={13} />
             Chat
@@ -244,9 +250,9 @@ export default function UrgentNotificationCenter({
                       })()
                     ) : null}
                     <Link
-                      href="/chat?thread=spouse"
+                      href={chatHref(notif)}
                       className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:text-[#0F1C3F] hover:bg-slate-50 transition-colors flex items-center justify-center gap-1 flex-shrink-0"
-                      title={`Discuss this with ${partnerName}`}
+                      title={notif.partnerName ? `Discuss this with ${notif.partnerName}` : 'Open chats'}
                     >
                       <MessageSquareHeart size={13} className="text-[#C9A84C]" />
                       Chat
@@ -273,7 +279,7 @@ export default function UrgentNotificationCenter({
         <div className="flex items-center gap-3 rounded-2xl bg-emerald-50 border border-emerald-200 p-4 text-emerald-800">
           <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0" />
           <div className="text-xs">
-            Nothing needs your attention right now. When {partnerName} makes a deposit, it will show up here.
+            Nothing needs your attention right now. When any of your partners makes a deposit, it will show up here.
           </div>
         </div>
       )}
@@ -319,9 +325,9 @@ export default function UrgentNotificationCenter({
 
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <Link
-                      href="/chat?thread=spouse"
+                      href={chatHref(n)}
                       className="rounded-lg bg-white border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-[#0F1C3F] transition-colors flex items-center gap-1"
-                      title="Discuss in couple chat"
+                      title={n.partnerName ? `Discuss this with ${n.partnerName}` : 'Open chats'}
                     >
                       <MessageSquareHeart size={12} className="text-[#C9A84C]" />
                       Chat

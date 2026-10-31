@@ -193,7 +193,6 @@ export default async function DashboardPage() {
 
   // A spouse deposit I still need to reciprocate
   const pendingDepositorName = reciprocation.pending?.depositorName || reciprocation.spouseName || 'Your partner'
-  const spouseName = reciprocation.partnerIds.length > 1 ? 'your partners' : reciprocation.spouseName || 'your partner'
   // Deposits to reciprocate can come from several partners
   const depositors = [...new Set(reciprocation.pendingDeposits.map((d) => d.depositorName))]
   const requesters = [...new Set(pendingSpousalApprovals.map((w) => w.user?.name || 'Your partner'))]
@@ -239,7 +238,6 @@ export default async function DashboardPage() {
       {/* ── Notifications that need action ─────────────────────────── */}
       <UrgentNotificationCenter
         initialNotifications={notifications.filter((n) => n.category !== 'SPOUSE_REQUEST') as any}
-        partnerName={spouseName}
       />
 
       {/* ── Deposits to reciprocate: each one on its own ─────────────── */}

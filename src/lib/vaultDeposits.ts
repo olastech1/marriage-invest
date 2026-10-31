@@ -130,7 +130,7 @@ export async function recordVaultDeposit({
         amount,
         partnerName: userName,
         actionLabel: `Reciprocate $${amount.toLocaleString()}`,
-        metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount, depositMessageId: message.id },
+        metadata: { transactionId: transaction.id, reference, bonusMatch: bonusAmount, depositMessageId: message.id, partnerId: userId },
       },
     }).catch((err) => console.error('[recordVaultDeposit] partner notification failed', err))
   }
