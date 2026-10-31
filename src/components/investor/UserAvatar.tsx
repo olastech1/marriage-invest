@@ -33,7 +33,7 @@ export default function UserAvatar({
     )
   }
   return (
-    <div className={`rounded-full flex items-center justify-center font-bold flex-shrink-0 ${fallbackClassName} ${className}`}>
+    <div translate="no" className={`rounded-full flex items-center justify-center font-bold flex-shrink-0 ${fallbackClassName} ${className}`}>
       {initialsOf(name)}
     </div>
   )

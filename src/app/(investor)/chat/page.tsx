@@ -1085,7 +1085,7 @@ export default function UnifiedChatPage() {
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <span className={`text-[13px] font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
+                        <span translate="no" className={`text-[13px] font-bold truncate ${isSelected ? 'text-white' : 'text-[#0F1C3F]'}`}>
                           {contact.name}
                         </span>
                         {contact.verified && <VerifiedTick className="w-3.5 h-3.5" />}
@@ -1183,7 +1183,7 @@ export default function UnifiedChatPage() {
 
               <div className="min-w-0 overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
+                  <h3 translate="no" className="text-xs sm:text-sm font-bold text-[#0F1C3F] truncate">
                     {activeRecipient.name}
                   </h3>
                   {activeRecipient.verified && <VerifiedTick className="w-4 h-4" />}
@@ -1459,7 +1459,7 @@ export default function UnifiedChatPage() {
                   className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
                 >
                   <div className="flex items-baseline gap-2 mb-1 px-1">
-                    <span className="text-[11px] font-bold text-gray-500">
+                    <span translate="no" className="text-[11px] font-bold text-gray-500">
                       {isMe ? `${activeUserName} (You)` : msg.senderName}
                     </span>
                     <span className="text-[10px] text-gray-400 font-mono">{msg.timestamp}</span>
@@ -1474,6 +1474,8 @@ export default function UnifiedChatPage() {
                             ? 'bg-[#0F1C3F] text-white rounded-tr-none'
                             : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                         }`}
+                        // Chat messages have their own translator (the site-wide one leaves them alone)
+                        translate="no"
                       >
                         {!isMe && translator.shown(msg.id) ? (
                           translator.shown(msg.id)!.text

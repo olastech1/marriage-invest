@@ -37,6 +37,8 @@ export const metadata: Metadata = {
 }
 
 import AuthProvider from '@/components/providers/AuthProvider'
+import SiteTranslator from '@/components/SiteTranslator'
+import MediaGuard from '@/components/MediaGuard'
 
 export default function RootLayout({
   children,
@@ -75,6 +77,8 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-white text-gray-900">
         <AuthProvider>{children}</AuthProvider>
+        <SiteTranslator />
+        <MediaGuard />
       </body>
     </html>
   )

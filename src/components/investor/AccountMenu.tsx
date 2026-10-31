@@ -162,7 +162,7 @@ export default function AccountMenu({
                 </form>
               ) : (
                 <p className="text-sm font-bold text-[#0F1C3F] truncate flex items-center gap-1.5">
-                  <span className="truncate">{user.name || 'Member'}</span>
+                  <span translate="no" className="truncate">{user.name || 'Member'}</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -176,8 +176,8 @@ export default function AccountMenu({
                   </button>
                 </p>
               )}
-              <p className="text-xs text-gray-500 truncate">{user.email}</p>
-              {user.accountNumber && <p className="text-[11px] font-mono text-gray-400">ID {formatAccountNumber(user.accountNumber)}</p>}
+              <p translate="no" className="text-xs text-gray-500 truncate">{user.email}</p>
+              {user.accountNumber && <p translate="no" className="text-[11px] font-mono text-gray-400">ID {formatAccountNumber(user.accountNumber)}</p>}
             </div>
             <span className="ml-auto flex items-center gap-2 flex-shrink-0">
               <Count n={myUnread} />
@@ -198,8 +198,8 @@ export default function AccountMenu({
                   >
                     <UserAvatar name={a.name} src={a.avatarUrl} className="h-9 w-9 text-xs" />
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-[#0F1C3F] truncate">{busy === a.id ? 'Switching…' : a.name}</span>
-                      <span className="block text-[11px] text-gray-500 truncate">{a.email}</span>
+                      <span translate="no" className="block text-sm font-semibold text-[#0F1C3F] truncate">{busy === a.id ? 'Switching…' : a.name}</span>
+                      <span translate="no" className="block text-[11px] text-gray-500 truncate">{a.email}</span>
                     </span>
                     <span className="ml-auto">
                       <Count n={a.unread} />

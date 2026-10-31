@@ -365,7 +365,7 @@ export function FloatingChatWidget() {
                         : 'bg-white text-gray-800 border border-gray-200 rounded-tl-none'
                     }`}
                   >
-                    <p className="break-words [overflow-wrap:anywhere]">
+                    <p translate="no" className="break-words [overflow-wrap:anywhere]">
                       <Linkified text={m.text} linkClassName={isMe ? 'text-[#C9A84C]' : 'text-blue-700'} />
                     </p>
                     {m.type && CARD_LABELS[m.type] && (

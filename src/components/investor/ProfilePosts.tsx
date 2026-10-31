@@ -384,7 +384,7 @@ function PostCard({
               )}
             </div>
           ) : post.mediaKind === 'video' ? (
-            <video src={`${post.mediaUrl}#t=0.1`} controls playsInline preload="metadata" className="w-full h-full object-contain bg-black" />
+            <video src={`${post.mediaUrl}#t=0.1`} controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" className="w-full h-full object-contain bg-black" />
           ) : (
             <button type="button" onClick={() => setZoom(true)} className="w-full h-full cursor-zoom-in" aria-label="Open photo">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -499,7 +499,7 @@ function PostActions({ post, mine, author, signedIn, slug, onChange }: { post: P
       </div>
       <div className="min-w-0 flex-1">
         <div className="rounded-2xl bg-white/10 px-3 py-2">
-          <p className="text-[11px] font-bold text-white flex items-center gap-1">
+          <p translate="no" className="text-[11px] font-bold text-white flex items-center gap-1">
             {c.author.profile ? <Link href={`/u/${c.author.profile}`}>{c.author.name}</Link> : c.author.name}
             {c.author.verified && <VerifiedTick className="w-3 h-3" />}
           </p>

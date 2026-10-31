@@ -57,3 +57,12 @@ body {
     display: none !important;
   }
 }
+
+/* Members' photos and videos are view only: no long-press save or callout on phones */
+img[src*="/api/chat/media/"],
+video[src*="/api/chat/media/"] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}

@@ -237,18 +237,15 @@ export function ChatMediaBubble({
               >
                 Try again
               </button>
-              <a href={src} target="_blank" rel="noopener noreferrer" download className="text-[#0F1C3F] underline">
-                {kind === 'video' ? 'Download video' : 'Open photo'}
-              </a>
             </div>
           </div>
         ) : kind === 'image' ? (
           <button type="button" onClick={() => setOpen(true)} className="w-full h-full cursor-zoom-in" aria-label="Open photo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={caption || 'Photo'} loading="lazy" decoding="async" onError={() => setFailed(true)} className="w-full h-full object-cover" />
+            <img src={src} alt={caption || 'Photo'} draggable={false} loading="lazy" decoding="async" onError={() => setFailed(true)} className="w-full h-full object-cover" />
           </button>
         ) : (
-          <video src={`${src}#t=0.1`} controls playsInline preload="metadata" onError={() => setFailed(true)} className="w-full h-full object-contain bg-black" />
+          <video src={`${src}#t=0.1`} controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsInline preload="metadata" onError={() => setFailed(true)} className="w-full h-full object-contain bg-black" />
         )}
       </div>
       {isMe && !!data.price && (
@@ -257,7 +254,7 @@ export function ChatMediaBubble({
         </p>
       )}
       {caption && (
-        <p className={`px-3 py-2 text-xs sm:text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${isMe ? 'text-white' : 'text-gray-800'}`}>{caption}</p>
+        <p translate="no" className={`px-3 py-2 text-xs sm:text-sm whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${isMe ? 'text-white' : 'text-gray-800'}`}>{caption}</p>
       )}
       {open && (
         <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4" onClick={() => setOpen(false)} role="dialog" aria-label="Photo">

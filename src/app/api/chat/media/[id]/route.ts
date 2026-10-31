@@ -73,6 +73,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     'Accept-Ranges': 'bytes',
     'Cache-Control': 'private, max-age=31536000, immutable',
     'X-Content-Type-Options': 'nosniff',
+    // Shown on the page, not downloaded; not for search engines or AI training
+    'Content-Disposition': 'inline',
+    'X-Robots-Tag': 'noindex, noai, noimageai',
     'Content-Security-Policy': "default-src 'none'",
   }
   const part = (index: number) =>

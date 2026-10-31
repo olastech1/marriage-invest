@@ -247,7 +247,7 @@ export default function UserPublicProfilePage() {
 
           {/* Name & details */}
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight inline-flex items-center justify-center gap-2">
+            <h1 translate="no" className="text-2xl sm:text-3xl font-black text-white tracking-tight inline-flex items-center justify-center gap-2">
               <span>{primaryName}</span>
               {profile.identityVerified && <VerifiedTick className="w-6 h-6 sm:w-7 sm:h-7" />}
             </h1>

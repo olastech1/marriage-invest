@@ -203,7 +203,7 @@ export default async function DashboardPage() {
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0F1C3F]">
-            Welcome back{currentUser.name ? `, ${currentUser.name.split(' ')[0]}` : ''}
+            Welcome back{currentUser.name ? <>, <span translate="no">{currentUser.name.split(' ')[0]}</span></> : ''}
           </h1>
           <p className="text-sm text-slate-500">
             {new Intl.DateTimeFormat('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).format(now)}
